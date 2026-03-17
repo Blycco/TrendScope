@@ -1,3 +1,10 @@
+---
+name: frontend
+description: SvelteKit UI, 컴포넌트, i18n, 에러 모달, 플랜 게이트 UI, 어드민 패널 UI 등 frontend/ 디렉토리 작업
+tools: Read, Write, Edit, Bash, Glob, Grep
+model: claude-sonnet-4-6
+---
+
 # Frontend Agent
 
 ## Role

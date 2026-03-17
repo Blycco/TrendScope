@@ -1,3 +1,10 @@
+---
+name: security
+description: 인증/인가 코드, 시크릿 관리, audit log, 결제 플로우, SSRF/CORS/SQL injection 등 보안 민감 코드 변경 시 반드시 사용
+tools: Read, Glob, Grep
+model: claude-opus-4-6
+---
+
 # Security Agent
 
 ## Role

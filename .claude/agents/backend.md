@@ -1,3 +1,10 @@
+---
+name: backend
+description: FastAPI 엔드포인트, PostgreSQL 마이그레이션, Redis, 크롤러, 인증/구독/audit log 등 backend/ 디렉토리 작업 (algorithms 제외)
+tools: Read, Write, Edit, Bash, Glob, Grep
+model: claude-sonnet-4-6
+---
+
 # Backend Agent
 
 ## Role
