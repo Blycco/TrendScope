@@ -23,10 +23,10 @@ Orchestrator ← coordinates all agents, routes tasks, reports progress
 Backend · Algorithm · Frontend · Infra · Reviewer · Security
 ```
 
-> **IMPORTANT**: This project uses **Claude Code Agent Teams**, NOT sub-agents.
-> Agent Teams means all agents share context and can communicate with each other.
-> Each agent has a defined role and ownership. They do NOT run in isolated contexts.
-> Orchestrator coordinates; agents collaborate directly when needed.
+> **IMPORTANT**: This project uses **Claude Code Agent Teams** (experimental).
+> Agent Teams는 각자 독립 컨텍스트 윈도우를 가진 Claude Code 인스턴스.
+> Orchestrator가 teammate를 스폰하고 파일 기반 task board로 조율.
+> settings.json에서 CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 활성화됨.
 - Agent details: `.claude/agents/`
 - Orchestrator requests Jiny's approval at: **Phase start · merge to main · unexpected situations**
 - Agents must ask Orchestrator before making decisions outside their defined scope

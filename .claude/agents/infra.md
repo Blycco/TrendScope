@@ -1,3 +1,10 @@
+---
+name: infra
+description: Docker Compose, Ubuntu 배포, CI/CD, Nginx, Prometheus, Grafana, blue-green 배포 등 인프라 작업
+tools: Read, Write, Edit, Bash, Glob, Grep
+model: claude-sonnet-4-6
+---
+
 # Infra Agent
 
 ## Role

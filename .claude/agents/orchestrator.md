@@ -1,3 +1,10 @@
+---
+name: orchestrator
+description: 멀티에이전트 작업 조율, 페이즈 태스크 분배, Jiny 승인 요청, 에이전트 간 의존성 관리, 진행 상황 리포트가 필요할 때 사용
+tools: Read, Write, Edit, Bash, Glob, Grep, Agent, Task
+model: claude-opus-4-6
+---
+
 # Orchestrator Agent
 
 ## Role
