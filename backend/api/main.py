@@ -1,0 +1,97 @@
+"""FastAPI application entry point."""
+
+from __future__ import annotations
+
+import os
+from contextlib import asynccontextmanager
+from typing import AsyncGenerator
+
+import asyncpg
+import structlog
+import structlog.stdlib
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from backend.api.routers import health
+from backend.processor.shared.cache_manager import close_redis, init_redis
+
+# --- Logging setup ---
+structlog.configure(
+    processors=[
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.add_logger_name,
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
+        structlog.processors.JSONRenderer(),
+    ],
+    wrapper_class=structlog.stdlib.BoundLogger,
+    context_class=dict,
+    logger_factory=structlog.stdlib.LoggerFactory(),
+)
+
+logger = structlog.get_logger(__name__)
+
+
+def _get_required_env(key: str) -> str:
+    value = os.environ.get(key)
+    if not value:
+        raise RuntimeError(f"Required environment variable not set: {key}")
+    return value
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """Manage DB pool and Redis pool lifecycle."""
+    database_url = _get_required_env("DATABASE_URL")
+    redis_url = _get_required_env("REDIS_URL")
+
+    try:
+        app.state.db_pool = await asyncpg.create_pool(
+            dsn=database_url,
+            min_size=2,
+            max_size=10,
+            command_timeout=30,
+        )
+        logger.info("db_pool_created")
+    except Exception as exc:
+        logger.error("db_pool_creation_failed", error=str(exc))
+        raise
+
+    try:
+        await init_redis(redis_url)
+    except Exception as exc:
+        logger.error("redis_init_failed", error=str(exc))
+        raise
+
+    yield
+
+    await app.state.db_pool.close()
+    logger.info("db_pool_closed")
+
+    await close_redis()
+    logger.info("redis_pool_closed")
+
+
+def create_app() -> FastAPI:
+    app = FastAPI(
+        title="TrendScope API",
+        version="0.1.0",
+        lifespan=lifespan,
+    )
+
+    allowed_origins = os.environ.get("ALLOWED_ORIGINS", "").split(",")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[o.strip() for o in allowed_origins if o.strip()],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    app.include_router(health.router)
+
+    return app
+
+
+app = create_app()
