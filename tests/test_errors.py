@@ -35,9 +35,7 @@ def test_error_response_helper_default_status() -> None:
 
 
 def test_error_response_helper_custom_status() -> None:
-    result = error_response(
-        ErrorCode.UNAUTHORIZED, "not authorized", status_code=401
-    )
+    result = error_response(ErrorCode.UNAUTHORIZED, "not authorized", status_code=401)
     assert result.status_code == 401
 
 
