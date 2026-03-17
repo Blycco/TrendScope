@@ -6,6 +6,8 @@ import structlog
 from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
+from backend.processor.shared.cache_manager import get_redis
+
 router = APIRouter()
 logger = structlog.get_logger(__name__)
 
@@ -34,8 +36,6 @@ async def health_check(request: Request) -> HealthResponse:
 
     # Redis check
     try:
-        from backend.processor.shared.cache_manager import get_redis
-
         await get_redis().ping()
         redis_status = "ok"
     except Exception as exc:
