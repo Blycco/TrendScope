@@ -314,7 +314,11 @@ async def run_migration(dsn: str) -> None:
                 await conn.execute(ddl)
             for idx in CREATE_INDEXES:
                 await conn.execute(idx)
-        logger.info("migration_001_complete", tables=len(CREATE_TABLES), indexes=len(CREATE_INDEXES))
+        logger.info(
+            "migration_001_complete",
+            tables=len(CREATE_TABLES),
+            indexes=len(CREATE_INDEXES),
+        )
     except Exception as exc:
         logger.error("migration_001_failed", error=str(exc))
         raise
