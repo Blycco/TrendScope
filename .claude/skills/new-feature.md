@@ -1,6 +1,7 @@
 # Skill: New Feature
 
 0. Enter Plan Mode (/plan) — get approval before writing any code
+0.5 Create GitHub issue (→ /create-issue skill) — capture ISSUE_NUM for commits
 1. Read all relevant context/ files for this task
 2. If any behavior is unspecified → ask Orchestrator before writing code
 3. git checkout develop && git pull origin develop
