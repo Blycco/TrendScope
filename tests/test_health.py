@@ -5,7 +5,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 
 
 @pytest.mark.asyncio
@@ -37,10 +37,7 @@ async def test_health_db_error(app: MagicMock, mock_redis: AsyncMock) -> None:
         "backend.api.routers.health.get_redis",
         return_value=mock_redis,
     ):
-        from httpx import ASGITransport
-        from httpx import AsyncClient as AC
-
-        async with AC(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
             response = await ac.get("/health")
 
     assert response.status_code == 200
@@ -62,10 +59,7 @@ async def test_health_redis_error(app: MagicMock, mock_db_pool: MagicMock) -> No
         "backend.api.routers.health.get_redis",
         return_value=broken_redis,
     ):
-        from httpx import ASGITransport
-        from httpx import AsyncClient as AC
-
-        async with AC(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
             response = await ac.get("/health")
 
     assert response.status_code == 200
@@ -106,10 +100,7 @@ async def test_health_both_error(app: MagicMock) -> None:
         "backend.api.routers.health.get_redis",
         return_value=broken_redis,
     ):
-        from httpx import ASGITransport
-        from httpx import AsyncClient as AC
-
-        async with AC(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
             response = await ac.get("/health")
 
     assert response.status_code == 200
