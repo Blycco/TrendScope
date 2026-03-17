@@ -44,9 +44,7 @@ async def app(mock_db_pool: MagicMock, mock_redis: AsyncMock) -> FastAPI:
 
 
 @pytest.fixture
-async def client(
-    app: FastAPI, mock_redis: AsyncMock
-) -> AsyncGenerator[AsyncClient, None]:
+async def client(app: FastAPI, mock_redis: AsyncMock) -> AsyncGenerator[AsyncClient, None]:
     """Async HTTP client bound to the test app."""
     with patch(
         "backend.api.routers.health.get_redis",
