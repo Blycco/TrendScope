@@ -1,0 +1,43 @@
+# Environment — NEVER commit
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+*.egg-info/
+dist/
+build/
+
+# Node / Frontend
+node_modules/
+.svelte-kit/
+frontend/build/
+frontend/.env
+
+# Docker
+infra/nginx/ssl/
+infra/nginx/upstream.conf
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
