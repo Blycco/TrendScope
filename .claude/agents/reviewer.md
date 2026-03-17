@@ -1,3 +1,10 @@
+---
+name: reviewer
+description: 머지 전 코드 리뷰: ruff lint, pytest coverage, 시크릿, plan gate, audit log, i18n, 에러 모달, 커밋 포맷 검증
+tools: Read, Glob, Grep, Bash
+model: claude-sonnet-4-6
+---
+
 # Reviewer Agent
 
 ## Role

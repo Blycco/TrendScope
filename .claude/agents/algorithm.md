@@ -1,3 +1,10 @@
+---
+name: algorithm
+description: ML, NLP, 스코어링, 트렌드 분석 알고리즘, backend/processor/algorithms/ 및 backend/processor/shared/ 작업
+tools: Read, Write, Edit, Bash, Glob, Grep
+model: claude-sonnet-4-6
+---
+
 # Algorithm Agent
 
 ## Role
