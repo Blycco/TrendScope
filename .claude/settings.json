@@ -1,55 +1,35 @@
 {
-  "project": "TrendScope",
-  "version": "v1",
-
-  "agent_team": {
-    "type": "claude_code_agent_teams",
-    "note": "Agents share context and can communicate. NOT sub-agents. See CLAUDE.md.",
-    "orchestrator": ".claude/agents/orchestrator.md",
-    "backend":      ".claude/agents/backend.md",
-    "algorithm":    ".claude/agents/algorithm.md",
-    "frontend":     ".claude/agents/frontend.md",
-    "infra":        ".claude/agents/infra.md",
-    "reviewer":     ".claude/agents/reviewer.md",
-    "security":     ".claude/agents/security.md"
-  },
-
-  "hooks": {
-    "pre_session": ".claude/hooks/pre-session.md",
-    "pre_commit":  ".claude/hooks/pre-commit.md",
-    "post_task":   ".claude/hooks/post-task.md"
-  },
-
   "permissions": {
     "allow": [
-      "Read", "Write", "Edit",
-      "Bash(git:*)", "Bash(pytest:*)", "Bash(ruff:*)",
-      "Bash(docker compose:*)", "Bash(alembic:*)",
-      "Bash(npm run:*)"
+      "Bash(git *)",
+      "Bash(python3 *)",
+      "Bash(python3.11 *)",
+      "Bash(pytest *)",
+      "Bash(ruff *)",
+      "Bash(docker compose *)",
+      "Bash(gh *)",
+      "Bash(ls *)",
+      "Bash(cat *)"
     ],
     "deny": [
-      "Bash(rm -rf /)",
-      "Bash(DROP TABLE*)",
-      "Bash(curl * | bash)"
+      "Bash(git push --force *)",
+      "Bash(git push -f *)",
+      "Bash(rm -rf /*)",
+      "Bash(curl * | bash)",
+      "Bash(curl * | sh)"
     ]
   },
-
-  "auto_approve": [
-    "ruff check --fix",
-    "ruff format",
-    "pytest tests/unit/",
-    "git add",
-    "git status",
-    "git log",
-    "git diff"
-  ],
-
-  "require_approval": [
-    "git push origin main",
-    "alembic upgrade head",
-    "docker compose up",
-    "Phase start",
-    "merge develop to main",
-    "production deploy"
-  ]
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash /Users/verity/develop/project/trendscope/scripts/claude-pre-bash.sh"
+          }
+        ]
+      }
+    ]
+  }
 }

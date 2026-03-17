@@ -78,9 +78,7 @@ async def acquire_lock(lock_key: str) -> bool:
     Returns True if lock was acquired, False if already held.
     """
     try:
-        result = await get_redis().set(
-            f"lock:{lock_key}", "1", nx=True, ex=LOCK_TTL_SECONDS
-        )
+        result = await get_redis().set(f"lock:{lock_key}", "1", nx=True, ex=LOCK_TTL_SECONDS)
         return result is not None
     except Exception as exc:
         logger.warning("cache_lock_acquire_failed", lock_key=lock_key, error=str(exc))
