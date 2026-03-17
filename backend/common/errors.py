@@ -1,5 +1,7 @@
 """Structured error codes and response helpers. (RULE 12: all user-facing errors use error codes)"""
 
+from __future__ import annotations
+
 from enum import Enum
 
 from fastapi import HTTPException
@@ -14,7 +16,7 @@ class ErrorCode(str, Enum):
     NOT_FOUND = "E0003"
     UNAUTHORIZED = "E0010"
     FORBIDDEN = "E0011"
-    TOKEN_EXPIRED = "E0012"
+    TOKEN_EXPIRED = "E0012"  # noqa: S105
 
     # --- Auth ---
     OAUTH_FAILED = "E0020"
