@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import zlib
-from typing import Any
+from collections.abc import Awaitable, Callable
 
 import redis.asyncio as aioredis
 import structlog
@@ -97,11 +97,11 @@ async def release_lock(lock_key: str) -> None:
 
 async def get_or_compute(
     key: str,
-    compute_fn: Any,
+    compute_fn: Callable[[], Awaitable[bytes | None]],
     ttl: int,
     *,
     stale_on_lock: bool = True,
-) -> Any:
+) -> bytes | None:
     """Cache-aside with stampede prevention.
 
     On cache miss: acquires lock, computes, stores, releases lock.
