@@ -5,6 +5,7 @@
 # Prerequisites:
 #   - docker compose -f docker-compose.prod.yml is running
 #   - infra/nginx/upstream.conf exists and is mounted in nginx container
+#   - deploy.sh가 헬스체크 완료 후 이 스크립트를 호출함
 
 set -euo pipefail
 
@@ -19,36 +20,28 @@ if [[ "$TARGET" != "blue" && "$TARGET" != "green" ]]; then
 fi
 
 if [[ "$TARGET" == "blue" ]]; then
-    TARGET_HOST="trendscope-api-blue:8000"
-    STANDBY_CONTAINER="trendscope-api-blue"
+    TARGET_HOST="api-blue:8000"   # Docker Compose 서비스명 (내부 DNS)
 else
-    TARGET_HOST="trendscope-api-green:8000"
-    STANDBY_CONTAINER="trendscope-api-green"
+    TARGET_HOST="api-green:8000"  # Docker Compose 서비스명 (내부 DNS)
 fi
 
 echo "=== Blue-Green Switch: activating $TARGET ==="
 
-# Step 1: Health check the target slot
-echo "[1/4] Health checking $TARGET slot..."
-"$HEALTH_SCRIPT" "http://${TARGET_HOST}" 10 || {
-    echo "ERROR: $TARGET slot is not healthy. Aborting switch." >&2
-    exit 1
-}
-
-# Step 2: Write new upstream config
-echo "[2/4] Writing upstream config for $TARGET..."
+# Step 1: Write new upstream config
+echo "[1/3] Writing upstream config for $TARGET..."
 cat > "$UPSTREAM_CONF" <<EOF
+# 이 파일은 scripts/switch-blue-green.sh가 자동 갱신합니다. 수동 편집 금지.
 upstream api_backend {
-    server ${TARGET_HOST};
+    server ${TARGET_HOST};  # Docker Compose 서비스명 기준
 }
 EOF
 
-# Step 3: Reload Nginx (zero-downtime)
-echo "[3/4] Reloading Nginx..."
+# Step 2: Reload Nginx (zero-downtime)
+echo "[2/3] Reloading Nginx..."
 docker exec "$NGINX_CONTAINER" nginx -s reload
 
-# Step 4: Verify traffic is routing to new slot
-echo "[4/4] Verifying traffic routing..."
+# Step 3: Verify traffic is routing to new slot
+echo "[3/3] Verifying traffic routing..."
 sleep 2
 "$HEALTH_SCRIPT" "http://localhost" 5 || {
     echo "ERROR: Post-switch health check failed. Manual rollback required." >&2
