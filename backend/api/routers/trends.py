@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import structlog
 from fastapi import APIRouter, Query, Request
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import Response
 
 from backend.api.schemas.trends import TrendItem, TrendListResponse
 from backend.common.errors import ErrorCode, error_response
@@ -113,12 +113,3 @@ async def list_early_trends(
 
     response_body = TrendListResponse(items=items, next_cursor=next_cursor, total=len(items))
     return Response(content=response_body.model_dump_json().encode(), media_type="application/json")
-
-
-@router.get("/trends/{keyword}/insights")
-async def trend_insights(keyword: str) -> JSONResponse:  # noqa: ARG001
-    """Placeholder — Action Insights engine not yet implemented."""
-    return JSONResponse(
-        status_code=501,
-        content={"code": "E0099", "message": "Not implemented", "detail": "Coming in next release"},
-    )
