@@ -38,6 +38,19 @@ def _make_trend_row(
     return row
 
 
+@pytest.fixture(autouse=True)
+def _set_jwt_secret(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("JWT_SECRET_KEY", "test-secret-trends")
+
+
+@pytest.fixture
+def pro_auth_header() -> dict:
+    from backend.auth.jwt import create_access_token
+
+    token = create_access_token("user-pro", "pro", "general")
+    return {"Authorization": f"Bearer {token}"}
+
+
 @pytest.fixture
 async def trends_client(mock_db_pool: MagicMock, mock_redis: AsyncMock) -> AsyncClient:
     from backend.api.main import create_app
@@ -47,6 +60,7 @@ async def trends_client(mock_db_pool: MagicMock, mock_redis: AsyncMock) -> Async
 
     with (
         patch("backend.api.routers.health.get_redis", return_value=mock_redis),
+        patch("backend.api.middleware.rate_limit.get_redis", return_value=mock_redis),
         patch("backend.api.routers.trends.get_cached", return_value=None),
         patch("backend.api.routers.trends.set_cached", new_callable=AsyncMock),
     ):
@@ -157,35 +171,39 @@ class TestListTrends:
 
 
 class TestListEarlyTrends:
-    async def test_returns_200(self, trends_client: AsyncClient, mock_db_pool: MagicMock) -> None:
+    async def test_returns_200(
+        self, trends_client: AsyncClient, mock_db_pool: MagicMock, pro_auth_header: dict
+    ) -> None:
         row = _make_trend_row(early_trend_score=0.8)
         mock_db_pool.acquire.return_value.__aenter__.return_value.fetch = AsyncMock(
             return_value=[row]
         )
 
-        resp = await trends_client.get("/api/v1/trends/early")
+        resp = await trends_client.get("/api/v1/trends/early", headers=pro_auth_header)
         assert resp.status_code == 200
         data = resp.json()
         assert data["items"][0]["early_trend_score"] == 0.8
 
-    async def test_locale_filter(self, trends_client: AsyncClient, mock_db_pool: MagicMock) -> None:
+    async def test_locale_filter(
+        self, trends_client: AsyncClient, mock_db_pool: MagicMock, pro_auth_header: dict
+    ) -> None:
         fetch_mock = AsyncMock(return_value=[])
         mock_db_pool.acquire.return_value.__aenter__.return_value.fetch = fetch_mock
 
-        resp = await trends_client.get("/api/v1/trends/early?locale=en")
+        resp = await trends_client.get("/api/v1/trends/early?locale=en", headers=pro_auth_header)
         assert resp.status_code == 200
 
     async def test_db_error_returns_500(
-        self, trends_client: AsyncClient, mock_db_pool: MagicMock
+        self, trends_client: AsyncClient, mock_db_pool: MagicMock, pro_auth_header: dict
     ) -> None:
         mock_db_pool.acquire.return_value.__aenter__.return_value.fetch = AsyncMock(
             side_effect=RuntimeError("연결 끊김")
         )
-        resp = await trends_client.get("/api/v1/trends/early")
+        resp = await trends_client.get("/api/v1/trends/early", headers=pro_auth_header)
         assert resp.status_code == 500
 
     async def test_next_cursor_on_full_page(
-        self, trends_client: AsyncClient, mock_db_pool: MagicMock
+        self, trends_client: AsyncClient, mock_db_pool: MagicMock, pro_auth_header: dict
     ) -> None:
         rows = [
             _make_trend_row(row_id=f"00000000-0000-0000-0000-00000000000{i}") for i in range(1, 3)
@@ -193,7 +211,7 @@ class TestListEarlyTrends:
         mock_db_pool.acquire.return_value.__aenter__.return_value.fetch = AsyncMock(
             return_value=rows
         )
-        resp = await trends_client.get("/api/v1/trends/early?limit=2")
+        resp = await trends_client.get("/api/v1/trends/early?limit=2", headers=pro_auth_header)
         assert resp.json()["next_cursor"] is not None
 
 
@@ -203,7 +221,7 @@ class TestListEarlyTrends:
 
 
 class TestTrendInsights:
-    async def test_returns_501(self, trends_client: AsyncClient) -> None:
-        resp = await trends_client.get("/api/v1/trends/ai/insights")
+    async def test_returns_501(self, trends_client: AsyncClient, pro_auth_header: dict) -> None:
+        resp = await trends_client.get("/api/v1/trends/ai/insights", headers=pro_auth_header)
         assert resp.status_code == 501
         assert resp.json()["code"] == "E0099"
