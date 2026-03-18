@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from backend.processor.shared.ai_config import AIConfig
-from backend.processor.shared.ai_summarizer import _textrank_summary, summarize
+from backend.processor.shared.ai_summarizer import (
+    _call_gemini,
+    _call_openai,
+    _textrank_summary,
+    summarize,
+)
 from pydantic import SecretStr
 
 
@@ -185,3 +190,165 @@ class TestTextrankSummary:
     def test_textrank_returns_string(self) -> None:
         result = _textrank_summary(_SAMPLE_TEXT)
         assert isinstance(result, str)
+
+
+def _make_google_mock() -> tuple[MagicMock, MagicMock, MagicMock]:
+    """Return (mock_google, mock_genai, mock_model) with proper linkage.
+
+    `import google.generativeai as genai` resolves as:
+    IMPORT_NAME google.generativeai → sys.modules['google']
+    IMPORT_FROM generativeai        → sys.modules['google'].generativeai
+
+    So mock_google.generativeai must equal mock_genai.
+    """
+    mock_genai = MagicMock()
+    mock_google = MagicMock()
+    mock_google.generativeai = mock_genai
+    mock_model = MagicMock()
+    mock_model.generate_content_async = AsyncMock()
+    mock_genai.GenerativeModel.return_value = mock_model
+    return mock_google, mock_genai, mock_model
+
+
+class TestGeminiProvider:
+    @pytest.mark.asyncio
+    async def test_gemini_success_returns_text(self) -> None:
+        config = _gemini_config()
+        mock_google, mock_genai, mock_model = _make_google_mock()
+        mock_response = MagicMock()
+        mock_response.text = "Gemini 요약 결과"
+        mock_model.generate_content_async = AsyncMock(return_value=mock_response)
+
+        with patch.dict("sys.modules", {"google": mock_google, "google.generativeai": mock_genai}):
+            result = await _call_gemini(_SAMPLE_TEXT, "요약해주세요.", config)
+
+        assert result == "Gemini 요약 결과"
+
+    @pytest.mark.asyncio
+    async def test_gemini_exception_reraises(self) -> None:
+        config = _gemini_config()
+        mock_google, mock_genai, mock_model = _make_google_mock()
+        mock_model.generate_content_async = AsyncMock(side_effect=RuntimeError("API down"))
+
+        with patch.dict("sys.modules", {"google": mock_google, "google.generativeai": mock_genai}):
+            with pytest.raises(RuntimeError, match="API down"):
+                await _call_gemini(_SAMPLE_TEXT, "요약해주세요.", config)
+
+    @pytest.mark.asyncio
+    async def test_gemini_importerror_reraises(self) -> None:
+        config = _gemini_config()
+        with patch.dict("sys.modules", {"google": None, "google.generativeai": None}):
+            with pytest.raises(ImportError):
+                await _call_gemini(_SAMPLE_TEXT, "요약해주세요.", config)
+
+    @pytest.mark.asyncio
+    async def test_gemini_uses_api_key_from_config(self) -> None:
+        config = _gemini_config()
+        mock_google, mock_genai, mock_model = _make_google_mock()
+        mock_response = MagicMock()
+        mock_response.text = "결과"
+        mock_model.generate_content_async = AsyncMock(return_value=mock_response)
+
+        with patch.dict("sys.modules", {"google": mock_google, "google.generativeai": mock_genai}):
+            await _call_gemini(_SAMPLE_TEXT, "prompt", config)
+
+        mock_genai.configure.assert_called_once_with(api_key="test-key")
+
+
+class TestOpenAIProvider:
+    @pytest.mark.asyncio
+    async def test_openai_success_returns_text(self) -> None:
+        config = _openai_config()
+        mock_openai_module = MagicMock()
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message.content = "OpenAI 요약 결과"
+        mock_client.chat.completions.create = AsyncMock(return_value=mock_response)
+        mock_openai_module.AsyncOpenAI.return_value = mock_client
+
+        with patch.dict("sys.modules", {"openai": mock_openai_module}):
+            result = await _call_openai(_SAMPLE_TEXT, "요약해주세요.", config)
+
+        assert result == "OpenAI 요약 결과"
+
+    @pytest.mark.asyncio
+    async def test_openai_exception_reraises(self) -> None:
+        config = _openai_config()
+        mock_openai_module = MagicMock()
+        mock_client = MagicMock()
+        mock_client.chat.completions.create = AsyncMock(side_effect=RuntimeError("OpenAI API down"))
+        mock_openai_module.AsyncOpenAI.return_value = mock_client
+
+        with patch.dict("sys.modules", {"openai": mock_openai_module}):
+            with pytest.raises(RuntimeError, match="OpenAI API down"):
+                await _call_openai(_SAMPLE_TEXT, "요약해주세요.", config)
+
+    @pytest.mark.asyncio
+    async def test_openai_importerror_reraises(self) -> None:
+        config = _openai_config()
+        with patch.dict("sys.modules", {"openai": None}):
+            with pytest.raises(ImportError):
+                await _call_openai(_SAMPLE_TEXT, "요약해주세요.", config)
+
+    @pytest.mark.asyncio
+    async def test_openai_respects_model_name(self) -> None:
+        config = _openai_config()
+        mock_openai_module = MagicMock()
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message.content = "결과"
+        mock_client.chat.completions.create = AsyncMock(return_value=mock_response)
+        mock_openai_module.AsyncOpenAI.return_value = mock_client
+
+        with patch.dict("sys.modules", {"openai": mock_openai_module}):
+            await _call_openai(_SAMPLE_TEXT, "prompt", config)
+
+        call_kwargs = mock_client.chat.completions.create.call_args
+        assert call_kwargs.kwargs["model"] == "gpt-4o-mini"
+
+
+class TestSummarizeFallbackChain:
+    @pytest.mark.asyncio
+    async def test_all_providers_fail_returns_empty_string(self) -> None:
+        """Lines 62-67: textrank fallback itself fails → return ("", True)."""
+        config = _gemini_config()
+        with (
+            patch(
+                "backend.processor.shared.ai_summarizer._call_gemini",
+                new=AsyncMock(side_effect=RuntimeError("API down")),
+            ),
+            patch(
+                "backend.processor.shared.ai_summarizer._textrank_summary",
+                side_effect=RuntimeError("textrank failed"),
+            ),
+        ):
+            summary, degraded = await summarize(_SAMPLE_TEXT, "요약해주세요.", config)
+
+        assert summary == ""
+        assert degraded is True
+
+    @pytest.mark.asyncio
+    async def test_gemini_fail_textrank_success(self) -> None:
+        config = _gemini_config()
+        with patch(
+            "backend.processor.shared.ai_summarizer._call_gemini",
+            new=AsyncMock(side_effect=RuntimeError("API down")),
+        ):
+            summary, degraded = await summarize(_SAMPLE_TEXT, "요약해주세요.", config)
+
+        assert degraded is True
+        assert isinstance(summary, str)
+
+    @pytest.mark.asyncio
+    async def test_openai_fail_textrank_success(self) -> None:
+        config = _openai_config()
+        with patch(
+            "backend.processor.shared.ai_summarizer._call_openai",
+            new=AsyncMock(side_effect=RuntimeError("API down")),
+        ):
+            summary, degraded = await summarize(_SAMPLE_TEXT, "요약해주세요.", config)
+
+        assert degraded is True
+        assert isinstance(summary, str)
