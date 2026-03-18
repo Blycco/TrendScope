@@ -7,7 +7,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from backend.auth.dependencies import CurrentUser, require_auth
+from backend.auth.jwt import create_access_token
 from httpx import ASGITransport, AsyncClient
+
+
+@pytest.fixture(autouse=True)
+def _set_jwt_secret(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("JWT_SECRET_KEY", "test-secret-early")
 
 
 def _make_pro_user() -> CurrentUser:
@@ -50,8 +56,18 @@ async def early_pro_client(mock_db_pool: MagicMock, mock_redis: AsyncMock) -> As
     pro_user = _make_pro_user()
     app.dependency_overrides[require_auth] = lambda: pro_user
 
-    with patch("backend.api.routers.health.get_redis", return_value=mock_redis):
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+    # Pro JWT so PlanGateMiddleware passes (middleware runs before Depends)
+    pro_token = create_access_token("user-pro", "pro", "general")
+
+    with (
+        patch("backend.api.routers.health.get_redis", return_value=mock_redis),
+        patch("backend.api.middleware.rate_limit.get_redis", return_value=mock_redis),
+    ):
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers={"Authorization": f"Bearer {pro_token}"},
+        ) as ac:
             yield ac
 
     app.dependency_overrides.clear()
@@ -72,23 +88,30 @@ class TestListEarlyTrendsPro:
 
         assert resp.status_code == 401
 
-    async def test_free_plan_returns_402(
+    async def test_free_plan_returns_403(
         self, mock_db_pool: MagicMock, mock_redis: AsyncMock
     ) -> None:
+        # PlanGateMiddleware intercepts before route dependencies,
+        # returning 403 (PLAN_GATE) for free users on pro-gated endpoints.
         from backend.api.main import create_app
 
         app = create_app()
         app.state.db_pool = mock_db_pool
 
-        free_user = _make_free_user()
-        app.dependency_overrides[require_auth] = lambda: free_user
+        free_token = create_access_token("user-free", "free", "general")
 
-        with patch("backend.api.routers.health.get_redis", return_value=mock_redis):
+        with (
+            patch("backend.api.routers.health.get_redis", return_value=mock_redis),
+            patch("backend.api.middleware.rate_limit.get_redis", return_value=mock_redis),
+        ):
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-                resp = await ac.get("/api/v1/trends/early/pro")
+                resp = await ac.get(
+                    "/api/v1/trends/early/pro",
+                    headers={"Authorization": f"Bearer {free_token}"},
+                )
 
-        app.dependency_overrides.clear()
-        assert resp.status_code == 402
+        assert resp.status_code == 403
+        assert resp.json()["code"] == "E0031"
 
     async def test_default_params_returns_trends(
         self, early_pro_client: AsyncClient, mock_db_pool: MagicMock
