@@ -12,7 +12,19 @@ import structlog.stdlib
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.api.routers import auth, early_trend, health, insights, news, trends
+from backend.api.routers import (
+    auth,
+    early_trend,
+    events,
+    health,
+    insights,
+    news,
+    scraps,
+    settings,
+    subscriptions,
+    trends,
+)
+from backend.api.routers.webhooks import payment as webhooks_payment
 from backend.processor.shared.cache_manager import close_redis, init_redis
 
 # --- Logging setup ---
@@ -93,8 +105,13 @@ def create_app() -> FastAPI:
     app.include_router(auth.router, prefix="/api/v1")
     app.include_router(trends.router, prefix="/api/v1")
     app.include_router(early_trend.router, prefix="/api/v1")
-    app.include_router(news.router, prefix="/api/v1")
     app.include_router(insights.router, prefix="/api/v1")
+    app.include_router(news.router, prefix="/api/v1")
+    app.include_router(scraps.router, prefix="/api/v1")
+    app.include_router(settings.router, prefix="/api/v1")
+    app.include_router(events.router, prefix="/api/v1")
+    app.include_router(subscriptions.router, prefix="/api/v1")
+    app.include_router(webhooks_payment.router, prefix="/api/v1")
 
     return app
 

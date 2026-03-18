@@ -39,3 +39,60 @@ class UserResponse(BaseModel):
     role: str
     locale: str
     plan: str
+
+
+# ---------------------------------------------------------------------------
+# Email verification
+# ---------------------------------------------------------------------------
+
+
+class EmailVerifySendResponse(BaseModel):
+    message: str = "Verification email sent"
+
+
+# ---------------------------------------------------------------------------
+# Password reset
+# ---------------------------------------------------------------------------
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
+# ---------------------------------------------------------------------------
+# 2FA (TOTP)
+# ---------------------------------------------------------------------------
+
+
+class Enable2FAResponse(BaseModel):
+    otpauth_url: str
+    secret: str
+
+
+class Verify2FARequest(BaseModel):
+    totp_code: str
+
+
+class TwoFALoginRequest(BaseModel):
+    challenge_token: str
+    totp_code: str
+
+
+class TwoFARequiredResponse(BaseModel):
+    requires_2fa: bool = True
+    challenge_token: str
+
+
+# ---------------------------------------------------------------------------
+# Kakao OAuth
+# ---------------------------------------------------------------------------
+
+
+class KakaoOAuthCallbackRequest(BaseModel):
+    code: str
+    redirect_uri: str
