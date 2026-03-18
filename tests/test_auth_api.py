@@ -1,4 +1,4 @@
-"""Tests for auth endpoints: register, login, logout, refresh, oauth, me."""
+"""Tests for auth endpoints: register, login, logout, refresh, oauth, me, 2FA, password reset."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ def _make_user_row(
     *,
     user_id: str = "00000000-0000-0000-0000-000000000001",
     email: str = "test@example.com",
-    display_name: str | None = "테스터",
+    display_name: str | None = "tester",
     role: str = "general",
     locale: str = "ko",
     plan: str = "free",
@@ -45,6 +45,8 @@ def _make_identity_row(
     user_id: str = "00000000-0000-0000-0000-000000000001",
     provider: str = "email",
     password_hash: str | None = None,
+    two_fa_enabled: bool = False,
+    two_fa_secret: str | None = None,
 ) -> MagicMock:
     from backend.auth.password import hash_password
 
@@ -55,6 +57,8 @@ def _make_identity_row(
         "provider": provider,
         "provider_uid": None,
         "password_hash": password_hash or hash_password("password123"),
+        "two_fa_enabled": two_fa_enabled,
+        "two_fa_secret": two_fa_secret,
     }[key]
     return row
 
@@ -116,7 +120,7 @@ class TestRegister:
         self, auth_client: AsyncClient, mock_db_pool: MagicMock
     ) -> None:
         conn = mock_db_pool.acquire.return_value.__aenter__.return_value
-        conn.fetchrow = AsyncMock(side_effect=[None, Exception("DB 장애")])
+        conn.fetchrow = AsyncMock(side_effect=[None, Exception("DB error")])
 
         resp = await auth_client.post(
             "/api/v1/auth/register",
@@ -183,6 +187,24 @@ class TestLogin:
             json={"email": "test@example.com", "password": "password123"},
         )
         assert resp.status_code == 403
+
+    async def test_login_2fa_returns_202(
+        self, auth_client: AsyncClient, mock_db_pool: MagicMock
+    ) -> None:
+        """When 2FA is enabled, login returns 202 with challenge token."""
+        user = _make_user_row()
+        identity = _make_identity_row(two_fa_enabled=True, two_fa_secret="JBSWY3DPEHPK3PXP")  # noqa: S106
+        conn = mock_db_pool.acquire.return_value.__aenter__.return_value
+        conn.fetchrow = AsyncMock(side_effect=[user, identity])
+
+        resp = await auth_client.post(
+            "/api/v1/auth/login",
+            json={"email": "test@example.com", "password": "password123"},
+        )
+        assert resp.status_code == 202
+        data = resp.json()
+        assert data["requires_2fa"] is True
+        assert "challenge_token" in data
 
 
 # ---------------------------------------------------------------------------
@@ -278,7 +300,6 @@ class TestOAuthGoogle:
         self, auth_client: AsyncClient, mock_db_pool: MagicMock
     ) -> None:
         conn = mock_db_pool.acquire.return_value.__aenter__.return_value
-        # identity lookup → None, email lookup → None, create user → row, create identity → None
         new_user = _make_user_row()
         conn.fetchrow = AsyncMock(side_effect=[None, None, new_user, new_user])
         conn.execute = AsyncMock()
@@ -325,7 +346,7 @@ class TestOAuthGoogle:
                     return_value={
                         "sub": "google-uid-123",
                         "email": "test@example.com",
-                        "name": "테스터",
+                        "name": "tester",
                     }
                 ),
             ),
@@ -339,7 +360,7 @@ class TestOAuthGoogle:
     async def test_google_oauth_provider_error_returns_502(self, auth_client: AsyncClient) -> None:
         with patch(
             "backend.api.routers.auth.exchange_code",
-            AsyncMock(side_effect=Exception("Google 연결 실패")),
+            AsyncMock(side_effect=Exception("Google connection failed")),
         ):
             resp = await auth_client.post(
                 "/api/v1/auth/oauth/google",
@@ -349,15 +370,294 @@ class TestOAuthGoogle:
 
 
 # ---------------------------------------------------------------------------
-# Password reset stubs
+# POST /api/v1/auth/oauth/kakao
 # ---------------------------------------------------------------------------
 
 
-class TestPasswordStubs:
-    async def test_forgot_password_returns_501(self, auth_client: AsyncClient) -> None:
-        resp = await auth_client.post("/api/v1/auth/password/forgot")
-        assert resp.status_code == 501
+class TestOAuthKakao:
+    async def test_kakao_oauth_new_user(
+        self, auth_client: AsyncClient, mock_db_pool: MagicMock
+    ) -> None:
+        conn = mock_db_pool.acquire.return_value.__aenter__.return_value
+        new_user = _make_user_row()
+        conn.fetchrow = AsyncMock(side_effect=[None, None, new_user, new_user])
+        conn.execute = AsyncMock()
 
-    async def test_reset_password_returns_501(self, auth_client: AsyncClient) -> None:
-        resp = await auth_client.post("/api/v1/auth/password/reset")
-        assert resp.status_code == 501
+        with (
+            patch(
+                "backend.api.routers.auth.exchange_kakao_code",
+                AsyncMock(return_value={"access_token": "kakao-token"}),
+            ),
+            patch(
+                "backend.api.routers.auth.fetch_kakao_userinfo",
+                AsyncMock(return_value={"uid": "kakao-123", "email": "kakao@example.com"}),
+            ),
+        ):
+            resp = await auth_client.post(
+                "/api/v1/auth/oauth/kakao",
+                json={"code": "auth-code", "redirect_uri": "http://localhost/callback"},
+            )
+        assert resp.status_code == 200
+        assert "access_token" in resp.json()
+
+    async def test_kakao_oauth_no_email_returns_400(self, auth_client: AsyncClient) -> None:
+        with (
+            patch(
+                "backend.api.routers.auth.exchange_kakao_code",
+                AsyncMock(return_value={"access_token": "kakao-token"}),
+            ),
+            patch(
+                "backend.api.routers.auth.fetch_kakao_userinfo",
+                AsyncMock(return_value={"uid": "kakao-123", "email": None}),
+            ),
+        ):
+            resp = await auth_client.post(
+                "/api/v1/auth/oauth/kakao",
+                json={"code": "auth-code", "redirect_uri": "http://localhost/callback"},
+            )
+        assert resp.status_code == 400
+
+    async def test_kakao_oauth_provider_error_returns_502(self, auth_client: AsyncClient) -> None:
+        with patch(
+            "backend.api.routers.auth.exchange_kakao_code",
+            AsyncMock(side_effect=Exception("Kakao connection failed")),
+        ):
+            resp = await auth_client.post(
+                "/api/v1/auth/oauth/kakao",
+                json={"code": "bad-code", "redirect_uri": "http://localhost/callback"},
+            )
+        assert resp.status_code == 502
+
+
+# ---------------------------------------------------------------------------
+# Password forgot / reset
+# ---------------------------------------------------------------------------
+
+
+class TestPasswordReset:
+    async def test_forgot_password_returns_200(
+        self, auth_client: AsyncClient, mock_db_pool: MagicMock
+    ) -> None:
+        user = _make_user_row()
+        conn = mock_db_pool.acquire.return_value.__aenter__.return_value
+        conn.fetchrow = AsyncMock(return_value=user)
+
+        with patch("backend.api.routers.auth.save_auth_token", AsyncMock()):
+            resp = await auth_client.post(
+                "/api/v1/auth/password/forgot",
+                json={"email": "test@example.com"},
+            )
+        assert resp.status_code == 200
+        assert "reset link" in resp.json()["message"]
+
+    async def test_forgot_password_unknown_email_still_200(
+        self, auth_client: AsyncClient, mock_db_pool: MagicMock
+    ) -> None:
+        """Prevent email enumeration -- always return 200."""
+        conn = mock_db_pool.acquire.return_value.__aenter__.return_value
+        conn.fetchrow = AsyncMock(return_value=None)
+
+        resp = await auth_client.post(
+            "/api/v1/auth/password/forgot",
+            json={"email": "unknown@example.com"},
+        )
+        assert resp.status_code == 200
+
+    async def test_reset_password_success(
+        self, auth_client: AsyncClient, mock_db_pool: MagicMock
+    ) -> None:
+        conn = mock_db_pool.acquire.return_value.__aenter__.return_value
+        conn.execute = AsyncMock()
+
+        with (
+            patch(
+                "backend.api.routers.auth.get_auth_token",
+                AsyncMock(return_value="00000000-0000-0000-0000-000000000001"),
+            ),
+            patch("backend.api.routers.auth.delete_auth_token", AsyncMock()),
+        ):
+            resp = await auth_client.post(
+                "/api/v1/auth/password/reset",
+                json={"token": "valid-token", "new_password": "newpass123"},
+            )
+        assert resp.status_code == 200
+        assert "reset" in resp.json()["message"].lower()
+
+    async def test_reset_password_invalid_token(
+        self,
+        auth_client: AsyncClient,
+    ) -> None:
+        with patch("backend.api.routers.auth.get_auth_token", AsyncMock(return_value=None)):
+            resp = await auth_client.post(
+                "/api/v1/auth/password/reset",
+                json={"token": "expired-token", "new_password": "newpass123"},
+            )
+        assert resp.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# Email verification
+# ---------------------------------------------------------------------------
+
+
+class TestEmailVerification:
+    async def test_verify_send_requires_auth(self, auth_client: AsyncClient) -> None:
+        resp = await auth_client.post("/api/v1/auth/verify/send")
+        assert resp.status_code == 401
+
+    async def test_verify_send_success(
+        self, auth_client: AsyncClient, mock_db_pool: MagicMock
+    ) -> None:
+        from backend.auth.jwt import create_access_token
+
+        token = create_access_token("00000000-0000-0000-0000-000000000001", "free", "general")
+
+        with patch("backend.api.routers.auth.save_auth_token", AsyncMock()):
+            resp = await auth_client.post(
+                "/api/v1/auth/verify/send",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+        assert resp.status_code == 200
+
+    async def test_verify_email_success(
+        self, auth_client: AsyncClient, mock_db_pool: MagicMock
+    ) -> None:
+        conn = mock_db_pool.acquire.return_value.__aenter__.return_value
+        conn.fetchrow = AsyncMock(return_value=_make_user_row())
+        conn.execute = AsyncMock()
+
+        with (
+            patch(
+                "backend.api.routers.auth.get_auth_token",
+                AsyncMock(return_value="00000000-0000-0000-0000-000000000001"),
+            ),
+            patch("backend.api.routers.auth.delete_auth_token", AsyncMock()),
+        ):
+            resp = await auth_client.get("/api/v1/auth/verify/some-token-here")
+        assert resp.status_code == 200
+
+    async def test_verify_email_expired_token(self, auth_client: AsyncClient) -> None:
+        with patch("backend.api.routers.auth.get_auth_token", AsyncMock(return_value=None)):
+            resp = await auth_client.get("/api/v1/auth/verify/expired-token")
+        assert resp.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# 2FA
+# ---------------------------------------------------------------------------
+
+
+class TestTwoFA:
+    async def test_enable_2fa(self, auth_client: AsyncClient, mock_db_pool: MagicMock) -> None:
+        from backend.auth.jwt import create_access_token
+
+        token = create_access_token("00000000-0000-0000-0000-000000000001", "free", "general")
+        conn = mock_db_pool.acquire.return_value.__aenter__.return_value
+        conn.fetchrow = AsyncMock(return_value=_make_user_row())
+        conn.execute = AsyncMock()
+
+        resp = await auth_client.post(
+            "/api/v1/auth/2fa/enable",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "otpauth_url" in data
+        assert "secret" in data
+
+    async def test_verify_2fa_invalid_code(
+        self, auth_client: AsyncClient, mock_db_pool: MagicMock
+    ) -> None:
+        from backend.auth.jwt import create_access_token
+
+        token = create_access_token("00000000-0000-0000-0000-000000000001", "free", "general")
+        identity = _make_identity_row(two_fa_secret="JBSWY3DPEHPK3PXP")  # noqa: S106
+        conn = mock_db_pool.acquire.return_value.__aenter__.return_value
+        conn.fetchrow = AsyncMock(return_value=identity)
+
+        resp = await auth_client.post(
+            "/api/v1/auth/2fa/verify",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"totp_code": "000000"},
+        )
+        assert resp.status_code == 401
+
+    async def test_verify_2fa_success(
+        self, auth_client: AsyncClient, mock_db_pool: MagicMock
+    ) -> None:
+        import pyotp
+        from backend.auth.jwt import create_access_token
+
+        totp_seed = "JBSWY3DPEHPK3PXP"  # noqa: S105
+        totp = pyotp.TOTP(totp_seed)
+        valid_code = totp.now()
+
+        token = create_access_token("00000000-0000-0000-0000-000000000001", "free", "general")
+        identity = _make_identity_row(two_fa_secret=totp_seed)  # noqa: S106
+        conn = mock_db_pool.acquire.return_value.__aenter__.return_value
+        conn.fetchrow = AsyncMock(return_value=identity)
+        conn.execute = AsyncMock()
+
+        resp = await auth_client.post(
+            "/api/v1/auth/2fa/verify",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"totp_code": valid_code},
+        )
+        assert resp.status_code == 200
+
+    async def test_disable_2fa(self, auth_client: AsyncClient, mock_db_pool: MagicMock) -> None:
+        from backend.auth.jwt import create_access_token
+
+        token = create_access_token("00000000-0000-0000-0000-000000000001", "free", "general")
+        conn = mock_db_pool.acquire.return_value.__aenter__.return_value
+        conn.execute = AsyncMock()
+
+        resp = await auth_client.post(
+            "/api/v1/auth/2fa/disable",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 200
+
+    async def test_2fa_login_success(
+        self, auth_client: AsyncClient, mock_db_pool: MagicMock
+    ) -> None:
+        from datetime import datetime, timedelta, timezone
+
+        import jwt as pyjwt
+        import pyotp
+        from backend.auth.jwt import ALGORITHM, _secret
+
+        totp_seed = "JBSWY3DPEHPK3PXP"  # noqa: S105
+        totp = pyotp.TOTP(totp_seed)
+        valid_code = totp.now()
+
+        # Create a challenge token
+        challenge_token = pyjwt.encode(
+            {
+                "sub": "00000000-0000-0000-0000-000000000001",
+                "type": "2fa_challenge",
+                "iat": datetime.now(tz=timezone.utc),
+                "exp": datetime.now(tz=timezone.utc) + timedelta(minutes=5),
+            },
+            _secret(),
+            algorithm=ALGORITHM,
+        )
+
+        user = _make_user_row()
+        identity = _make_identity_row(two_fa_enabled=True, two_fa_secret=totp_seed)  # noqa: S106
+        conn = mock_db_pool.acquire.return_value.__aenter__.return_value
+        conn.fetchrow = AsyncMock(side_effect=[user, identity])
+
+        resp = await auth_client.post(
+            "/api/v1/auth/2fa/login",
+            json={"challenge_token": challenge_token, "totp_code": valid_code},
+        )
+        assert resp.status_code == 200
+        assert "access_token" in resp.json()
+
+    async def test_2fa_login_invalid_challenge(self, auth_client: AsyncClient) -> None:
+        resp = await auth_client.post(
+            "/api/v1/auth/2fa/login",
+            json={"challenge_token": "bad.token", "totp_code": "123456"},
+        )
+        assert resp.status_code == 401
