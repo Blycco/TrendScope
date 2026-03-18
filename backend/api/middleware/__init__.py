@@ -1,12 +1,13 @@
-"""API middleware package: plan gate, rate limiting, quota enforcement."""
+"""API middleware package: Starlette middleware classes + FastAPI dependency functions."""
 
-from backend.api.middleware.plan_gate import require_plan
-from backend.api.middleware.quota import check_insight_quota, increment_insight_usage
-from backend.api.middleware.rate_limit import rate_limit_check
+from backend.api.middleware.plan_gate import PlanGateMiddleware
+from backend.api.middleware.quota import QuotaMiddleware, check_insight_quota
+from backend.api.middleware.rate_limit import RateLimitMiddleware, rate_limit_check
 
 __all__ = [
-    "require_plan",
+    "PlanGateMiddleware",
+    "RateLimitMiddleware",
+    "QuotaMiddleware",
     "rate_limit_check",
     "check_insight_quota",
-    "increment_insight_usage",
 ]

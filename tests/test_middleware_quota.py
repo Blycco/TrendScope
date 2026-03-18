@@ -1,25 +1,35 @@
-"""Tests for backend/api/middleware/quota.py."""
+"""Tests for QuotaMiddleware."""
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from backend.api.middleware.quota import check_insight_quota, increment_insight_usage
-from backend.auth.dependencies import CurrentUser
-from fastapi import HTTPException
+from backend.auth.jwt import create_access_token
 
 
-def _make_user(plan: str = "free", user_id: str = "user-abc-123") -> CurrentUser:
-    return CurrentUser(user_id=user_id, plan=plan, role="general")
+@pytest.fixture(autouse=True)
+def _set_jwt_secret(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("JWT_SECRET_KEY", "test-secret-quota")
 
 
-def _make_pool(execute_return: object = None, fetchrow_return: object = None) -> MagicMock:
+def _make_token(user_id: str = "u1", plan: str = "free") -> str:
+    return create_access_token(user_id, plan, "general")
+
+
+def _make_db_pool(usage_count: int | None = 0) -> MagicMock:
+    """Mock asyncpg pool. usage_count=None means no row found."""
     pool = MagicMock()
     conn = AsyncMock()
-    conn.execute = AsyncMock(return_value=execute_return)
-    conn.fetchrow = AsyncMock(return_value=fetchrow_return)
+
+    if usage_count is None:
+        conn.fetchrow = AsyncMock(return_value=None)
+    else:
+        row = {"usage_count": usage_count}
+        conn.fetchrow = AsyncMock(return_value=row)
+
+    conn.execute = AsyncMock(return_value=None)
+
     pool.acquire = MagicMock(
         return_value=MagicMock(
             __aenter__=AsyncMock(return_value=conn),
@@ -29,144 +39,169 @@ def _make_pool(execute_return: object = None, fetchrow_return: object = None) ->
     return pool
 
 
-def _make_request(pool: MagicMock) -> MagicMock:
-    request = MagicMock()
-    request.app = MagicMock()
-    request.app.state = MagicMock()
-    request.app.state.db_pool = pool
-    return request
+@pytest.fixture
+def mini_app():  # noqa: ANN201
+    from backend.api.middleware.quota import QuotaMiddleware
+    from fastapi import FastAPI
+    from fastapi.responses import JSONResponse
+
+    app = FastAPI()
+    app.add_middleware(QuotaMiddleware)
+
+    @app.get("/api/v1/trends")
+    async def trends():  # noqa: ANN201
+        return JSONResponse({"ok": True})
+
+    @app.post("/api/v1/scraps")
+    async def scraps():  # noqa: ANN201
+        return JSONResponse({"ok": True})
+
+    @app.get("/api/v1/content/ideas")
+    async def content_ideas():  # noqa: ANN201
+        return JSONResponse({"ok": True})
+
+    @app.get("/api/v1/health")
+    async def health():  # noqa: ANN201
+        return JSONResponse({"ok": True})
+
+    return app
 
 
-def _api_usage_row(used_count: int, quota_limit: int) -> dict:
-    return {"used_count": used_count, "quota_limit": quota_limit}
+@pytest.fixture
+async def client(mini_app):  # noqa: ANN001, ANN201
+    from httpx import ASGITransport, AsyncClient
+
+    async with AsyncClient(transport=ASGITransport(app=mini_app), base_url="http://test") as ac:
+        yield ac
 
 
-class TestCheckInsightQuota:
-    @pytest.mark.asyncio
-    async def test_pro_plan_skips_quota_check(self) -> None:
-        pool = _make_pool()
-        user = _make_user(plan="pro")
-        request = _make_request(pool)
+class TestGetQuotaLimit:
+    def test_trends_free_limit_10(self) -> None:
+        from backend.api.middleware.quota import _get_quota_limit
 
-        result = await check_insight_quota(request=request, current_user=user)
+        quota_type, limit = _get_quota_limit("/api/v1/trends", 0)
+        assert quota_type == "daily_trends"
+        assert limit == 10
 
-        assert result is user
-        # Pool should not have been touched
-        pool.acquire.assert_not_called()
+    def test_trends_pro_unlimited(self) -> None:
+        from backend.api.middleware.quota import _get_quota_limit
 
-    @pytest.mark.asyncio
-    async def test_business_plan_skips_quota_check(self) -> None:
-        pool = _make_pool()
-        user = _make_user(plan="business")
-        request = _make_request(pool)
+        quota_type, limit = _get_quota_limit("/api/v1/trends", 1)
+        assert limit is None
 
-        result = await check_insight_quota(request=request, current_user=user)
+    def test_scraps_free_limit_50(self) -> None:
+        from backend.api.middleware.quota import _get_quota_limit
 
-        assert result is user
-        pool.acquire.assert_not_called()
+        quota_type, limit = _get_quota_limit("/api/v1/scraps", 0)
+        assert quota_type == "daily_scraps"
+        assert limit == 50
 
-    @pytest.mark.asyncio
-    async def test_enterprise_plan_skips_quota_check(self) -> None:
-        pool = _make_pool()
-        user = _make_user(plan="enterprise")
-        request = _make_request(pool)
+    def test_content_ideas_free_blocked(self) -> None:
+        from backend.api.middleware.quota import _get_quota_limit
 
-        result = await check_insight_quota(request=request, current_user=user)
+        quota_type, limit = _get_quota_limit("/api/v1/content/ideas", 0)
+        assert quota_type == "daily_content_ideas"
+        assert limit == -1
 
-        assert result is user
-        pool.acquire.assert_not_called()
+    def test_content_ideas_pro_limit_5(self) -> None:
+        from backend.api.middleware.quota import _get_quota_limit
 
-    @pytest.mark.asyncio
-    async def test_free_plan_under_quota_passes(self) -> None:
-        row = _api_usage_row(used_count=1, quota_limit=3)
-        pool = _make_pool(fetchrow_return=row)
-        user = _make_user(plan="free")
-        request = _make_request(pool)
+        quota_type, limit = _get_quota_limit("/api/v1/content/ideas", 1)
+        assert limit == 5
 
-        result = await check_insight_quota(request=request, current_user=user)
+    def test_content_ideas_business_unlimited(self) -> None:
+        from backend.api.middleware.quota import _get_quota_limit
 
-        assert result is user
+        quota_type, limit = _get_quota_limit("/api/v1/content/ideas", 2)
+        assert limit is None
 
-    @pytest.mark.asyncio
-    async def test_free_plan_at_quota_raises_429(self) -> None:
-        row = _api_usage_row(used_count=3, quota_limit=3)
-        pool = _make_pool(fetchrow_return=row)
-        user = _make_user(plan="free")
-        request = _make_request(pool)
+    def test_ungated_path_returns_none(self) -> None:
+        from backend.api.middleware.quota import _get_quota_limit
 
-        with pytest.raises(HTTPException) as exc_info:
-            await check_insight_quota(request=request, current_user=user)
-
-        assert exc_info.value.status_code == 429
-
-    @pytest.mark.asyncio
-    async def test_free_plan_over_quota_raises_429(self) -> None:
-        row = _api_usage_row(used_count=5, quota_limit=3)
-        pool = _make_pool(fetchrow_return=row)
-        user = _make_user(plan="free")
-        request = _make_request(pool)
-
-        with pytest.raises(HTTPException) as exc_info:
-            await check_insight_quota(request=request, current_user=user)
-
-        assert exc_info.value.status_code == 429
-
-    @pytest.mark.asyncio
-    async def test_free_plan_creates_row_on_first_access(self) -> None:
-        row = _api_usage_row(used_count=0, quota_limit=3)
-        pool = _make_pool(fetchrow_return=row)
-        conn = pool.acquire.return_value.__aenter__.return_value
-        user = _make_user(plan="free")
-        request = _make_request(pool)
-
-        await check_insight_quota(request=request, current_user=user)
-
-        # execute (upsert) must be called
-        conn.execute.assert_awaited_once()
-
-    @pytest.mark.asyncio
-    async def test_db_error_raises_500(self) -> None:
-        pool = MagicMock()
-        pool.acquire = MagicMock(side_effect=Exception("DB connection refused"))
-        user = _make_user(plan="free")
-        request = _make_request(pool)
-
-        with pytest.raises(HTTPException) as exc_info:
-            await check_insight_quota(request=request, current_user=user)
-
-        assert exc_info.value.status_code == 500
-
-    @pytest.mark.asyncio
-    async def test_returns_current_user_when_quota_ok(self) -> None:
-        row = _api_usage_row(used_count=0, quota_limit=3)
-        pool = _make_pool(fetchrow_return=row)
-        user = _make_user(plan="free", user_id="user-xyz")
-        request = _make_request(pool)
-
-        result = await check_insight_quota(request=request, current_user=user)
-
-        assert result.user_id == "user-xyz"
+        quota_type, limit = _get_quota_limit("/api/v1/health", 0)
+        assert quota_type is None
+        assert limit is None
 
 
-class TestIncrementInsightUsage:
-    @pytest.mark.asyncio
-    async def test_increment_usage_updates_count(self) -> None:
-        pool = _make_pool()
-        conn = pool.acquire.return_value.__aenter__.return_value
-        reset_at = datetime.now(tz=timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+class TestQuotaMiddlewareIntegration:
+    async def test_ungated_path_passes(self, client, mini_app) -> None:  # noqa: ANN001
+        mini_app.state.db_pool = _make_db_pool()
+        resp = await client.get("/api/v1/health")
+        assert resp.status_code == 200
 
-        await increment_insight_usage(pool=pool, user_id="user-123", reset_at=reset_at)
+    async def test_free_trends_under_limit_passes(self, client, mini_app) -> None:  # noqa: ANN001
+        mini_app.state.db_pool = _make_db_pool(usage_count=5)
+        token = _make_token("u1", "free")
+        resp = await client.get("/api/v1/trends", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 200
 
-        conn.execute.assert_awaited_once()
-        sql: str = conn.execute.call_args[0][0]
-        assert "UPDATE api_usage" in sql
-        assert "used_count = used_count + 1" in sql
+    async def test_free_trends_at_limit_returns_429(self, client, mini_app) -> None:  # noqa: ANN001
+        mini_app.state.db_pool = _make_db_pool(usage_count=10)
+        token = _make_token("u1", "free")
+        resp = await client.get("/api/v1/trends", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 429
+        body = resp.json()
+        assert body["error_code"] == "E0030"
+        assert body["quota_type"] == "daily_trends"
+        assert body["limit"] == 10
+        assert "reset_at" in body
+        assert body["upgrade_url"] == "/pricing"
 
-    @pytest.mark.asyncio
-    async def test_increment_usage_does_not_raise_on_db_error(self) -> None:
-        pool = MagicMock()
-        pool.acquire = MagicMock(side_effect=Exception("DB error"))
-        reset_at = datetime.now(tz=timezone.utc)
+    async def test_free_trends_no_row_passes(self, client, mini_app) -> None:  # noqa: ANN001
+        # no row means 0 usage — should pass
+        mini_app.state.db_pool = _make_db_pool(usage_count=None)
+        token = _make_token("u1", "free")
+        resp = await client.get("/api/v1/trends", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 200
 
-        # Must not raise — best-effort
-        await increment_insight_usage(pool=pool, user_id="user-123", reset_at=reset_at)
+    async def test_pro_trends_unlimited(self, client, mini_app) -> None:  # noqa: ANN001
+        # Pro user — no DB check needed (unlimited), but middleware still skips quota
+        # We provide a DB pool anyway in case it runs
+        mini_app.state.db_pool = _make_db_pool(usage_count=9999)
+        token = _make_token("u2", "pro")
+        resp = await client.get("/api/v1/trends", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 200
+
+    async def test_content_ideas_free_blocked(self, client, mini_app) -> None:  # noqa: ANN001
+        mini_app.state.db_pool = _make_db_pool()
+        token = _make_token("u3", "free")
+        resp = await client.get(
+            "/api/v1/content/ideas", headers={"Authorization": f"Bearer {token}"}
+        )
+        assert resp.status_code == 403
+        assert resp.json()["error_code"] == "E0030"
+
+    async def test_content_ideas_pro_under_limit(self, client, mini_app) -> None:  # noqa: ANN001
+        mini_app.state.db_pool = _make_db_pool(usage_count=3)
+        token = _make_token("u4", "pro")
+        resp = await client.get(
+            "/api/v1/content/ideas", headers={"Authorization": f"Bearer {token}"}
+        )
+        assert resp.status_code == 200
+
+    async def test_content_ideas_pro_at_limit(self, client, mini_app) -> None:  # noqa: ANN001
+        mini_app.state.db_pool = _make_db_pool(usage_count=5)
+        token = _make_token("u4", "pro")
+        resp = await client.get(
+            "/api/v1/content/ideas", headers={"Authorization": f"Bearer {token}"}
+        )
+        assert resp.status_code == 429
+        assert resp.json()["limit"] == 5
+
+    async def test_usage_incremented_on_success(self, client, mini_app) -> None:  # noqa: ANN001
+        db_pool = _make_db_pool(usage_count=2)
+        mini_app.state.db_pool = db_pool
+        token = _make_token("u5", "free")
+        resp = await client.get("/api/v1/trends", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 200
+        # conn.execute should have been called (usage increment)
+        conn = db_pool.acquire.return_value.__aenter__.return_value
+        conn.execute.assert_called_once()
+
+    async def test_delete_method_not_gated(self, client, mini_app) -> None:  # noqa: ANN001
+        # DELETE is not in _GATED_METHODS so quota is skipped
+        mini_app.state.db_pool = _make_db_pool(usage_count=999)
+        resp = await client.delete("/api/v1/health")
+        # health doesn't have DELETE but middleware skips before routing
+        # 405 is fine — the middleware didn't block it with 429
+        assert resp.status_code != 429
