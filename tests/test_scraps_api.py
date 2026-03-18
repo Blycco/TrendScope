@@ -41,7 +41,10 @@ async def scraps_client(mock_db_pool: MagicMock, mock_redis: AsyncMock) -> Async
     app = create_app()
     app.state.db_pool = mock_db_pool
 
-    with patch("backend.api.routers.health.get_redis", return_value=mock_redis):
+    with (
+        patch("backend.api.routers.health.get_redis", return_value=mock_redis),
+        patch("backend.api.middleware.rate_limit.get_redis", return_value=mock_redis),
+    ):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
             yield ac
 
@@ -66,7 +69,9 @@ class TestCreateScrap:
     ) -> None:
         conn = mock_db_pool.acquire.return_value.__aenter__.return_value
         conn.fetchval = AsyncMock(return_value=10)  # scrap count
-        conn.fetchrow = AsyncMock(return_value=_make_scrap_row())
+        # First fetchrow = quota middleware check (returns None = under limit),
+        # subsequent calls = scrap route queries
+        conn.fetchrow = AsyncMock(side_effect=[None, _make_scrap_row()])
         conn.execute = AsyncMock()
 
         resp = await scraps_client.post(

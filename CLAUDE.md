@@ -65,6 +65,7 @@ Branches:
   hotfix/{description}
   chore/{description}
   All branch names lowercase-hyphenated, no slashes beyond prefix
+  phase 번호 포함 브랜치명 절대 금지 (e.g. feat/phase4-xxx → REJECT)
 
 Commit format:
   Feat: 한글로 작업 요약

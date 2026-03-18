@@ -12,6 +12,9 @@ import structlog.stdlib
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.api.middleware.plan_gate import PlanGateMiddleware
+from backend.api.middleware.quota import QuotaMiddleware
+from backend.api.middleware.rate_limit import RateLimitMiddleware
 from backend.api.routers import (
     auth,
     early_trend,
@@ -92,8 +95,14 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    # Middleware execution order: CORS → RateLimit → PlanGate → Quota → route
+    # last-added = outermost = first-executed
+    app.add_middleware(QuotaMiddleware)  # innermost (added 1st)
+    app.add_middleware(PlanGateMiddleware)  # middle
+    app.add_middleware(RateLimitMiddleware)  # after CORS
+
     allowed_origins = os.environ.get("ALLOWED_ORIGINS", "").split(",")
-    app.add_middleware(
+    app.add_middleware(  # outermost (added last = runs first)
         CORSMiddleware,
         allow_origins=[o.strip() for o in allowed_origins if o.strip()],
         allow_credentials=True,

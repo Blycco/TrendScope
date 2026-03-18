@@ -8,9 +8,15 @@ import pytest
 from backend.api.middleware.quota import check_insight_quota
 from backend.api.middleware.rate_limit import rate_limit_check
 from backend.auth.dependencies import CurrentUser, require_auth
+from backend.auth.jwt import create_access_token
 from backend.processor.shared.ai_config import AIConfig
 from httpx import ASGITransport, AsyncClient
 from pydantic import SecretStr
+
+
+@pytest.fixture(autouse=True)
+def _set_jwt_secret(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("JWT_SECRET_KEY", "test-secret-insights")
 
 
 def _make_pro_user(role: str = "general") -> CurrentUser:
@@ -73,8 +79,13 @@ async def insights_client(mock_db_pool: MagicMock, mock_redis: AsyncMock) -> Asy
     app.dependency_overrides[rate_limit_check] = lambda: pro_user
     app.dependency_overrides[check_insight_quota] = lambda: pro_user
 
+    # Pro-level JWT so PlanGateMiddleware passes (middleware runs before Depends)
+    pro_token = create_access_token("user-pro-001", "pro", "general")
+    default_headers = {"Authorization": f"Bearer {pro_token}"}
+
     with (
         patch("backend.api.routers.health.get_redis", return_value=mock_redis),
+        patch("backend.api.middleware.rate_limit.get_redis", return_value=mock_redis),
         patch(
             "backend.api.routers.insights.get_ai_config",
             new=AsyncMock(return_value=_make_ai_config()),
@@ -96,7 +107,11 @@ async def insights_client(mock_db_pool: MagicMock, mock_redis: AsyncMock) -> Asy
             new=AsyncMock(return_value=None),
         ),
     ):
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers=default_headers,
+        ) as ac:
             yield ac
 
     app.dependency_overrides.clear()
@@ -117,23 +132,30 @@ class TestGetTrendInsightsAuth:
 
         assert resp.status_code == 401
 
-    async def test_free_plan_returns_402(
+    async def test_free_plan_returns_403(
         self, mock_db_pool: MagicMock, mock_redis: AsyncMock
     ) -> None:
+        # PlanGateMiddleware intercepts before route dependencies,
+        # returning 403 (PLAN_GATE) for free users on pro-gated endpoints.
         from backend.api.main import create_app
 
         app = create_app()
         app.state.db_pool = mock_db_pool
 
-        free_user = _make_free_user()
-        app.dependency_overrides[require_auth] = lambda: free_user
+        free_token = create_access_token("user-free-001", "free", "general")
 
-        with patch("backend.api.routers.health.get_redis", return_value=mock_redis):
+        with (
+            patch("backend.api.routers.health.get_redis", return_value=mock_redis),
+            patch("backend.api.middleware.rate_limit.get_redis", return_value=mock_redis),
+        ):
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-                resp = await ac.get("/api/v1/trends/AI/insights")
+                resp = await ac.get(
+                    "/api/v1/trends/AI/insights",
+                    headers={"Authorization": f"Bearer {free_token}"},
+                )
 
-        app.dependency_overrides.clear()
-        assert resp.status_code == 402
+        assert resp.status_code == 403
+        assert resp.json()["code"] == "E0031"
 
 
 class TestGetTrendInsightsCacheMiss:
@@ -256,8 +278,11 @@ class TestGetTrendInsightsErrors:
         app.dependency_overrides[rate_limit_check] = lambda: pro_user
         app.dependency_overrides[check_insight_quota] = lambda: pro_user
 
+        pro_token = create_access_token("user-pro-001", "pro", "general")
+
         with (
             patch("backend.api.routers.health.get_redis", return_value=mock_redis),
+            patch("backend.api.middleware.rate_limit.get_redis", return_value=mock_redis),
             patch(
                 "backend.api.routers.insights.get_ai_config",
                 new=AsyncMock(return_value=_make_ai_config()),
@@ -268,7 +293,10 @@ class TestGetTrendInsightsErrors:
             ),
         ):
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-                resp = await ac.get("/api/v1/trends/AI/insights")
+                resp = await ac.get(
+                    "/api/v1/trends/AI/insights",
+                    headers={"Authorization": f"Bearer {pro_token}"},
+                )
 
         app.dependency_overrides.clear()
         assert resp.status_code == 500

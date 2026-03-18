@@ -16,6 +16,7 @@ def mock_db_pool() -> MagicMock:
     pool = MagicMock()
     conn = AsyncMock()
     conn.fetchval = AsyncMock(return_value=1)
+    conn.fetchrow = AsyncMock(return_value=None)  # quota middleware: no usage record → pass
     pool.acquire = MagicMock(
         return_value=MagicMock(
             __aenter__=AsyncMock(return_value=conn),
@@ -30,6 +31,13 @@ def mock_redis() -> AsyncMock:
     """Mock Redis client."""
     redis = AsyncMock()
     redis.ping = AsyncMock(return_value=True)
+    redis.get = AsyncMock(return_value=None)  # rate limit: no prior count → 0
+    redis.ttl = AsyncMock(return_value=60)
+    pipe = AsyncMock()
+    pipe.incr = MagicMock()
+    pipe.expire = MagicMock()
+    pipe.execute = AsyncMock(return_value=[1, True])
+    redis.pipeline = MagicMock(return_value=pipe)
     return redis
 
 
@@ -46,9 +54,9 @@ async def app(mock_db_pool: MagicMock, mock_redis: AsyncMock) -> FastAPI:
 @pytest.fixture
 async def client(app: FastAPI, mock_redis: AsyncMock) -> AsyncGenerator[AsyncClient, None]:
     """Async HTTP client bound to the test app."""
-    with patch(
-        "backend.api.routers.health.get_redis",
-        return_value=mock_redis,
+    with (
+        patch("backend.api.routers.health.get_redis", return_value=mock_redis),
+        patch("backend.api.middleware.rate_limit.get_redis", return_value=mock_redis),
     ):
         async with AsyncClient(
             transport=ASGITransport(app=app),
