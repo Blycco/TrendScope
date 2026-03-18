@@ -26,7 +26,6 @@ frontend/.env
 
 # Docker
 infra/nginx/ssl/
-infra/nginx/upstream.conf
 
 # IDE
 .vscode/

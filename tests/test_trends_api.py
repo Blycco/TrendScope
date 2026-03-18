@@ -213,15 +213,3 @@ class TestListEarlyTrends:
         )
         resp = await trends_client.get("/api/v1/trends/early?limit=2", headers=pro_auth_header)
         assert resp.json()["next_cursor"] is not None
-
-
-# ---------------------------------------------------------------------------
-# GET /api/v1/trends/{keyword}/insights  (501 stub)
-# ---------------------------------------------------------------------------
-
-
-class TestTrendInsights:
-    async def test_returns_501(self, trends_client: AsyncClient, pro_auth_header: dict) -> None:
-        resp = await trends_client.get("/api/v1/trends/ai/insights", headers=pro_auth_header)
-        assert resp.status_code == 501
-        assert resp.json()["code"] == "E0099"

@@ -59,15 +59,15 @@ async def require_auth(
     return current_user
 
 
-def require_plan(minimum_plan: str):  # noqa: ANN201
-    """Dependency factory: raise 403 if user's plan is below minimum_plan."""
+def require_plan(minimum_plan: str, status_code: int = 403):  # noqa: ANN201
+    """Dependency factory: raise HTTP error if user's plan is below minimum_plan."""
 
     async def _check(current_user: CurrentUser = Depends(require_auth)) -> CurrentUser:  # noqa: B008
         user_level = PLAN_LEVEL.get(current_user.plan, 0)
         required_level = PLAN_LEVEL.get(minimum_plan, 0)
         if user_level < required_level:
             raise HTTPException(
-                status_code=403,
+                status_code=status_code,
                 detail={
                     "code": "E0031",
                     "message": "Plan upgrade required",

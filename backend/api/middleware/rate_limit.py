@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import time
+
 import structlog
-from fastapi import Request
+from fastapi import Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
+from backend.auth.dependencies import CurrentUser, require_auth
 from backend.auth.jwt import decode_token
 from backend.common.errors import ErrorCode
 from backend.processor.shared.cache_manager import get_redis
@@ -97,3 +100,50 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             logger.error("rate_limit_middleware_error", error=str(exc), path=request.url.path)
             # fail open — don't block requests on Redis errors
             return await call_next(request)
+
+
+# ---------------------------------------------------------------------------
+# FastAPI dependency function (used by individual route handlers via Depends)
+# ---------------------------------------------------------------------------
+
+_DEP_RATE_LIMIT = 300  # req/min per authenticated user
+_DEP_WINDOW_SECONDS = 60
+
+
+async def rate_limit_check(
+    request: Request,
+    current_user: CurrentUser = Depends(require_auth),  # noqa: B008
+) -> CurrentUser:
+    """FastAPI dependency: enforce 300 req/min per user via Redis INCR.
+
+    Fails open on Redis error to preserve availability.
+    """
+    try:
+        redis = get_redis()
+        minute_bucket = int(time.time()) // _DEP_WINDOW_SECONDS
+        key = f"ratelimit:{current_user.user_id}:{minute_bucket}"
+
+        count = await redis.incr(key)
+        if count == 1:
+            await redis.expire(key, _DEP_WINDOW_SECONDS)
+
+        if count > _DEP_RATE_LIMIT:
+            retry_after = _DEP_WINDOW_SECONDS - (int(time.time()) % _DEP_WINDOW_SECONDS)
+            raise HTTPException(
+                status_code=429,
+                detail={
+                    "code": ErrorCode.FORBIDDEN.value,
+                    "message": "Rate limit exceeded",
+                    "retry_after": retry_after,
+                },
+            )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.warning(
+            "rate_limit_dep_redis_error",
+            user_id=current_user.user_id,
+            error=str(exc),
+        )
+
+    return current_user

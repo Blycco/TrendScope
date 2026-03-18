@@ -75,12 +75,13 @@ async def get_identity(
     user_id: str,
     provider: str,
 ) -> asyncpg.Record | None:
-    """Fetch user_identity row by user_id + provider."""
+    """Fetch user_identity row by user_id + provider (includes 2FA fields)."""
     try:
         async with pool.acquire() as conn:
             return await conn.fetchrow(
                 """
-                SELECT id::text, user_id::text, provider, provider_uid, password_hash
+                SELECT id::text, user_id::text, provider, provider_uid,
+                       password_hash, two_fa_enabled, two_fa_secret
                 FROM user_identity
                 WHERE user_id = $1::uuid AND provider = $2
                 """,
@@ -89,6 +90,94 @@ async def get_identity(
             )
     except Exception as exc:
         logger.error("get_identity_failed", error=str(exc))
+        raise
+
+
+async def update_user(
+    pool: asyncpg.Pool,
+    user_id: str,
+    **fields: object,
+) -> asyncpg.Record | None:
+    """Update user_profile fields dynamically. Returns the updated row.
+
+    Only allows whitelisted columns to prevent injection (RULE 02).
+    """
+    allowed = {
+        "display_name",
+        "role",
+        "locale",
+        "category_weights",
+        "plan",
+        "is_active",
+        "email_verified",
+    }
+    filtered = {k: v for k, v in fields.items() if k in allowed and v is not None}
+    if not filtered:
+        return await get_user_by_id(pool, user_id)
+
+    set_clauses: list[str] = []
+    params: list[object] = []
+    for idx, (col, val) in enumerate(filtered.items(), start=1):
+        set_clauses.append(f"{col} = ${idx + 1}")
+        params.append(val)
+
+    # Safe: set_clauses built from whitelisted column names only (RULE 02)
+    query = (
+        f"UPDATE user_profile SET {', '.join(set_clauses)}, updated_at = now() "  # noqa: S608
+        f"WHERE id = $1::uuid "
+        f"RETURNING id::text, email, display_name, role, locale, plan, is_active"
+    )
+    try:
+        async with pool.acquire() as conn:
+            return await conn.fetchrow(query, user_id, *params)
+    except Exception as exc:
+        logger.error("update_user_failed", user_id=user_id, error=str(exc))
+        raise
+
+
+async def update_password_hash(
+    pool: asyncpg.Pool,
+    user_id: str,
+    new_hash: str,
+) -> None:
+    """Update the password_hash on the email identity for a user."""
+    try:
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """
+                UPDATE user_identity
+                SET password_hash = $1
+                WHERE user_id = $2::uuid AND provider = 'email'
+                """,
+                new_hash,
+                user_id,
+            )
+    except Exception as exc:
+        logger.error("update_password_hash_failed", user_id=user_id, error=str(exc))
+        raise
+
+
+async def update_2fa(
+    pool: asyncpg.Pool,
+    user_id: str,
+    secret: str | None,
+    enabled: bool,
+) -> None:
+    """Update 2FA secret and enabled flag on the email identity."""
+    try:
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """
+                UPDATE user_identity
+                SET two_fa_secret = $1, two_fa_enabled = $2
+                WHERE user_id = $3::uuid AND provider = 'email'
+                """,
+                secret,
+                enabled,
+                user_id,
+            )
+    except Exception as exc:
+        logger.error("update_2fa_failed", user_id=user_id, error=str(exc))
         raise
 
 
