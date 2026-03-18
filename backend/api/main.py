@@ -12,7 +12,7 @@ import structlog.stdlib
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.api.routers import auth, health, news, trends
+from backend.api.routers import auth, early_trend, health, insights, news, trends
 from backend.processor.shared.cache_manager import close_redis, init_redis
 
 # --- Logging setup ---
@@ -92,7 +92,9 @@ def create_app() -> FastAPI:
     app.include_router(health.router)
     app.include_router(auth.router, prefix="/api/v1")
     app.include_router(trends.router, prefix="/api/v1")
+    app.include_router(early_trend.router, prefix="/api/v1")
     app.include_router(news.router, prefix="/api/v1")
+    app.include_router(insights.router, prefix="/api/v1")
 
     return app
 
