@@ -2,8 +2,11 @@
 	import '../app.css';
 	import { initI18n } from '$lib/i18n';
 	import { isLoading, t } from 'svelte-i18n';
+	import { authStore } from '$lib/stores/auth';
+	import { onMount } from 'svelte';
 
 	initI18n();
+	onMount(() => authStore.initialize());
 
 	let { children } = $props();
 </script>
@@ -25,7 +28,17 @@
 						</div>
 					</div>
 					<div class="flex items-center gap-4">
-						<a href="/auth/login" class="text-sm text-gray-600 hover:text-gray-900">{$t('nav.sidebar.login')}</a>
+						{#if authStore.isAuthenticated}
+							<span class="text-sm text-gray-600">{authStore.user?.display_name ?? authStore.user?.email}</span>
+							<button
+								onclick={() => authStore.logout()}
+								class="text-sm text-gray-600 hover:text-gray-900"
+							>
+								{$t('nav.sidebar.logout')}
+							</button>
+						{:else}
+							<a href="/auth/login" class="text-sm text-gray-600 hover:text-gray-900">{$t('nav.sidebar.login')}</a>
+						{/if}
 					</div>
 				</div>
 			</div>
