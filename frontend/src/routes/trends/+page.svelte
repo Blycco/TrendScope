@@ -7,10 +7,19 @@
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
 	import QuotaExceededModal from '$lib/ui/QuotaExceededModal.svelte';
 
+	interface PersonalizationSettings {
+		category_weights: { tech: number; finance: number; entertainment: number; lifestyle: number };
+		locale_ratio: number;
+	}
+
+	const ALL_CATEGORIES = ['tech', 'finance', 'entertainment', 'lifestyle'] as const;
+	type Category = (typeof ALL_CATEGORIES)[number];
+
 	let trends = $state<TrendItem[]>([]);
 	let nextCursor = $state<string | null>(null);
 	let isLoading = $state(true);
 	let isLoadingMore = $state(false);
+	let personalization = $state<PersonalizationSettings | null>(null);
 
 	let errorOpen = $state(false);
 	let errorCode = $state('');
@@ -21,10 +30,26 @@
 	let quotaLimit = $state(0);
 	let quotaResetTime = $state('');
 
+	function getLocaleParam(): string | null {
+		if (!personalization) return null;
+		if (personalization.locale_ratio < 0.3) return 'en';
+		if (personalization.locale_ratio > 0.7) return 'ko';
+		return null;
+	}
+
+	function getSortedCategories(): Category[] {
+		if (!personalization) return [...ALL_CATEGORIES];
+		return [...ALL_CATEGORIES].sort(
+			(a, b) => personalization!.category_weights[b] - personalization!.category_weights[a]
+		);
+	}
+
 	async function loadTrends(cursor?: string): Promise<void> {
 		try {
 			const params = new URLSearchParams({ limit: '20' });
 			if (cursor) params.set('cursor', cursor);
+			const locale = getLocaleParam();
+			if (locale) params.set('locale', locale);
 
 			const data = await apiRequest<TrendListResponse>(`/trends?${params.toString()}`);
 			if (cursor) {
@@ -59,13 +84,35 @@
 	}
 
 	onMount(async () => {
+		try {
+			personalization = await apiRequest<PersonalizationSettings>('/personalization');
+		} catch {
+			// Non-critical — proceed without personalization
+		}
 		await loadTrends();
 		isLoading = false;
 	});
 </script>
 
 <div class="space-y-6">
-	<h1 class="text-2xl font-bold text-gray-900">{$t('page.trends.title')}</h1>
+	<div class="flex items-center gap-3">
+		<h1 class="text-2xl font-bold text-gray-900">{$t('page.trends.title')}</h1>
+		{#if personalization}
+			<span class="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">
+				{$t('trends.personalized_badge')}
+			</span>
+		{/if}
+	</div>
+
+	{#if personalization}
+		<div class="flex gap-2 flex-wrap">
+			{#each getSortedCategories() as cat}
+				<span class="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-600">
+					{cat}
+				</span>
+			{/each}
+		</div>
+	{/if}
 
 	{#if isLoading}
 		<p class="text-gray-500">{$t('status.loading')}</p>

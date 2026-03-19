@@ -17,16 +17,27 @@ from backend.api.middleware.quota import QuotaMiddleware
 from backend.api.middleware.rate_limit import RateLimitMiddleware
 from backend.api.routers import (
     auth,
+    content,
     early_trend,
     events,
     health,
     insights,
     news,
+    notifications,
+    payments,
+    personalization,
     scraps,
     settings,
     subscriptions,
     trends,
 )
+from backend.api.routers.admin import ai_config as admin_ai_config
+from backend.api.routers.admin import analytics as admin_analytics
+from backend.api.routers.admin import audit as admin_audit
+from backend.api.routers.admin import settings as admin_settings
+from backend.api.routers.admin import sources as admin_sources
+from backend.api.routers.admin import subscriptions as admin_subscriptions
+from backend.api.routers.admin import users as admin_users
 from backend.api.routers.webhooks import payment as webhooks_payment
 from backend.processor.shared.cache_manager import close_redis, init_redis
 
@@ -120,7 +131,20 @@ def create_app() -> FastAPI:
     app.include_router(settings.router, prefix="/api/v1")
     app.include_router(events.router, prefix="/api/v1")
     app.include_router(subscriptions.router, prefix="/api/v1")
+    app.include_router(payments.router, prefix="/api/v1")
+    app.include_router(notifications.router, prefix="/api/v1")
+    app.include_router(content.router, prefix="/api/v1")
+    app.include_router(personalization.router, prefix="/api/v1")
     app.include_router(webhooks_payment.router, prefix="/api/v1")
+
+    # Admin panel routers
+    app.include_router(admin_users.router, prefix="/admin/v1")
+    app.include_router(admin_subscriptions.router, prefix="/admin/v1")
+    app.include_router(admin_sources.router, prefix="/admin/v1")
+    app.include_router(admin_ai_config.router, prefix="/admin/v1")
+    app.include_router(admin_settings.router, prefix="/admin/v1")
+    app.include_router(admin_audit.router, prefix="/admin/v1")
+    app.include_router(admin_analytics.router, prefix="/admin/v1")
 
     return app
 
