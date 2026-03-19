@@ -355,3 +355,220 @@ class TestMonitorBrandCacheMiss:
 
         assert result.is_crisis is True
         assert result.label == "surge"
+
+
+# ---------------------------------------------------------------------------
+# _fetch_alert_threshold direct tests
+# ---------------------------------------------------------------------------
+
+
+class TestFetchAlertThreshold:
+    @pytest.mark.asyncio
+    async def test_returns_float_from_db(self) -> None:
+        from backend.processor.algorithms.brand_monitor import _fetch_alert_threshold
+
+        row = MagicMock()
+        row.__getitem__ = MagicMock(side_effect=lambda k: 3.0 if k == "value" else None)
+        pool = MagicMock()
+        conn = AsyncMock()
+        conn.fetchrow = AsyncMock(return_value=row)
+        pool.acquire = MagicMock(
+            return_value=MagicMock(
+                __aenter__=AsyncMock(return_value=conn),
+                __aexit__=AsyncMock(return_value=None),
+            )
+        )
+        result = await _fetch_alert_threshold(pool)
+        assert result == pytest.approx(3.0)
+
+    @pytest.mark.asyncio
+    async def test_returns_default_on_db_miss(self) -> None:
+        from backend.processor.algorithms.brand_monitor import (
+            _DEFAULT_ALERT_THRESHOLD,
+            _fetch_alert_threshold,
+        )
+
+        pool = _make_pool()
+        result = await _fetch_alert_threshold(pool)
+        assert result == _DEFAULT_ALERT_THRESHOLD
+
+    @pytest.mark.asyncio
+    async def test_returns_default_on_exception(self) -> None:
+        from backend.processor.algorithms.brand_monitor import (
+            _DEFAULT_ALERT_THRESHOLD,
+            _fetch_alert_threshold,
+        )
+
+        pool = MagicMock()
+        conn = AsyncMock()
+        conn.fetchrow = AsyncMock(side_effect=RuntimeError("db down"))
+        pool.acquire = MagicMock(
+            return_value=MagicMock(
+                __aenter__=AsyncMock(return_value=conn),
+                __aexit__=AsyncMock(return_value=None),
+            )
+        )
+        result = await _fetch_alert_threshold(pool)
+        assert result == _DEFAULT_ALERT_THRESHOLD
+
+    @pytest.mark.asyncio
+    async def test_returns_threshold_from_dict_value(self) -> None:
+        from backend.processor.algorithms.brand_monitor import _fetch_alert_threshold
+
+        row = MagicMock()
+        row.__getitem__ = MagicMock(
+            side_effect=lambda k: {"threshold": 1.5} if k == "value" else None
+        )
+        pool = MagicMock()
+        conn = AsyncMock()
+        conn.fetchrow = AsyncMock(return_value=row)
+        pool.acquire = MagicMock(
+            return_value=MagicMock(
+                __aenter__=AsyncMock(return_value=conn),
+                __aexit__=AsyncMock(return_value=None),
+            )
+        )
+        result = await _fetch_alert_threshold(pool)
+        assert result == pytest.approx(1.5)
+
+
+# ---------------------------------------------------------------------------
+# _fetch_brand_record direct tests
+# ---------------------------------------------------------------------------
+
+
+class TestFetchBrandRecord:
+    @pytest.mark.asyncio
+    async def test_returns_none_when_not_found(self) -> None:
+        from backend.processor.algorithms.brand_monitor import _fetch_brand_record
+
+        pool = _make_pool()
+        result = await _fetch_brand_record(pool, "uid-1", "NoBrand")
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_returns_record_when_found(self) -> None:
+        from backend.processor.algorithms.brand_monitor import _fetch_brand_record
+
+        db_row = MagicMock()
+        db_row.__getitem__ = MagicMock(
+            side_effect=lambda k: {
+                "id": "aaa",
+                "user_id": "uid-1",
+                "brand_name": "TestBrand",
+                "keywords": ["kw1"],
+                "is_active": True,
+                "slack_webhook": None,
+                "last_alerted_at": None,
+            }[k]
+        )
+        pool = MagicMock()
+        conn = AsyncMock()
+        conn.fetchrow = AsyncMock(return_value=db_row)
+        pool.acquire = MagicMock(
+            return_value=MagicMock(
+                __aenter__=AsyncMock(return_value=conn),
+                __aexit__=AsyncMock(return_value=None),
+            )
+        )
+        result = await _fetch_brand_record(pool, "uid-1", "TestBrand")
+        assert result is not None
+        assert result.brand_name == "TestBrand"
+        assert result.keywords == ["kw1"]
+
+    @pytest.mark.asyncio
+    async def test_returns_none_on_exception(self) -> None:
+        from backend.processor.algorithms.brand_monitor import _fetch_brand_record
+
+        pool = MagicMock()
+        conn = AsyncMock()
+        conn.fetchrow = AsyncMock(side_effect=RuntimeError("db error"))
+        pool.acquire = MagicMock(
+            return_value=MagicMock(
+                __aenter__=AsyncMock(return_value=conn),
+                __aexit__=AsyncMock(return_value=None),
+            )
+        )
+        result = await _fetch_brand_record(pool, "uid-1", "TestBrand")
+        assert result is None
+
+
+# ---------------------------------------------------------------------------
+# _fetch_recent_scores direct tests
+# ---------------------------------------------------------------------------
+
+
+class TestFetchRecentScores:
+    @pytest.mark.asyncio
+    async def test_returns_empty_on_no_rows(self) -> None:
+        from backend.processor.algorithms.brand_monitor import _fetch_recent_scores
+
+        pool = _make_pool()
+        result = await _fetch_recent_scores(pool, "BrandX", ["kw1"])
+        assert result == []
+
+    @pytest.mark.asyncio
+    async def test_maps_positive_badge_to_positive_score(self) -> None:
+        from backend.processor.algorithms.brand_monitor import _fetch_recent_scores
+
+        db_row = MagicMock()
+        db_row.__getitem__ = MagicMock(
+            side_effect=lambda k: {
+                "keyword": "kw1",
+                "burst_z": 5.0,
+                "sentiment_badge": "positive",
+            }[k]
+        )
+        pool = MagicMock()
+        conn = AsyncMock()
+        conn.fetch = AsyncMock(return_value=[db_row])
+        pool.acquire = MagicMock(
+            return_value=MagicMock(
+                __aenter__=AsyncMock(return_value=conn),
+                __aexit__=AsyncMock(return_value=None),
+            )
+        )
+        result = await _fetch_recent_scores(pool, "BrandX", ["kw1"])
+        assert len(result) == 1
+        assert result[0] > 0
+
+    @pytest.mark.asyncio
+    async def test_maps_negative_badge_to_negative_score(self) -> None:
+        from backend.processor.algorithms.brand_monitor import _fetch_recent_scores
+
+        db_row = MagicMock()
+        db_row.__getitem__ = MagicMock(
+            side_effect=lambda k: {
+                "keyword": "kw1",
+                "burst_z": 5.0,
+                "sentiment_badge": "negative",
+            }[k]
+        )
+        pool = MagicMock()
+        conn = AsyncMock()
+        conn.fetch = AsyncMock(return_value=[db_row])
+        pool.acquire = MagicMock(
+            return_value=MagicMock(
+                __aenter__=AsyncMock(return_value=conn),
+                __aexit__=AsyncMock(return_value=None),
+            )
+        )
+        result = await _fetch_recent_scores(pool, "BrandX", ["kw1"])
+        assert len(result) == 1
+        assert result[0] < 0
+
+    @pytest.mark.asyncio
+    async def test_returns_empty_on_exception(self) -> None:
+        from backend.processor.algorithms.brand_monitor import _fetch_recent_scores
+
+        pool = MagicMock()
+        conn = AsyncMock()
+        conn.fetch = AsyncMock(side_effect=RuntimeError("db error"))
+        pool.acquire = MagicMock(
+            return_value=MagicMock(
+                __aenter__=AsyncMock(return_value=conn),
+                __aexit__=AsyncMock(return_value=None),
+            )
+        )
+        result = await _fetch_recent_scores(pool, "BrandX", ["kw1"])
+        assert result == []

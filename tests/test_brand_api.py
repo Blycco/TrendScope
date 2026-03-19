@@ -593,3 +593,55 @@ class TestBrandAlertJob:
 
         assert count == 0
         mock_slack.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_cache_miss_uses_db_scores(self) -> None:
+        """Cover the no-cache path that falls back to DB historical scores."""
+        from backend.jobs.brand_alert import run_brand_alert
+
+        monitor_row = MagicMock()
+        monitor_row.__getitem__ = MagicMock(
+            side_effect=lambda k: {
+                "id": "aaaaaaaa-0000-0000-0000-000000000003",
+                "user_id": "user-biz-003",
+                "brand_name": "DBBrand",
+                "keywords": [],
+                "slack_webhook": None,
+                "last_alerted_at": None,
+            }[k]
+        )
+
+        pool = MagicMock()
+        conn = AsyncMock()
+        conn.fetch = AsyncMock(return_value=[monitor_row])
+        conn.fetchval = AsyncMock(return_value=False)
+        conn.execute = AsyncMock(return_value=None)
+        pool.acquire = MagicMock(
+            return_value=MagicMock(
+                __aenter__=AsyncMock(return_value=conn),
+                __aexit__=AsyncMock(return_value=None),
+            )
+        )
+
+        with (
+            patch(
+                "backend.jobs.brand_alert.get_cached",
+                new=AsyncMock(return_value=None),
+            ),
+            patch(
+                "backend.jobs.brand_alert._send_slack_alert",
+                new=AsyncMock(),
+            ),
+            patch(
+                "backend.jobs.brand_alert._fetch_alert_threshold",
+                new=AsyncMock(return_value=2.0),
+            ),
+            patch(
+                "backend.jobs.brand_alert._fetch_recent_scores",
+                new=AsyncMock(return_value=[]),
+            ),
+        ):
+            count = await run_brand_alert(pool)
+
+        # With no historical scores: z=0, not a crisis
+        assert count == 0
