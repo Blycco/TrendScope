@@ -23,7 +23,7 @@ jobs:
       - name: Install lint dependencies
         run: |
           pip install ruff mypy
-          pip install -r backend/requirements.txt
+          pip install -r requirements.txt
 
       - name: ruff check
         run: ruff check backend/
@@ -78,10 +78,10 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: pip install -r backend/requirements.txt
+        run: pip install -r requirements.txt
 
       - name: Run pytest
-        run: pytest backend/ --cov=backend --cov-fail-under=70
+        run: pytest tests/ --cov=backend --cov-fail-under=70
 
   build-backend:
     name: Build Backend Docker Image
