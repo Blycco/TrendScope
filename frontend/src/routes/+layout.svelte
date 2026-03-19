@@ -25,6 +25,7 @@
 						<div class="hidden sm:flex items-center gap-4">
 							<a href="/trends" class="text-sm text-gray-600 hover:text-gray-900">{$t('nav.sidebar.trends')}</a>
 							<a href="/news" class="text-sm text-gray-600 hover:text-gray-900">{$t('nav.sidebar.news')}</a>
+							<a href="/content" class="text-sm text-gray-600 hover:text-gray-900">{$t('nav.content')}</a>
 						</div>
 					</div>
 					<div class="flex items-center gap-4">

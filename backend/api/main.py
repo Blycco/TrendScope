@@ -17,11 +17,15 @@ from backend.api.middleware.quota import QuotaMiddleware
 from backend.api.middleware.rate_limit import RateLimitMiddleware
 from backend.api.routers import (
     auth,
+    content,
     early_trend,
     events,
     health,
     insights,
     news,
+    notifications,
+    payments,
+    personalization,
     scraps,
     settings,
     subscriptions,
@@ -120,6 +124,10 @@ def create_app() -> FastAPI:
     app.include_router(settings.router, prefix="/api/v1")
     app.include_router(events.router, prefix="/api/v1")
     app.include_router(subscriptions.router, prefix="/api/v1")
+    app.include_router(payments.router, prefix="/api/v1")
+    app.include_router(notifications.router, prefix="/api/v1")
+    app.include_router(content.router, prefix="/api/v1")
+    app.include_router(personalization.router, prefix="/api/v1")
     app.include_router(webhooks_payment.router, prefix="/api/v1")
 
     return app
