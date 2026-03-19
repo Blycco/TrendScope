@@ -74,7 +74,7 @@ async def checkout(
     try:
         pool = request.app.state.db_pool
         session_id = str(uuid.uuid4())
-        _provider = os.environ.get("PAYMENT_PROVIDER", "stripe")
+        _provider = os.environ.get("PAYMENT_PROVIDER", "toss")
 
         await create_subscription(
             pool,
@@ -94,7 +94,7 @@ async def checkout(
                 ip_address=str(request.client.host) if request.client else None,
             )
 
-        checkout_url = f"/payments/checkout/{session_id}"
+        checkout_url = f"/payments/toss/checkout/{session_id}"
         logger.info("checkout_created", user_id=current_user.user_id, plan=body.plan)
         return CheckoutResponse(checkout_url=checkout_url, session_id=session_id)
     except HTTPException:

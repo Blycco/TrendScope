@@ -3,30 +3,79 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { trackEvent, startAutoFlush, stopAutoFlush } from '$lib/tracker';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
+	import QuotaExceededModal from '$lib/ui/QuotaExceededModal.svelte';
+	import { apiRequest, ApiRequestError, QuotaExceededRequestError } from '$lib/api';
 
 	let keywords = $state<string[]>([]);
 	let newKeyword = $state('');
 	let errorOpen = $state(false);
+	let errorCode = $state('');
 	let errorMessageKey = $state('');
 
-	function addKeyword(): void {
+	let quotaOpen = $state(false);
+	let quotaFeature = $state('');
+	let quotaLimit = $state(0);
+	let quotaResetTime = $state('');
+
+	async function addKeyword(): Promise<void> {
 		const trimmed = newKeyword.trim();
 		if (!trimmed) return;
 		if (keywords.includes(trimmed)) return;
 
-		keywords = [...keywords, trimmed];
-		newKeyword = '';
-		trackEvent('keyword_add', { keyword: trimmed });
+		try {
+			await apiRequest('/tracker/keywords', {
+				method: 'POST',
+				body: { keyword: trimmed },
+			});
+			keywords = [...keywords, trimmed];
+			newKeyword = '';
+			trackEvent('keyword_add', { keyword: trimmed });
+		} catch (error) {
+			if (error instanceof QuotaExceededRequestError) {
+				quotaFeature = error.quotaType;
+				quotaLimit = error.limit;
+				quotaResetTime = error.resetAt;
+				quotaOpen = true;
+			} else if (error instanceof ApiRequestError) {
+				errorCode = error.errorCode;
+				errorMessageKey = 'error.server';
+				errorOpen = true;
+			} else {
+				errorCode = 'ERR_NETWORK';
+				errorMessageKey = 'error.network';
+				errorOpen = true;
+			}
+		}
 	}
 
-	function removeKeyword(keyword: string): void {
-		keywords = keywords.filter((k) => k !== keyword);
-		trackEvent('keyword_remove', { keyword });
+	async function removeKeyword(keyword: string): Promise<void> {
+		try {
+			await apiRequest(`/tracker/keywords/${encodeURIComponent(keyword)}`, {
+				method: 'DELETE',
+			});
+			keywords = keywords.filter((k) => k !== keyword);
+			trackEvent('keyword_remove', { keyword });
+		} catch (error) {
+			if (error instanceof QuotaExceededRequestError) {
+				quotaFeature = error.quotaType;
+				quotaLimit = error.limit;
+				quotaResetTime = error.resetAt;
+				quotaOpen = true;
+			} else if (error instanceof ApiRequestError) {
+				errorCode = error.errorCode;
+				errorMessageKey = 'error.server';
+				errorOpen = true;
+			} else {
+				errorCode = 'ERR_NETWORK';
+				errorMessageKey = 'error.network';
+				errorOpen = true;
+			}
+		}
 	}
 
-	function handleSubmit(e: Event): void {
+	async function handleSubmit(e: Event): Promise<void> {
 		e.preventDefault();
-		addKeyword();
+		await addKeyword();
 	}
 
 	onMount(() => {
@@ -80,4 +129,5 @@
 	</div>
 </div>
 
-<ErrorModal open={errorOpen} messageKey={errorMessageKey} onClose={() => (errorOpen = false)} />
+<ErrorModal open={errorOpen} errorCode={errorCode} messageKey={errorMessageKey} onClose={() => (errorOpen = false)} />
+<QuotaExceededModal open={quotaOpen} feature={quotaFeature} limit={quotaLimit} resetTime={quotaResetTime} onClose={() => (quotaOpen = false)} />
