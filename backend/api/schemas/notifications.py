@@ -1,4 +1,4 @@
-"""Pydantic models for notification settings endpoints."""
+"""Pydantic models for notification settings and keyword alert endpoints."""
 
 from __future__ import annotations
 
@@ -25,3 +25,18 @@ class NotificationSettingUpdate(BaseModel):
 
 class NotificationSettingsResponse(BaseModel):
     settings: list[NotificationSettingResponse]
+
+
+class KeywordCreateRequest(BaseModel):
+    keyword: str
+
+
+class KeywordResponse(BaseModel):
+    id: str
+    user_id: str
+    keyword: str
+    created_at: datetime
+
+
+class KeywordsResponse(BaseModel):
+    keywords: list[KeywordResponse]
