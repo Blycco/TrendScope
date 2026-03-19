@@ -1,14 +1,24 @@
-"""GET /api/v1/trends and /api/v1/trends/early endpoints."""
+"""GET /api/v1/trends, /api/v1/trends/early, and /api/v1/trends/export endpoints."""
 
 from __future__ import annotations
 
+import csv
+import io
+import json
+
 import structlog
-from fastapi import APIRouter, Query, Request
-from fastapi.responses import Response
+from fastapi import APIRouter, Depends, Query, Request
+from fastapi.responses import Response, StreamingResponse
 
 from backend.api.schemas.trends import TrendItem, TrendListResponse
+from backend.auth.dependencies import PLAN_LEVEL, CurrentUser, require_plan
 from backend.common.errors import ErrorCode, error_response
-from backend.db.queries.trends import encode_cursor, fetch_early_trends, fetch_trends
+from backend.db.queries.trends import (
+    encode_cursor,
+    fetch_early_trends,
+    fetch_related_trends,
+    fetch_trends,
+)
 from backend.processor.shared.cache_manager import get_cached, set_cached
 
 router = APIRouter(tags=["trends"])
@@ -76,6 +86,129 @@ async def list_trends(
         await set_cached(cache_key, body_bytes, _CACHE_TTL)
 
     return Response(content=body_bytes, media_type="application/json")
+
+
+@router.get("/trends/{trend_id}/related", response_model=TrendListResponse)
+async def list_related_trends(
+    trend_id: str,
+    request: Request,
+    limit: int = Query(default=10, ge=1, le=50),
+) -> Response:
+    """Return trends in the same category as the given trend, ordered by score DESC.
+
+    Used by TrendMap to render related trend nodes. No authentication required.
+    """
+    try:
+        pool = request.app.state.db_pool
+        rows = await fetch_related_trends(pool, trend_id=trend_id, limit=limit)
+    except Exception as exc:
+        logger.error("related_trends_fetch_failed", trend_id=trend_id, error=str(exc))
+        return error_response(ErrorCode.DB_ERROR, "Failed to fetch related trends", status_code=500)
+
+    items = [
+        TrendItem(
+            id=str(row["id"]),
+            title=row["title"],
+            category=row["category"],
+            score=row["score"],
+            early_trend_score=row["early_trend_score"],
+            keywords=list(row["keywords"] or []),
+            created_at=row["created_at"],
+        )
+        for row in rows
+    ]
+    response_body = TrendListResponse(items=items, next_cursor=None, total=len(items))
+    return Response(content=response_body.model_dump_json().encode(), media_type="application/json")
+
+
+@router.get("/trends/export")
+async def export_trends(
+    request: Request,
+    format: str = Query(default="csv", pattern="^(csv|pdf)$"),
+    category: str | None = Query(default=None),
+    locale: str | None = Query(default=None),
+    limit: int = Query(default=100, ge=1, le=1000),
+    current_user: CurrentUser = Depends(require_plan("pro")),  # noqa: B008
+) -> Response:
+    """Export trend data as CSV (Pro+) or PDF (Business+).
+
+    Plan gates:
+    - Free: 403
+    - Pro: CSV only
+    - Business+: CSV + PDF
+    """
+    user_level = PLAN_LEVEL.get(current_user.plan, 0)
+
+    if format == "pdf" and user_level < PLAN_LEVEL["business"]:
+        return error_response(
+            ErrorCode.PLAN_GATE,
+            "PDF export requires Business plan or above",
+            detail=json.dumps(
+                {
+                    "message_key": "error.plan_upgrade_required",
+                    "upgrade_url": "/pricing",
+                    "required_plan": "business",
+                }
+            ),
+            status_code=403,
+        )
+
+    try:
+        pool = request.app.state.db_pool
+        logger.info(
+            "trends_export_request",
+            user_id=current_user.user_id,
+            plan=current_user.plan,
+            format=format,
+            category=category,
+            locale=locale,
+        )
+        rows = await fetch_trends(pool, category=category, locale=locale, limit=limit)
+    except Exception as exc:
+        logger.error("trends_export_fetch_failed", error=str(exc))
+        return error_response(
+            ErrorCode.DB_ERROR, "Failed to fetch trends for export", status_code=500
+        )
+
+    if format == "csv":
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(
+            [
+                "id",
+                "title",
+                "category",
+                "score",
+                "early_trend_score",
+                "keywords",
+                "created_at",
+            ]
+        )
+        for row in rows:
+            writer.writerow(
+                [
+                    row["id"],
+                    row["title"],
+                    row["category"],
+                    row["score"],
+                    row["early_trend_score"],
+                    "|".join(row["keywords"] or []),
+                    row["created_at"].isoformat() if row["created_at"] else "",
+                ]
+            )
+        output.seek(0)
+        return StreamingResponse(
+            iter([output.getvalue()]),
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=trends.csv"},
+        )
+
+    # PDF: Business+ only (already gate-checked above)
+    return error_response(
+        ErrorCode.INTERNAL_ERROR,
+        "PDF generation is not yet implemented",
+        status_code=501,
+    )
 
 
 @router.get("/trends/early", response_model=TrendListResponse)
