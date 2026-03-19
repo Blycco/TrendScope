@@ -5,7 +5,7 @@
 	import { apiRequest, ApiRequestError } from '$lib/api';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
 
-	type Tab = 'account' | 'plan' | 'notifications' | 'security';
+	type Tab = 'account' | 'plan' | 'notifications' | 'security' | 'personalization';
 	let activeTab = $state<Tab>('account');
 
 	// Account tab
@@ -34,6 +34,18 @@
 	let isEnabling2fa = $state(false);
 	let isVerifying2fa = $state(false);
 
+	// Personalization tab
+	interface PersonalizationSettings {
+		category_weights: { tech: number; finance: number; entertainment: number; lifestyle: number };
+		locale_ratio: number;
+	}
+	let personalization = $state<PersonalizationSettings>({
+		category_weights: { tech: 1.0, finance: 1.0, entertainment: 1.0, lifestyle: 1.0 },
+		locale_ratio: 0.5,
+	});
+	let isLoadingPersonalization = $state(false);
+	let isSavingPersonalization = $state(false);
+
 	// Shared error state
 	let errorOpen = $state(false);
 	let errorCode = $state('');
@@ -48,6 +60,7 @@
 	onMount(() => {
 		displayName = authStore.user?.display_name ?? '';
 		loadNotificationSettings();
+		loadPersonalization();
 	});
 
 	async function saveAccount(): Promise<void> {
@@ -141,11 +154,39 @@
 		}
 	}
 
+	async function loadPersonalization(): Promise<void> {
+		isLoadingPersonalization = true;
+		try {
+			const data = await apiRequest<PersonalizationSettings>('/personalization');
+			personalization = data;
+		} catch {
+			// Non-critical — silently ignore
+		} finally {
+			isLoadingPersonalization = false;
+		}
+	}
+
+	async function savePersonalization(): Promise<void> {
+		isSavingPersonalization = true;
+		try {
+			await apiRequest('/personalization', { method: 'PUT', body: personalization });
+		} catch (error) {
+			if (error instanceof ApiRequestError) {
+				showError(error.errorCode, 'error.server');
+			} else {
+				showError('ERR_NETWORK', 'error.network');
+			}
+		} finally {
+			isSavingPersonalization = false;
+		}
+	}
+
 	const tabs: { key: Tab; labelKey: string }[] = [
 		{ key: 'account', labelKey: 'settings.tab.account' },
 		{ key: 'plan', labelKey: 'settings.tab.plan' },
 		{ key: 'notifications', labelKey: 'settings.tab.notifications' },
 		{ key: 'security', labelKey: 'settings.tab.security' },
+		{ key: 'personalization', labelKey: 'settings.tab.personalization' },
 	];
 </script>
 
@@ -250,6 +291,67 @@
 						</button>
 					</div>
 				{/each}
+			{/if}
+		</div>
+	{/if}
+
+	<!-- Personalization tab -->
+	{#if activeTab === 'personalization'}
+		<div class="max-w-md space-y-6">
+			<h2 class="text-base font-semibold text-gray-900">{$t('settings.personalization.title')}</h2>
+
+			{#if isLoadingPersonalization}
+				<p class="text-sm text-gray-500">{$t('status.loading')}</p>
+			{:else}
+				<div class="space-y-4">
+					<h3 class="text-sm font-medium text-gray-700">{$t('settings.personalization.category_weights')}</h3>
+					{#each (['tech', 'finance', 'entertainment', 'lifestyle'] as const) as cat}
+						<div class="space-y-1">
+							<div class="flex justify-between text-sm">
+								<label class="text-gray-700" for="slider-{cat}">{$t(`settings.personalization.category_${cat}`)}</label>
+								<span class="text-gray-500">{personalization.category_weights[cat].toFixed(1)}</span>
+							</div>
+							<input
+								id="slider-{cat}"
+								type="range"
+								min="0.5"
+								max="2.0"
+								step="0.1"
+								bind:value={personalization.category_weights[cat]}
+								class="w-full accent-blue-600"
+							/>
+						</div>
+					{/each}
+				</div>
+
+				<div class="space-y-2">
+					<h3 class="text-sm font-medium text-gray-700">{$t('settings.personalization.locale_ratio')}</h3>
+					<div class="flex justify-between text-xs text-gray-500">
+						<span>{$t('settings.personalization.locale_overseas')}</span>
+						<span>{$t('settings.personalization.locale_domestic')}</span>
+					</div>
+					<input
+						type="range"
+						min="0.0"
+						max="1.0"
+						step="0.1"
+						bind:value={personalization.locale_ratio}
+						class="w-full accent-blue-600"
+					/>
+					<p class="text-xs text-gray-400 text-right">{personalization.locale_ratio.toFixed(1)}</p>
+				</div>
+
+				<button
+					onclick={savePersonalization}
+					disabled={isSavingPersonalization}
+					class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+				>
+					{#if isSavingPersonalization}
+						{$t('status.loading')}
+					{:else}
+						{$t('button.save')}
+					{/if}
+				</button>
 			{/if}
 		</div>
 	{/if}
