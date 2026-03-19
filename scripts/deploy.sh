@@ -51,11 +51,11 @@ echo "       7일 초과 백업 정리 완료"
 
 # --- [2/7] DB 마이그레이션 ---
 echo ""
-echo "[2/7] DB 마이그레이션 (alembic upgrade head)..."
+echo "[2/7] DB 마이그레이션 (python -m migrations.runner)..."
 docker compose -f "$COMPOSE_FILE" run --rm \
     -e APP_ENV=production \
     "$STANDBY_SERVICE" \
-    alembic upgrade head
+    python -m migrations.runner
 echo "       마이그레이션 완료"
 
 # --- [3/7] Standby 슬롯 기동 ---
