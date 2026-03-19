@@ -22,6 +22,8 @@ from backend.api.routers import (
     health,
     insights,
     news,
+    notifications,
+    payments,
     scraps,
     settings,
     subscriptions,
@@ -120,6 +122,8 @@ def create_app() -> FastAPI:
     app.include_router(settings.router, prefix="/api/v1")
     app.include_router(events.router, prefix="/api/v1")
     app.include_router(subscriptions.router, prefix="/api/v1")
+    app.include_router(payments.router, prefix="/api/v1")
+    app.include_router(notifications.router, prefix="/api/v1")
     app.include_router(webhooks_payment.router, prefix="/api/v1")
 
     return app
