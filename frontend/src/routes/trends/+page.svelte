@@ -1,11 +1,14 @@
 <script lang="ts">
 	import { t } from 'svelte-i18n';
 	import { onMount } from 'svelte';
-	import { apiRequest, ApiRequestError, QuotaExceededRequestError } from '$lib/api';
+	import { apiRequest, ApiRequestError, QuotaExceededRequestError, PlanGateRequestError } from '$lib/api';
 	import type { TrendListResponse, TrendItem } from '$lib/api';
 	import TrendCard from '../../components/TrendCard.svelte';
+	import TrendMap from '$lib/components/TrendMap.svelte';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
 	import QuotaExceededModal from '$lib/ui/QuotaExceededModal.svelte';
+	import PlanGate from '$lib/ui/PlanGate.svelte';
+	import { Download, Share2 } from 'lucide-svelte';
 
 	interface PersonalizationSettings {
 		category_weights: { tech: number; finance: number; entertainment: number; lifestyle: number };
@@ -29,6 +32,16 @@
 	let quotaFeature = $state('');
 	let quotaLimit = $state(0);
 	let quotaResetTime = $state('');
+
+	let planGateOpen = $state(false);
+	let planGateRequired = $state('pro');
+
+	let isExportingCsv = $state(false);
+	let isExportingPdf = $state(false);
+	let isSharing = $state(false);
+
+	// ID of the top trend to use for TrendMap
+	const topTrendId = $derived(trends.length > 0 ? trends[0].id : null);
 
 	function getLocaleParam(): string | null {
 		if (!personalization) return null;
@@ -76,6 +89,83 @@
 		}
 	}
 
+	function showPlanGate(plan: string): void {
+		planGateRequired = plan;
+		planGateOpen = true;
+	}
+
+	async function exportTrends(format: 'csv' | 'pdf'): Promise<void> {
+		if (format === 'csv') {
+			isExportingCsv = true;
+		} else {
+			isExportingPdf = true;
+		}
+		try {
+			// Fetch as blob for file download
+			const response = await fetch(
+				`${import.meta.env.VITE_API_BASE_URL ?? '/api/v1'}/trends/export?format=${format}`,
+				{
+					headers: {
+						Authorization: `Bearer ${localStorage.getItem('access_token') ?? ''}`,
+					},
+				}
+			);
+			if (response.status === 402 || response.status === 403) {
+				const body = await response.json().catch(() => ({}));
+				showPlanGate(body.required_plan ?? 'pro');
+				return;
+			}
+			if (!response.ok) {
+				errorCode = 'ERR_EXPORT';
+				errorMessageKey = 'error.server';
+				errorOpen = true;
+				return;
+			}
+			const blob = await response.blob();
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = `trends.${format}`;
+			a.click();
+			URL.revokeObjectURL(url);
+		} catch {
+			errorCode = 'ERR_NETWORK';
+			errorMessageKey = 'error.network';
+			errorOpen = true;
+		} finally {
+			isExportingCsv = false;
+			isExportingPdf = false;
+		}
+	}
+
+	async function shareTrends(): Promise<void> {
+		if (isSharing) return;
+		isSharing = true;
+		try {
+			const data = await apiRequest<{ share_url: string }>('/trends/share', { method: 'POST' });
+			await navigator.clipboard.writeText(data.share_url);
+			// Brief success indicator via error modal (re-using with success message would need a toast,
+			// but UX spec says use modals for all user messages — show inline instead)
+			errorCode = '';
+			errorMessageKey = 'trends.share.copied';
+			errorOpen = true;
+		} catch (error) {
+			if (error instanceof PlanGateRequestError) {
+				showPlanGate(error.requiredPlan);
+			} else if (error instanceof ApiRequestError) {
+				errorCode = error.errorCode;
+				errorMessageKey = 'trends.share.error';
+				errorOpen = true;
+			} else {
+				errorCode = 'ERR_NETWORK';
+				errorMessageKey = 'error.network';
+				errorOpen = true;
+			}
+		} finally {
+			isSharing = false;
+		}
+	}
+
 	async function loadMore(): Promise<void> {
 		if (!nextCursor || isLoadingMore) return;
 		isLoadingMore = true;
@@ -95,13 +185,43 @@
 </script>
 
 <div class="space-y-6">
-	<div class="flex items-center gap-3">
-		<h1 class="text-2xl font-bold text-gray-900">{$t('page.trends.title')}</h1>
-		{#if personalization}
-			<span class="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">
-				{$t('trends.personalized_badge')}
-			</span>
-		{/if}
+	<div class="flex flex-wrap items-center justify-between gap-3">
+		<div class="flex items-center gap-3">
+			<h1 class="text-2xl font-bold text-gray-900">{$t('page.trends.title')}</h1>
+			{#if personalization}
+				<span class="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">
+					{$t('trends.personalized_badge')}
+				</span>
+			{/if}
+		</div>
+
+		<!-- Export / Share toolbar -->
+		<div class="flex items-center gap-2">
+			<button
+				onclick={() => exportTrends('csv')}
+				disabled={isExportingCsv}
+				class="flex items-center gap-1.5 rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+			>
+				<Download size={14} />
+				{$t('trends.export.csv')}
+			</button>
+			<button
+				onclick={() => exportTrends('pdf')}
+				disabled={isExportingPdf}
+				class="flex items-center gap-1.5 rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+			>
+				<Download size={14} />
+				{$t('trends.export.pdf')}
+			</button>
+			<button
+				onclick={shareTrends}
+				disabled={isSharing}
+				class="flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+			>
+				<Share2 size={14} />
+				{$t('trends.share.button')}
+			</button>
+		</div>
 	</div>
 
 	{#if personalization}
@@ -141,7 +261,12 @@
 			</div>
 		{/if}
 	{/if}
+
+	{#if topTrendId && !isLoading}
+		<TrendMap trendId={topTrendId} />
+	{/if}
 </div>
 
+<PlanGate open={planGateOpen} requiredPlan={planGateRequired} onClose={() => (planGateOpen = false)} />
 <ErrorModal open={errorOpen} errorCode={errorCode} messageKey={errorMessageKey} onClose={() => (errorOpen = false)} onRetry={() => { errorOpen = false; loadTrends(); }} />
 <QuotaExceededModal open={quotaOpen} feature={quotaFeature} limit={quotaLimit} resetTime={quotaResetTime} onClose={() => (quotaOpen = false)} />
