@@ -13,6 +13,9 @@ SEEDS: list[tuple[str, str, str, str]] = [
     ("ai_model_fallback", "gpt-4o-mini", "gpt-4o-mini", "AI 폴백 모델"),
     ("quota_free_trends", "10", "10", "Free 플랜 /trends 일일 한도"),
     ("quota_pro_trends", "100", "100", "Pro 플랜 /trends 일일 한도"),
+    ("early_trend_w_burst", "0.5", "0.5", "EarlyTrend 버스트 가중치"),
+    ("early_trend_w_velocity", "0.3", "0.3", "EarlyTrend 속도 가중치"),
+    ("early_trend_w_diversity", "0.2", "0.2", "EarlyTrend 다양성 가중치"),
 ]
 
 

@@ -125,5 +125,27 @@
 	"settings.security.2fa_scan_qr": "Scan the QR code below with your authenticator app.",
 	"settings.security.2fa_code_label": "Authentication Code",
 	"settings.security.2fa_verify": "Verify Code",
-	"settings.security.2fa_success": "Two-factor authentication has been successfully enabled."
+	"settings.security.2fa_success": "Two-factor authentication has been successfully enabled.",
+
+	"nav.content": "Content Ideas",
+
+	"content.title": "Content Ideas",
+	"content.input_placeholder": "Enter keyword...",
+	"content.generate": "Generate Ideas",
+	"content.cached_badge": "Cached",
+	"content.idea.platform": "Platform",
+	"content.idea.difficulty": "Difficulty",
+
+	"settings.tab.personalization": "Personalization",
+	"settings.personalization.title": "Personalization Settings",
+	"settings.personalization.category_weights": "Category Weights",
+	"settings.personalization.locale_ratio": "Locale Ratio",
+	"settings.personalization.locale_domestic": "Domestic",
+	"settings.personalization.locale_overseas": "Overseas",
+	"settings.personalization.category_tech": "Tech",
+	"settings.personalization.category_finance": "Finance",
+	"settings.personalization.category_entertainment": "Entertainment",
+	"settings.personalization.category_lifestyle": "Lifestyle",
+
+	"trends.personalized_badge": "Personalized Feed Active"
 }

@@ -125,5 +125,27 @@
 	"settings.security.2fa_scan_qr": "아래 QR 코드를 인증 앱으로 스캔하세요.",
 	"settings.security.2fa_code_label": "인증 코드",
 	"settings.security.2fa_verify": "인증 확인",
-	"settings.security.2fa_success": "2단계 인증이 성공적으로 활성화되었습니다."
+	"settings.security.2fa_success": "2단계 인증이 성공적으로 활성화되었습니다.",
+
+	"nav.content": "콘텐츠 아이디어",
+
+	"content.title": "콘텐츠 아이디어",
+	"content.input_placeholder": "키워드 입력...",
+	"content.generate": "아이디어 생성",
+	"content.cached_badge": "캐시됨",
+	"content.idea.platform": "플랫폼",
+	"content.idea.difficulty": "난이도",
+
+	"settings.tab.personalization": "개인화",
+	"settings.personalization.title": "개인화 설정",
+	"settings.personalization.category_weights": "카테고리 가중치",
+	"settings.personalization.locale_ratio": "로케일 비율",
+	"settings.personalization.locale_domestic": "국내",
+	"settings.personalization.locale_overseas": "해외",
+	"settings.personalization.category_tech": "기술",
+	"settings.personalization.category_finance": "경제",
+	"settings.personalization.category_entertainment": "엔터",
+	"settings.personalization.category_lifestyle": "라이프스타일",
+
+	"trends.personalized_badge": "맞춤 피드 적용 중"
 }

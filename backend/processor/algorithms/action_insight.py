@@ -20,6 +20,25 @@ from backend.processor.shared.cache_manager import get_cached, set_cached
 logger = structlog.get_logger(__name__)
 
 _CACHE_TTL = 3600  # 1 hour
+_ROUGE_THRESHOLD = 0.05
+
+
+def _rouge1_recall(hypothesis: str, reference: str) -> float:
+    """Compute ROUGE-1 recall between hypothesis and reference strings.
+
+    Args:
+        hypothesis: Generated text to evaluate.
+        reference:  Source text to compare against.
+
+    Returns:
+        Recall score in [0, 1].
+    """
+    hyp = set(hypothesis.lower().split())
+    ref = set(reference.lower().split())
+    if not ref:
+        return 0.0
+    return len(hyp & ref) / len(ref)
+
 
 _ROLE_PROMPTS: dict[str, str] = {
     "marketer": (
@@ -120,6 +139,19 @@ class ActionInsightEngine:
             )
             result_str = ""
             degraded = True
+
+        # ROUGE-1 gate: if AI output has insufficient overlap with source, use fallback
+        if result_str and not degraded:
+            source_text = " ".join(s.body for s in sources)
+            rouge = _rouge1_recall(result_str, source_text)
+            if rouge < _ROUGE_THRESHOLD:
+                logger.warning(
+                    "insight_rouge_gate_triggered",
+                    rouge=rouge,
+                    threshold=_ROUGE_THRESHOLD,
+                )
+                result_str = ""
+                degraded = True
 
         content_dict: dict
         try:
