@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { t } from 'svelte-i18n';
 	import { onMount } from 'svelte';
-	import { apiRequest, ApiRequestError } from '$lib/api';
+	import { apiRequest, ApiRequestError, QuotaExceededRequestError } from '$lib/api';
 	import type { NewsListResponse, NewsItem } from '$lib/api';
 	import NewsCard from '../../components/NewsCard.svelte';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
+	import QuotaExceededModal from '$lib/ui/QuotaExceededModal.svelte';
 
 	let news = $state<NewsItem[]>([]);
 	let nextCursor = $state<string | null>(null);
@@ -14,6 +15,11 @@
 	let errorOpen = $state(false);
 	let errorCode = $state('');
 	let errorMessageKey = $state('');
+
+	let quotaOpen = $state(false);
+	let quotaFeature = $state('');
+	let quotaLimit = $state(0);
+	let quotaResetTime = $state('');
 
 	async function loadNews(cursor?: string): Promise<void> {
 		try {
@@ -28,14 +34,20 @@
 			}
 			nextCursor = data.next_cursor;
 		} catch (error) {
-			if (error instanceof ApiRequestError) {
+			if (error instanceof QuotaExceededRequestError) {
+				quotaFeature = error.quotaType;
+				quotaLimit = error.limit;
+				quotaResetTime = error.resetAt;
+				quotaOpen = true;
+			} else if (error instanceof ApiRequestError) {
 				errorCode = error.errorCode;
 				errorMessageKey = 'error.server';
+				errorOpen = true;
 			} else {
 				errorCode = 'ERR_NETWORK';
 				errorMessageKey = 'error.network';
+				errorOpen = true;
 			}
-			errorOpen = true;
 		}
 	}
 
@@ -85,3 +97,4 @@
 </div>
 
 <ErrorModal open={errorOpen} errorCode={errorCode} messageKey={errorMessageKey} onClose={() => (errorOpen = false)} onRetry={() => { errorOpen = false; loadNews(); }} />
+<QuotaExceededModal open={quotaOpen} feature={quotaFeature} limit={quotaLimit} resetTime={quotaResetTime} onClose={() => (quotaOpen = false)} />
