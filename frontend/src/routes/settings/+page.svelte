@@ -4,6 +4,8 @@
 	import { authStore } from '$lib/stores/auth';
 	import { apiRequest, ApiRequestError } from '$lib/api';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
+	import PlanGate from '$lib/ui/PlanGate.svelte';
+	import { X } from 'lucide-svelte';
 
 	type Tab = 'account' | 'plan' | 'notifications' | 'security' | 'personalization';
 	let activeTab = $state<Tab>('account');
@@ -12,7 +14,7 @@
 	let displayName = $state('');
 	let isSavingAccount = $state(false);
 
-	// Notification tab
+	// Notification tab — channel toggles
 	interface NotificationSettings {
 		trend_alert: boolean;
 		quota_warning: boolean;
@@ -24,6 +26,19 @@
 		plan_expiry: false,
 	});
 	let isLoadingNotif = $state(false);
+
+	// Notification tab — keyword alerts
+	interface KeywordAlert {
+		id: string;
+		keyword: string;
+	}
+	let keywordAlerts = $state<KeywordAlert[]>([]);
+	let isLoadingKeywords = $state(false);
+	let newKeyword = $state('');
+	let isAddingKeyword = $state(false);
+	let deletingKeywordId = $state<string | null>(null);
+	let planGateOpen = $state(false);
+	let planGateRequired = $state('pro');
 
 	// Security tab (2FA)
 	let twoFaSecret = $state('');
@@ -60,6 +75,7 @@
 	onMount(() => {
 		displayName = authStore.user?.display_name ?? '';
 		loadNotificationSettings();
+		loadKeywordAlerts();
 		loadPersonalization();
 	});
 
@@ -151,6 +167,61 @@
 			}
 		} finally {
 			isVerifying2fa = false;
+		}
+	}
+
+	async function loadKeywordAlerts(): Promise<void> {
+		isLoadingKeywords = true;
+		try {
+			const data = await apiRequest<{ keywords: KeywordAlert[] }>('/notifications/keywords');
+			keywordAlerts = data.keywords;
+		} catch {
+			// Non-critical — silently ignore
+		} finally {
+			isLoadingKeywords = false;
+		}
+	}
+
+	async function addKeywordAlert(): Promise<void> {
+		const kw = newKeyword.trim();
+		if (!kw || isAddingKeyword) return;
+		isAddingKeyword = true;
+		try {
+			const data = await apiRequest<KeywordAlert>('/notifications/keywords', {
+				method: 'POST',
+				body: { keyword: kw },
+			});
+			keywordAlerts = [...keywordAlerts, data];
+			newKeyword = '';
+		} catch (error) {
+			if (error instanceof ApiRequestError) {
+				if (error.errorCode === 'PLAN_GATE' || error.status === 402 || error.status === 403) {
+					planGateRequired = 'pro';
+					planGateOpen = true;
+				} else {
+					showError(error.errorCode, 'notification.keywords.error.add');
+				}
+			} else {
+				showError('ERR_NETWORK', 'error.network');
+			}
+		} finally {
+			isAddingKeyword = false;
+		}
+	}
+
+	async function deleteKeywordAlert(id: string): Promise<void> {
+		deletingKeywordId = id;
+		try {
+			await apiRequest(`/notifications/keywords/${id}`, { method: 'DELETE' });
+			keywordAlerts = keywordAlerts.filter((k) => k.id !== id);
+		} catch (error) {
+			if (error instanceof ApiRequestError) {
+				showError(error.errorCode, 'notification.keywords.error.delete');
+			} else {
+				showError('ERR_NETWORK', 'error.network');
+			}
+		} finally {
+			deletingKeywordId = null;
 		}
 	}
 
@@ -268,30 +339,85 @@
 
 	<!-- Notifications tab -->
 	{#if activeTab === 'notifications'}
-		<div class="max-w-md space-y-4">
-			{#if isLoadingNotif}
-				<p class="text-sm text-gray-500">{$t('status.loading')}</p>
-			{:else}
-				{#each (['trend_alert', 'quota_warning', 'plan_expiry'] as const) as channel}
-					<div class="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4">
-						<span class="text-sm font-medium text-gray-900">{$t(`settings.notifications.${channel}`)}</span>
-						<button
-							role="switch"
-							aria-checked={notifSettings[channel]}
-							onclick={() => saveNotificationChannel(channel, !notifSettings[channel])}
-							class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
-							class:bg-blue-600={notifSettings[channel]}
-							class:bg-gray-200={!notifSettings[channel]}
-						>
-							<span
-								class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform"
-								class:translate-x-6={notifSettings[channel]}
-								class:translate-x-1={!notifSettings[channel]}
-							></span>
-						</button>
-					</div>
-				{/each}
-			{/if}
+		<div class="max-w-md space-y-6">
+			<!-- Channel toggles -->
+			<div class="space-y-3">
+				{#if isLoadingNotif}
+					<p class="text-sm text-gray-500">{$t('status.loading')}</p>
+				{:else}
+					{#each (['trend_alert', 'quota_warning', 'plan_expiry'] as const) as channel}
+						<div class="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4">
+							<span class="text-sm font-medium text-gray-900">{$t(`settings.notifications.${channel}`)}</span>
+							<button
+								role="switch"
+								aria-checked={notifSettings[channel]}
+								onclick={() => saveNotificationChannel(channel, !notifSettings[channel])}
+								class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
+								class:bg-blue-600={notifSettings[channel]}
+								class:bg-gray-200={!notifSettings[channel]}
+							>
+								<span
+									class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform"
+									class:translate-x-6={notifSettings[channel]}
+									class:translate-x-1={!notifSettings[channel]}
+								></span>
+							</button>
+						</div>
+					{/each}
+				{/if}
+			</div>
+
+			<!-- Keyword alerts -->
+			<div class="space-y-3">
+				<div>
+					<h2 class="text-sm font-semibold text-gray-900">{$t('notification.keywords.title')}</h2>
+					<p class="text-xs text-gray-500 mt-0.5">{$t('notification.keywords.description')}</p>
+					<p class="text-xs text-gray-400 mt-0.5">
+						{$t('notification.keywords.limit_pro')} · {$t('notification.keywords.limit_business')}
+					</p>
+				</div>
+
+				<!-- Add keyword input -->
+				<div class="flex gap-2">
+					<input
+						type="text"
+						bind:value={newKeyword}
+						placeholder={$t('notification.keywords.add_placeholder')}
+						onkeydown={(e) => e.key === 'Enter' && addKeywordAlert()}
+						class="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+					/>
+					<button
+						onclick={addKeywordAlert}
+						disabled={!newKeyword.trim() || isAddingKeyword}
+						class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+					>
+						{$t('notification.keywords.add_button')}
+					</button>
+				</div>
+
+				<!-- Keyword list -->
+				{#if isLoadingKeywords}
+					<p class="text-sm text-gray-500">{$t('status.loading')}</p>
+				{:else if keywordAlerts.length === 0}
+					<p class="text-sm text-gray-400">{$t('notification.keywords.empty')}</p>
+				{:else}
+					<ul class="space-y-2">
+						{#each keywordAlerts as kw}
+							<li class="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-2.5">
+								<span class="text-sm text-gray-800">{kw.keyword}</span>
+								<button
+									onclick={() => deleteKeywordAlert(kw.id)}
+									disabled={deletingKeywordId === kw.id}
+									class="text-gray-400 hover:text-red-500 disabled:opacity-50"
+									aria-label={$t('button.delete')}
+								>
+									<X size={16} />
+								</button>
+							</li>
+						{/each}
+					</ul>
+				{/if}
+			</div>
 		</div>
 	{/if}
 
@@ -407,6 +533,12 @@
 		</div>
 	{/if}
 </div>
+
+<PlanGate
+	open={planGateOpen}
+	requiredPlan={planGateRequired}
+	onClose={() => (planGateOpen = false)}
+/>
 
 <ErrorModal
 	open={errorOpen}
