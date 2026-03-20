@@ -22,6 +22,7 @@ MIGRATIONS: List[str] = [
     "migrations.007_notification_keywords",
     "migrations.008_indexes",
     "migrations.009_audit_archive",
+    "migrations.010_index_tuning",
 ]
 
 
