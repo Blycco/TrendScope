@@ -16,7 +16,7 @@ WORKDIR /app
 
 # Layer cache: deps first, then source
 COPY --from=builder /install /usr/local
-COPY . .
+COPY backend/ ./backend/
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
