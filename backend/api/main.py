@@ -11,6 +11,7 @@ import structlog
 import structlog.stdlib
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from backend.api.middleware.plan_gate import PlanGateMiddleware
 from backend.api.middleware.quota import QuotaMiddleware
@@ -41,6 +42,7 @@ from backend.api.routers.admin import sources as admin_sources
 from backend.api.routers.admin import subscriptions as admin_subscriptions
 from backend.api.routers.admin import users as admin_users
 from backend.api.routers.webhooks import payment as webhooks_payment
+from backend.jobs.audit_archive import register_archive_job
 from backend.processor.shared.cache_manager import close_redis, init_redis
 
 # --- Logging setup ---
@@ -92,7 +94,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.error("redis_init_failed", error=str(exc))
         raise
 
+    scheduler = register_archive_job(app)
+    scheduler.start()
+    logger.info("audit_archive_scheduler_started")
+
     yield
+
+    scheduler.shutdown(wait=False)
+    logger.info("audit_archive_scheduler_stopped")
 
     await app.state.db_pool.close()
     logger.info("db_pool_closed")
@@ -149,6 +158,8 @@ def create_app() -> FastAPI:
     app.include_router(admin_settings.router, prefix="/admin/v1")
     app.include_router(admin_audit.router, prefix="/admin/v1")
     app.include_router(admin_analytics.router, prefix="/admin/v1")
+
+    Instrumentator().instrument(app).expose(app)
 
     return app
 
