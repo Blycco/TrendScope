@@ -28,6 +28,7 @@ from backend.api.routers import (
     personalization,
     scraps,
     settings,
+    shares,
     subscriptions,
     trends,
 )
@@ -128,6 +129,7 @@ def create_app() -> FastAPI:
     app.include_router(notifications.router, prefix="/api/v1")
     app.include_router(content.router, prefix="/api/v1")
     app.include_router(personalization.router, prefix="/api/v1")
+    app.include_router(shares.router, prefix="/api/v1")
     app.include_router(webhooks_payment.router, prefix="/api/v1")
 
     return app
