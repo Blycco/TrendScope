@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import asyncpg
 import structlog
@@ -92,10 +92,6 @@ def _get_quota_limit(path: str, plan_level: int) -> tuple[str | None, int | None
     return quota_type, None
 
 
-def _today_utc() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
-
-
 class QuotaMiddleware(BaseHTTPMiddleware):
     def __init__(self, app: ASGIApp) -> None:
         super().__init__(app)
@@ -139,32 +135,31 @@ class QuotaMiddleware(BaseHTTPMiddleware):
                     },
                 )
 
-            if limit is None:
-                # unlimited
+            if limit is None or user_id is None:
+                # unlimited plan or anonymous user — skip DB tracking
                 return await call_next(request)
 
-            # check against DB
+            # finite limit — check against DB
             db_pool = request.app.state.db_pool
-            today = _today_utc()
+            reset_at = datetime.now(timezone.utc).replace(
+                hour=0, minute=0, second=0, microsecond=0
+            ) + timedelta(days=1)
 
             async with db_pool.acquire() as conn:
                 row = await conn.fetchrow(
                     """
-                    SELECT usage_count FROM api_usage
+                    SELECT used_count FROM api_usage
                     WHERE user_id = $1
-                      AND quota_type = $2
-                      AND usage_date = $3
+                      AND endpoint = $2
+                      AND reset_at = $3
                     """,
                     user_id,
                     quota_type,
-                    today,
+                    reset_at,
                 )
-                current_usage = row["usage_count"] if row else 0
+                current_usage = row["used_count"] if row else 0
 
                 if current_usage >= limit:
-                    reset_at = datetime.now(timezone.utc).replace(
-                        hour=0, minute=0, second=0, microsecond=0
-                    )
                     logger.warning(
                         "quota_exceeded",
                         user_id=user_id,
@@ -191,14 +186,15 @@ class QuotaMiddleware(BaseHTTPMiddleware):
                 async with db_pool.acquire() as conn:
                     await conn.execute(
                         """
-                        INSERT INTO api_usage (user_id, quota_type, usage_date, usage_count)
-                        VALUES ($1, $2, $3, 1)
-                        ON CONFLICT (user_id, quota_type, usage_date)
-                        DO UPDATE SET usage_count = api_usage.usage_count + 1
+                        INSERT INTO api_usage (user_id, endpoint, used_count, quota_limit, reset_at)
+                        VALUES ($1, $2, 1, $3, $4)
+                        ON CONFLICT (user_id, endpoint, reset_at)
+                        DO UPDATE SET used_count = api_usage.used_count + 1
                         """,
                         user_id,
                         quota_type,
-                        today,
+                        limit,
+                        reset_at,
                     )
 
             return response
