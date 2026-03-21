@@ -33,6 +33,16 @@ DDL_INDEX = (
 DDL_DOWN = "DROP TABLE IF EXISTS notification"
 
 
+VERSION = "003_notifications"
+DESCRIPTION = "Add notification table for per-user channel settings"
+
+
+async def up(conn: asyncpg.Connection) -> None:
+    """Apply migration 003 using an existing connection."""
+    await conn.execute(DDL_UP)
+    await conn.execute(DDL_INDEX)
+
+
 async def run_migration(dsn: str, *, rollback: bool = False) -> None:
     """Apply or rollback migration 003."""
     conn: asyncpg.Connection = await asyncpg.connect(dsn)

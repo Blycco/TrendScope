@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from datetime import datetime, timezone
 
 import asyncpg
@@ -100,6 +101,8 @@ class QuotaMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
 
     async def dispatch(self, request: Request, call_next):  # noqa: ANN001, ANN201
+        if os.environ.get("QUOTA_DISABLED", "false").lower() == "true":
+            return await call_next(request)
         try:
             if request.method not in _GATED_METHODS:
                 return await call_next(request)

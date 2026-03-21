@@ -26,6 +26,10 @@ SQL_DOWN = [
 ]
 
 
+VERSION = "005_brand_monitor"
+DESCRIPTION = "Add slack_webhook and last_alerted_at to brand_monitor"
+
+
 async def upgrade(conn: asyncpg.Connection) -> None:
     """Apply migration 005."""
     try:
@@ -46,3 +50,6 @@ async def downgrade(conn: asyncpg.Connection) -> None:
     except Exception:
         logger.exception("migration_005_failed", direction="down")
         raise
+
+
+up = upgrade  # runner interface alias

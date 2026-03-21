@@ -24,6 +24,15 @@ ALTER TABLE user_profile
 """
 
 
+VERSION = "002_email_verified"
+DESCRIPTION = "Add email_verified column to user_profile"
+
+
+async def up(conn: asyncpg.Connection) -> None:
+    """Apply migration 002 using an existing connection."""
+    await conn.execute(DDL_UP)
+
+
 async def run_migration(dsn: str, *, rollback: bool = False) -> None:
     """Apply or rollback migration 002."""
     conn: asyncpg.Connection = await asyncpg.connect(dsn)

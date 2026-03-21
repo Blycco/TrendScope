@@ -47,7 +47,7 @@ export default function () {
 
   switch (scenario) {
     case "feed":
-      res = http.get(`${BASE_URL}/api/trends?locale=ko`, {
+      res = http.get(`${BASE_URL}/api/v1/trends?locale=ko`, {
         tags: { name: "feed" },
       });
       check(res, {
@@ -56,7 +56,7 @@ export default function () {
       break;
 
     case "news":
-      res = http.get(`${BASE_URL}/api/news?locale=ko`, {
+      res = http.get(`${BASE_URL}/api/v1/news?locale=ko`, {
         tags: { name: "news" },
       });
       check(res, {
@@ -65,11 +65,13 @@ export default function () {
       break;
 
     case "early":
-      res = http.get(`${BASE_URL}/api/trends/early?locale=ko`, {
+      res = http.get(`${BASE_URL}/api/v1/trends/early?locale=ko`, {
         tags: { name: "early" },
+        // 401 is expected for unauthenticated requests — don't count as http_req_failed
+        responseCallback: http.expectedStatuses({ min: 200, max: 499 }),
       });
       check(res, {
-        "early 200": (r) => r.status === 200,
+        "early <500": (r) => r.status < 500,
       }) || errorRate.add(1);
       break;
 
