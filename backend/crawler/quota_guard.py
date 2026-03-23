@@ -5,6 +5,8 @@ from __future__ import annotations
 import asyncpg
 import structlog
 
+from backend.common.metrics import SOURCE_QUOTA_RATIO
+
 logger = structlog.get_logger(__name__)
 
 
@@ -35,6 +37,8 @@ async def check_quota(source_name: str, db_pool: asyncpg.Pool) -> bool:
 
         if limit == 0:
             return True
+
+        SOURCE_QUOTA_RATIO.labels(source=source_name).set(used / limit)
 
         if used >= limit:
             logger.warning(

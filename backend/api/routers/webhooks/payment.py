@@ -12,6 +12,7 @@ from fastapi import APIRouter, HTTPException, Request
 
 from backend.common.audit import write_audit_log
 from backend.common.errors import ErrorCode, http_error
+from backend.common.metrics import PAYMENT_FAILURES
 from backend.db.queries.subscriptions import update_subscription_by_provider_id
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
@@ -96,6 +97,7 @@ async def payment_webhook(request: Request) -> dict:
     except HTTPException:
         raise
     except Exception as exc:
+        PAYMENT_FAILURES.inc()
         logger.error("payment_webhook_failed", error=str(exc))
         raise http_error(
             ErrorCode.INTERNAL_ERROR,

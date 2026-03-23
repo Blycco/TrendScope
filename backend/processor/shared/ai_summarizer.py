@@ -9,6 +9,7 @@ import re
 
 import structlog
 
+from backend.common.metrics import AI_API_REQUESTS
 from backend.processor.shared.ai_config import AIConfig
 
 logger = structlog.get_logger(__name__)
@@ -36,10 +37,12 @@ async def summarize(text: str, prompt: str, config: AIConfig) -> tuple[str, bool
 
         if provider == "gemini":
             result = await _call_gemini(text, prompt, config)
+            AI_API_REQUESTS.labels(provider="gemini", result="success").inc()
             return (result, False)
 
         if provider == "openai":
             result = await _call_openai(text, prompt, config)
+            AI_API_REQUESTS.labels(provider="openai", result="success").inc()
             return (result, False)
 
         if provider == "textrank":
@@ -51,6 +54,7 @@ async def summarize(text: str, prompt: str, config: AIConfig) -> tuple[str, bool
         return (result, True)
 
     except Exception as exc:
+        AI_API_REQUESTS.labels(provider=config.provider, result="failure").inc()
         logger.warning(
             "ai_provider_failed",
             provider=config.provider,

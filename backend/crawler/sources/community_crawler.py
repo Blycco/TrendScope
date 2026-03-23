@@ -12,6 +12,7 @@ import httpx
 import structlog
 from bs4 import BeautifulSoup
 
+from backend.common.metrics import CRAWLER_REQUESTS
 from backend.crawler.quota_guard import check_quota, increment_quota
 from backend.crawler.sources.robots import is_allowed
 from backend.crawler.sources.rss_feeds import COMMUNITY_FEEDS, FeedSource
@@ -54,9 +55,11 @@ async def crawl_dc_inside(db_pool: asyncpg.Pool) -> list[dict[str, Any]]:
                     logger.warning("dc_feed_error", feed=feed["name"], error=str(exc))
                     continue
 
+        CRAWLER_REQUESTS.labels(source="dc_inside", result="success").inc()
         logger.info("dc_inside_crawl_complete", total=len(articles))
         return articles
     except Exception as exc:
+        CRAWLER_REQUESTS.labels(source="dc_inside", result="failure").inc()
         logger.error("dc_inside_crawl_failed", error=str(exc))
         return []
 
@@ -86,9 +89,11 @@ async def crawl_fm_korea(db_pool: asyncpg.Pool) -> list[dict[str, Any]]:
                     logger.warning("fm_feed_error", feed=feed["name"], error=str(exc))
                     continue
 
+        CRAWLER_REQUESTS.labels(source="fm_korea", result="success").inc()
         logger.info("fm_korea_crawl_complete", total=len(articles))
         return articles
     except Exception as exc:
+        CRAWLER_REQUESTS.labels(source="fm_korea", result="failure").inc()
         logger.error("fm_korea_crawl_failed", error=str(exc))
         return []
 
