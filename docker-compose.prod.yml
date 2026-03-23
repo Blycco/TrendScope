@@ -1,0 +1,170 @@
+services:
+  api-blue:
+    image: trendscope/api:${API_IMAGE_TAG:-latest}
+    container_name: trendscope-api-blue
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - APP_ENV=production
+      - SLOT=blue
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    networks:
+      - trendscope-net
+
+  api-green:
+    image: trendscope/api:${API_IMAGE_TAG:-latest}
+    container_name: trendscope-api-green
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - APP_ENV=production
+      - SLOT=green
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    networks:
+      - trendscope-net
+
+  processor:
+    image: trendscope/processor:${PROCESSOR_IMAGE_TAG:-latest}
+    container_name: trendscope-processor
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - APP_ENV=production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - trendscope-net
+
+  crawler:
+    image: trendscope/crawler:${CRAWLER_IMAGE_TAG:-latest}
+    container_name: trendscope-crawler
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - APP_ENV=production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - trendscope-net
+
+  frontend:
+    image: trendscope/frontend:${FRONTEND_IMAGE_TAG:-latest}
+    container_name: trendscope-frontend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - APP_ENV=production
+    depends_on:
+      - nginx
+    networks:
+      - trendscope-net
+
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: trendscope-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./infra/nginx/upstream.conf:/etc/nginx/conf.d/upstream.conf
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/www/certbot:/var/www/certbot:ro
+    networks:
+      - trendscope-net
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: trendscope-postgres
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - trendscope-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: trendscope-redis
+    restart: unless-stopped
+    command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - trendscope-net
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: trendscope-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks:
+      - trendscope-net
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: trendscope-grafana
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - trendscope-net
+
+volumes:
+  postgres-data:
+  redis-data:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  trendscope-net:
+    driver: bridge

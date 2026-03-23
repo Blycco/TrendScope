@@ -1,0 +1,53 @@
+services:
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: trendscope/api:test
+    container_name: trendscope-api-test
+    env_file: .env.test
+    environment:
+      - APP_ENV=test
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - trendscope-test-net
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: trendscope-postgres-test
+    environment:
+      - POSTGRES_DB=trendscope_test
+      - POSTGRES_USER=trendscope_test
+      - POSTGRES_PASSWORD=trendscope_test
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trendscope_test -d trendscope_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    networks:
+      - trendscope-test-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: trendscope-redis-test
+    command: redis-server --maxmemory 64mb --maxmemory-policy allkeys-lru
+    tmpfs:
+      - /data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - trendscope-test-net
+
+networks:
+  trendscope-test-net:
+    driver: bridge
