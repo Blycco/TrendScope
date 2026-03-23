@@ -126,6 +126,40 @@ async def fetch_early_trends(
 
 
 # ---------------------------------------------------------------------------
+# Related trends query  (same category, ordered by score DESC)
+# ---------------------------------------------------------------------------
+
+
+async def fetch_related_trends(
+    pool: asyncpg.Pool,
+    *,
+    trend_id: str,
+    limit: int = 10,
+) -> list[asyncpg.Record]:
+    """Fetch news_group rows in the same category as trend_id, excluding trend_id itself."""
+    try:
+        async with pool.acquire() as conn:
+            return await conn.fetch(
+                """
+                SELECT id::text, category, locale, title, summary,
+                       score, early_trend_score, keywords, created_at
+                FROM news_group
+                WHERE category = (
+                    SELECT category FROM news_group WHERE id = $1::uuid
+                )
+                  AND id <> $1::uuid
+                ORDER BY score DESC
+                LIMIT $2
+                """,
+                trend_id,
+                limit,
+            )
+    except Exception as exc:
+        logger.error("fetch_related_trends_failed", trend_id=trend_id, error=str(exc))
+        raise
+
+
+# ---------------------------------------------------------------------------
 # News queries  (news_article JOIN news_group)
 # ---------------------------------------------------------------------------
 

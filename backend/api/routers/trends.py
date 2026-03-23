@@ -13,7 +13,12 @@ from fastapi.responses import Response, StreamingResponse
 from backend.api.schemas.trends import TrendItem, TrendListResponse
 from backend.auth.dependencies import PLAN_LEVEL, CurrentUser, require_plan
 from backend.common.errors import ErrorCode, error_response
-from backend.db.queries.trends import encode_cursor, fetch_early_trends, fetch_trends
+from backend.db.queries.trends import (
+    encode_cursor,
+    fetch_early_trends,
+    fetch_related_trends,
+    fetch_trends,
+)
 from backend.processor.shared.cache_manager import get_cached, set_cached
 
 router = APIRouter(tags=["trends"])
@@ -81,6 +86,39 @@ async def list_trends(
         await set_cached(cache_key, body_bytes, _CACHE_TTL)
 
     return Response(content=body_bytes, media_type="application/json")
+
+
+@router.get("/trends/{trend_id}/related", response_model=TrendListResponse)
+async def list_related_trends(
+    trend_id: str,
+    request: Request,
+    limit: int = Query(default=10, ge=1, le=50),
+) -> Response:
+    """Return trends in the same category as the given trend, ordered by score DESC.
+
+    Used by TrendMap to render related trend nodes. No authentication required.
+    """
+    try:
+        pool = request.app.state.db_pool
+        rows = await fetch_related_trends(pool, trend_id=trend_id, limit=limit)
+    except Exception as exc:
+        logger.error("related_trends_fetch_failed", trend_id=trend_id, error=str(exc))
+        return error_response(ErrorCode.DB_ERROR, "Failed to fetch related trends", status_code=500)
+
+    items = [
+        TrendItem(
+            id=str(row["id"]),
+            title=row["title"],
+            category=row["category"],
+            score=row["score"],
+            early_trend_score=row["early_trend_score"],
+            keywords=list(row["keywords"] or []),
+            created_at=row["created_at"],
+        )
+        for row in rows
+    ]
+    response_body = TrendListResponse(items=items, next_cursor=None, total=len(items))
+    return Response(content=response_body.model_dump_json().encode(), media_type="application/json")
 
 
 @router.get("/trends/export")

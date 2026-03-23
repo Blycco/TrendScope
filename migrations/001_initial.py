@@ -305,6 +305,19 @@ CREATE_INDEXES: list[str] = [
 # ---------------------------------------------------------------------------
 
 
+VERSION = "001_initial"
+DESCRIPTION = "Initial schema — 15 core tables"
+
+
+async def up(conn: asyncpg.Connection) -> None:
+    """Apply migration 001 using an existing connection."""
+    for ddl in CREATE_TABLES:
+        await conn.execute(ddl)
+    for idx in CREATE_INDEXES:
+        await conn.execute(idx)
+    logger.info("migration_001_complete", tables=len(CREATE_TABLES), indexes=len(CREATE_INDEXES))
+
+
 async def run_migration(dsn: str) -> None:
     """Apply initial schema migration."""
     conn: asyncpg.Connection = await asyncpg.connect(dsn)

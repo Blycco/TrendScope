@@ -79,3 +79,31 @@ def require_plan(minimum_plan: str, status_code: int = 403):  # noqa: ANN201
         return current_user
 
     return _check
+
+
+def require_admin_role(admin_only: bool = False):  # noqa: ANN201
+    """Dependency factory: raise 403 if user is not admin/operator.
+
+    Args:
+        admin_only: If True, only 'admin' role is allowed. Otherwise 'admin' and 'operator'.
+    """
+    allowed_roles = ["admin"] if admin_only else ["admin", "operator"]
+
+    async def _check(current_user: CurrentUser = Depends(require_auth)) -> CurrentUser:  # noqa: B008
+        if current_user.role not in allowed_roles:
+            logger.warning(
+                "admin_access_denied",
+                user_id=current_user.user_id,
+                role=current_user.role,
+                required_roles=allowed_roles,
+            )
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "code": "E0011",
+                    "message": "Admin access required",
+                },
+            )
+        return current_user
+
+    return _check

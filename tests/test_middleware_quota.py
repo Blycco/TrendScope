@@ -25,7 +25,7 @@ def _make_db_pool(usage_count: int | None = 0) -> MagicMock:
     if usage_count is None:
         conn.fetchrow = AsyncMock(return_value=None)
     else:
-        row = {"usage_count": usage_count}
+        row = {"used_count": usage_count}
         conn.fetchrow = AsyncMock(return_value=row)
 
     conn.execute = AsyncMock(return_value=None)

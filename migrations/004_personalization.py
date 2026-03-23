@@ -25,6 +25,15 @@ CREATE TABLE IF NOT EXISTS user_personalization (
 DDL_DOWN = "DROP TABLE IF EXISTS user_personalization"
 
 
+VERSION = "004_personalization"
+DESCRIPTION = "Add user_personalization table for per-user content weights"
+
+
+async def up(conn: asyncpg.Connection) -> None:
+    """Apply migration 004 using an existing connection."""
+    await conn.execute(DDL_UP)
+
+
 async def run_migration(dsn: str, *, rollback: bool = False) -> None:
     """Apply or rollback migration 004."""
     conn: asyncpg.Connection = await asyncpg.connect(dsn)

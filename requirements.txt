@@ -30,3 +30,6 @@ prophet>=1.1.5
 sentence-transformers>=3.0.0
 numpy>=1.26.0
 pybloom-live>=4.0.0
+
+# Phase 10: Observability
+prometheus-fastapi-instrumentator>=6.0.0

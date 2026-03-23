@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import time
 
 import structlog
@@ -50,6 +51,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
 
     async def dispatch(self, request: Request, call_next):  # noqa: ANN001, ANN201
+        if os.environ.get("RATE_LIMIT_DISABLED", "false").lower() == "true":
+            return await call_next(request)
         try:
             path = request.url.path
             user_id = _extract_user_id(request)

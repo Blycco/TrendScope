@@ -11,12 +11,14 @@ import structlog
 import structlog.stdlib
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from backend.api.middleware.plan_gate import PlanGateMiddleware
 from backend.api.middleware.quota import QuotaMiddleware
 from backend.api.middleware.rate_limit import RateLimitMiddleware
 from backend.api.routers import (
     auth,
+    brand,
     content,
     early_trend,
     events,
@@ -32,7 +34,15 @@ from backend.api.routers import (
     subscriptions,
     trends,
 )
+from backend.api.routers.admin import ai_config as admin_ai_config
+from backend.api.routers.admin import analytics as admin_analytics
+from backend.api.routers.admin import audit as admin_audit
+from backend.api.routers.admin import settings as admin_settings
+from backend.api.routers.admin import sources as admin_sources
+from backend.api.routers.admin import subscriptions as admin_subscriptions
+from backend.api.routers.admin import users as admin_users
 from backend.api.routers.webhooks import payment as webhooks_payment
+from backend.jobs.audit_archive import register_archive_job
 from backend.processor.shared.cache_manager import close_redis, init_redis
 
 # --- Logging setup ---
@@ -84,7 +94,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.error("redis_init_failed", error=str(exc))
         raise
 
+    scheduler = register_archive_job(app)
+    scheduler.start()
+    logger.info("audit_archive_scheduler_started")
+
     yield
+
+    scheduler.shutdown(wait=False)
+    logger.info("audit_archive_scheduler_stopped")
 
     await app.state.db_pool.close()
     logger.info("db_pool_closed")
@@ -129,8 +146,20 @@ def create_app() -> FastAPI:
     app.include_router(notifications.router, prefix="/api/v1")
     app.include_router(content.router, prefix="/api/v1")
     app.include_router(personalization.router, prefix="/api/v1")
+    app.include_router(brand.router, prefix="/api/v1")
     app.include_router(shares.router, prefix="/api/v1")
     app.include_router(webhooks_payment.router, prefix="/api/v1")
+
+    # Admin panel routers
+    app.include_router(admin_users.router, prefix="/admin/v1")
+    app.include_router(admin_subscriptions.router, prefix="/admin/v1")
+    app.include_router(admin_sources.router, prefix="/admin/v1")
+    app.include_router(admin_ai_config.router, prefix="/admin/v1")
+    app.include_router(admin_settings.router, prefix="/admin/v1")
+    app.include_router(admin_audit.router, prefix="/admin/v1")
+    app.include_router(admin_analytics.router, prefix="/admin/v1")
+
+    Instrumentator().instrument(app).expose(app)
 
     return app
 
