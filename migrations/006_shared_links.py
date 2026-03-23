@@ -27,6 +27,10 @@ SQL_DOWN = [
 ]
 
 
+VERSION = "006_shared_links"
+DESCRIPTION = "Add shared_links table for trend sharing feature"
+
+
 async def upgrade(conn: asyncpg.Connection) -> None:
     """Apply migration 006."""
     try:
@@ -47,3 +51,6 @@ async def downgrade(conn: asyncpg.Connection) -> None:
     except Exception:
         logger.exception("migration_006_failed", direction="down")
         raise
+
+
+up = upgrade  # runner interface alias

@@ -25,6 +25,10 @@ SQL_DOWN = [
 ]
 
 
+VERSION = "007_notification_keywords"
+DESCRIPTION = "Add notification_keyword table for per-user keyword alerts"
+
+
 async def upgrade(conn: asyncpg.Connection) -> None:
     """Apply migration 007."""
     try:
@@ -45,3 +49,6 @@ async def downgrade(conn: asyncpg.Connection) -> None:
     except Exception:
         logger.exception("migration_007_failed", direction="down")
         raise
+
+
+up = upgrade  # runner interface alias

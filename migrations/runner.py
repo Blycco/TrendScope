@@ -22,16 +22,31 @@ MIGRATIONS: List[str] = [
     "migrations.007_notification_keywords",
     "migrations.008_indexes",
     "migrations.009_audit_archive",
+    "migrations.010_index_tuning",
 ]
 
 
 async def ensure_migrations_table(conn: asyncpg.Connection) -> None:
     await conn.execute("""
         CREATE TABLE IF NOT EXISTS applied_migrations (
-            version     VARCHAR(20) PRIMARY KEY,
+            version     TEXT PRIMARY KEY,
             description TEXT,
             applied_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
+    """)
+    # Migrate existing VARCHAR(20) column to TEXT if needed
+    await conn.execute("""
+        DO $$
+        BEGIN
+            IF EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'applied_migrations'
+                  AND column_name = 'version'
+                  AND data_type = 'character varying'
+            ) THEN
+                ALTER TABLE applied_migrations ALTER COLUMN version TYPE TEXT;
+            END IF;
+        END $$;
     """)
 
 
@@ -60,7 +75,17 @@ async def run_migrations() -> None:
                 continue
 
             logger.info("migration_applying", version=version, description=description)
-            async with conn.transaction():
+            transactional = getattr(mod, "TRANSACTIONAL", True)
+            if transactional:
+                async with conn.transaction():
+                    await mod.up(conn)
+                    await conn.execute(
+                        "INSERT INTO applied_migrations (version, description) VALUES ($1, $2)",
+                        version,
+                        description,
+                    )
+            else:
+                # Non-transactional migrations (e.g. CREATE INDEX CONCURRENTLY)
                 await mod.up(conn)
                 await conn.execute(
                     "INSERT INTO applied_migrations (version, description) VALUES ($1, $2)",
