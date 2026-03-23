@@ -11,6 +11,7 @@ import feedparser
 import httpx
 import structlog
 
+from backend.common.metrics import CRAWLER_REQUESTS
 from backend.crawler.quota_guard import check_quota, increment_quota
 from backend.crawler.sources.extractor import extract_body
 from backend.crawler.sources.rss_feeds import ALL_NEWS_FEEDS, FeedSource
@@ -94,6 +95,7 @@ async def crawl_feed(
             db_pool,
             extract_bodies=extract_bodies,
         )
+        CRAWLER_REQUESTS.labels(source=feed["name"], result="success").inc()
         logger.info(
             "feed_crawled",
             feed=feed["name"],
@@ -103,6 +105,7 @@ async def crawl_feed(
         return articles
 
     except Exception as exc:
+        CRAWLER_REQUESTS.labels(source=feed.get("name", "unknown"), result="failure").inc()
         logger.error("feed_crawl_error", feed=feed.get("name", "?"), error=str(exc))
         return []
 

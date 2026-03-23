@@ -8,6 +8,8 @@ from collections.abc import Awaitable, Callable
 import redis.asyncio as aioredis
 import structlog
 
+from backend.common.metrics import CACHE_REQUESTS
+
 logger = structlog.get_logger(__name__)
 
 _redis_pool: aioredis.Redis | None = None
@@ -47,8 +49,10 @@ async def get_cached(key: str) -> bytes | None:
     """Return cached bytes for key, or None on miss / error."""
     try:
         value = await get_redis().get(key)
+        CACHE_REQUESTS.labels(result="hit" if value is not None else "miss").inc()
         return value
     except Exception as exc:
+        CACHE_REQUESTS.labels(result="miss").inc()
         logger.warning("cache_get_failed", key=key, error=str(exc))
         return None
 
