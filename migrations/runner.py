@@ -24,6 +24,7 @@ MIGRATIONS: List[str] = [
     "migrations.009_audit_archive",
     "migrations.010_index_tuning",
     "migrations.011_feed_sources",
+    "migrations.012_seed_feed_sources",
 ]
 
 
