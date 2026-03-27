@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import time
 from datetime import datetime, timezone
 from typing import Any
 
@@ -14,7 +15,8 @@ import structlog
 from backend.common.metrics import CRAWLER_REQUESTS
 from backend.crawler.quota_guard import check_quota, increment_quota
 from backend.crawler.sources.extractor import extract_body
-from backend.crawler.sources.rss_feeds import ALL_NEWS_FEEDS, FeedSource
+from backend.crawler.sources.rss_feeds import FeedSource
+from backend.db.queries.feed_sources import get_feed_sources_for_crawl, update_feed_health
 from backend.processor.shared.cache_manager import get_cached, set_cached
 
 logger = structlog.get_logger(__name__)
@@ -206,10 +208,30 @@ def _parse_published(entry: Any) -> datetime:  # noqa: ANN401
 
 
 async def crawl_all(db_pool: asyncpg.Pool) -> list[dict[str, Any]]:
-    """Crawl all configured news feeds and return all new articles."""
+    """Crawl all configured news feeds from DB and return all new articles."""
     all_articles: list[dict[str, Any]] = []
-    for feed in ALL_NEWS_FEEDS:
-        articles = await crawl_feed(feed, db_pool)
-        all_articles.extend(articles)
+    feed_rows = await get_feed_sources_for_crawl(db_pool, "rss")
+
+    for row in feed_rows:
+        feed: FeedSource = {
+            "url": row["url"],
+            "name": row["name"],
+            "category": row["category"],
+            "locale": row["locale"],
+        }
+        feed_id = row["id"]
+        t0 = time.monotonic()
+        try:
+            articles = await crawl_feed(feed, db_pool)
+            elapsed_ms = (time.monotonic() - t0) * 1000
+            await update_feed_health(db_pool, feed_id, success=True, latency_ms=elapsed_ms)
+            all_articles.extend(articles)
+        except Exception as exc:
+            elapsed_ms = (time.monotonic() - t0) * 1000
+            await update_feed_health(
+                db_pool, feed_id, success=False, latency_ms=elapsed_ms, error=str(exc)
+            )
+            logger.warning("feed_crawl_health_error", feed=feed["name"], error=str(exc))
+
     logger.info("crawl_all_complete", total_new=len(all_articles))
     return all_articles

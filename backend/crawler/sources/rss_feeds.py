@@ -1,4 +1,9 @@
-"""RSS feed URL constants for TrendScope crawlers. (RULE 10: centralized source URLs)"""
+"""RSS feed URL constants — DEPRECATED: seed data only.
+
+Feed constants below are retained only as seed data for migration 012.
+Crawlers now read from the feed_source database table.
+The FeedSource TypedDict is still used as an interface type by crawler code.
+"""
 
 from __future__ import annotations
 

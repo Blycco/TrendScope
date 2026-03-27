@@ -80,10 +80,29 @@ class TestCrawlDcInside:
 
     async def test_returns_empty_on_http_error(self) -> None:
         pool = _make_db_pool()
+        dc_row = MagicMock()
+        dc_data = {
+            "id": "dc-1",
+            "url": "https://rss.dcinside.com/?mi=hot",
+            "name": "DC 핫갤",
+            "category": "general",
+            "locale": "ko",
+            "config": {},
+        }
+        dc_row.__getitem__ = lambda self, key: dc_data[key]
+
         with (
             patch(
                 "backend.crawler.sources.community_crawler.check_quota",
                 AsyncMock(return_value=True),
+            ),
+            patch(
+                "backend.crawler.sources.community_crawler.get_feed_sources_for_crawl",
+                AsyncMock(return_value=[dc_row]),
+            ),
+            patch(
+                "backend.crawler.sources.community_crawler.update_feed_health",
+                AsyncMock(),
             ),
             patch("httpx.AsyncClient") as mock_cls,
         ):

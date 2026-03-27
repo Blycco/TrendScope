@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import time
 from datetime import datetime, timezone
 from typing import Any
 
@@ -12,7 +13,7 @@ import httpx
 import structlog
 
 from backend.crawler.quota_guard import check_quota, increment_quota
-from backend.crawler.sources.rss_feeds import NITTER_INSTANCES, REDDIT_SUBREDDITS
+from backend.db.queries.feed_sources import get_feed_sources_for_crawl, update_feed_health
 
 logger = structlog.get_logger(__name__)
 
@@ -28,23 +29,34 @@ async def crawl_reddit(
     db_pool: asyncpg.Pool,
     subreddits: list[str] | None = None,
 ) -> list[dict[str, Any]]:
-    """Fetch hot posts from Reddit JSON API for each subreddit."""
+    """Fetch hot posts from Reddit JSON API for each subreddit (DB-driven)."""
     try:
         if not await check_quota("reddit", db_pool):
             return []
 
-        subs = subreddits or REDDIT_SUBREDDITS
+        feed_rows = await get_feed_sources_for_crawl(db_pool, "reddit")
         results: list[dict[str, Any]] = []
 
         async with httpx.AsyncClient(
             timeout=_HTTP_TIMEOUT,
             headers={"User-Agent": "TrendScopeBot/1.0 (trend aggregation)"},
         ) as client:
-            for sub in subs:
+            for row in feed_rows:
+                config = row["config"] if isinstance(row["config"], dict) else {}
+                sub = config.get("subreddit", row["name"].removeprefix("r/"))
+                t0 = time.monotonic()
                 try:
                     posts = await _fetch_subreddit(client, sub, db_pool)
+                    elapsed_ms = (time.monotonic() - t0) * 1000
+                    await update_feed_health(
+                        db_pool, row["id"], success=True, latency_ms=elapsed_ms
+                    )
                     results.extend(posts)
                 except Exception as exc:
+                    elapsed_ms = (time.monotonic() - t0) * 1000
+                    await update_feed_health(
+                        db_pool, row["id"], success=False, latency_ms=elapsed_ms, error=str(exc)
+                    )
                     logger.warning("reddit_sub_error", subreddit=sub, error=str(exc))
                     continue
 
@@ -135,19 +147,31 @@ def _reddit_category(subreddit: str) -> str:
 
 
 async def crawl_nitter(db_pool: asyncpg.Pool) -> list[dict[str, Any]]:
-    """Fetch trending search terms via Nitter RSS instances."""
+    """Fetch trending search terms via Nitter RSS instances (DB-driven)."""
     try:
         if not await check_quota("nitter_rss", db_pool):
             return []
 
+        feed_rows = await get_feed_sources_for_crawl(db_pool, "nitter")
         results: list[dict[str, Any]] = []
 
         async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
-            for instance in NITTER_INSTANCES:
+            for row in feed_rows:
+                config = row["config"] if isinstance(row["config"], dict) else {}
+                instance = config.get("instance", "")
+                feed_url = row["url"]
+                t0 = time.monotonic()
                 try:
-                    feed_url = f"https://{instance}/search/rss?f=tweets&q=trending"
                     resp = await client.get(feed_url)
                     if resp.status_code != 200:
+                        elapsed_ms = (time.monotonic() - t0) * 1000
+                        await update_feed_health(
+                            db_pool,
+                            row["id"],
+                            success=False,
+                            latency_ms=elapsed_ms,
+                            error=f"HTTP {resp.status_code}",
+                        )
                         continue
 
                     parsed = feedparser.parse(resp.text)
@@ -173,8 +197,21 @@ async def crawl_nitter(db_pool: asyncpg.Pool) -> list[dict[str, Any]]:
                                 },
                             }
                         )
+
+                    elapsed_ms = (time.monotonic() - t0) * 1000
+                    await update_feed_health(
+                        db_pool, row["id"], success=True, latency_ms=elapsed_ms
+                    )
                     break  # success on one instance is enough
                 except Exception as exc:
+                    elapsed_ms = (time.monotonic() - t0) * 1000
+                    await update_feed_health(
+                        db_pool,
+                        row["id"],
+                        success=False,
+                        latency_ms=elapsed_ms,
+                        error=str(exc),
+                    )
                     logger.debug("nitter_instance_error", instance=instance, error=str(exc))
                     continue
 
