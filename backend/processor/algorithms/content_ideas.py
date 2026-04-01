@@ -196,7 +196,12 @@ class ContentIdeasEngine:
         degraded = False
 
         try:
-            result_str, degraded = await summarize(context_text, role_prompt, self.ai_config)
+            result_str, degraded = await summarize(
+                context_text,
+                role_prompt,
+                self.ai_config,
+                db_pool=self.pool,
+            )
         except Exception as exc:
             logger.warning(
                 "content_ideas_summarize_failed",

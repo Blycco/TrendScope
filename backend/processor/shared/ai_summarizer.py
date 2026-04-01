@@ -7,9 +7,11 @@ from __future__ import annotations
 
 import re
 
+import asyncpg
 import structlog
 
 from backend.common.metrics import AI_API_REQUESTS
+from backend.common.quota_alert import handle_api_exception
 from backend.processor.shared.ai_config import AIConfig
 
 logger = structlog.get_logger(__name__)
@@ -17,7 +19,12 @@ logger = structlog.get_logger(__name__)
 _MAX_INPUT_CHARS = 4000
 
 
-async def summarize(text: str, prompt: str, config: AIConfig) -> tuple[str, bool]:
+async def summarize(
+    text: str,
+    prompt: str,
+    config: AIConfig,
+    db_pool: asyncpg.Pool | None = None,
+) -> tuple[str, bool]:
     """Summarize text using the configured AI provider with automatic fallback.
 
     Dispatches to the provider specified in config. On failure, falls back to
@@ -55,6 +62,7 @@ async def summarize(text: str, prompt: str, config: AIConfig) -> tuple[str, bool
 
     except Exception as exc:
         AI_API_REQUESTS.labels(provider=config.provider, result="failure").inc()
+        await handle_api_exception(exc, config.provider.lower(), db_pool)
         logger.warning(
             "ai_provider_failed",
             provider=config.provider,

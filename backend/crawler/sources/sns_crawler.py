@@ -11,6 +11,7 @@ import feedparser
 import httpx
 import structlog
 
+from backend.common.quota_alert import handle_api_exception
 from backend.crawler.quota_guard import check_quota, increment_quota
 from backend.crawler.sources.rss_feeds import NITTER_INSTANCES, REDDIT_SUBREDDITS
 
@@ -45,6 +46,7 @@ async def crawl_reddit(
                     posts = await _fetch_subreddit(client, sub, db_pool)
                     results.extend(posts)
                 except Exception as exc:
+                    await handle_api_exception(exc, "reddit", db_pool)
                     logger.warning("reddit_sub_error", subreddit=sub, error=str(exc))
                     continue
 
@@ -208,6 +210,7 @@ async def crawl_youtube(db_pool: asyncpg.Pool) -> list[dict[str, Any]]:
                     videos = await _fetch_youtube_trending(client, api_key, region, locale, db_pool)
                     results.extend(videos)
                 except Exception as exc:
+                    await handle_api_exception(exc, "youtube", db_pool)
                     logger.warning("youtube_region_error", region=region, error=str(exc))
                     continue
 
