@@ -3,11 +3,25 @@
 	import { isLoading, t } from 'svelte-i18n';
 	import { authStore } from '$lib/stores/auth';
 	import { onMount } from 'svelte';
+	import { adminRequest } from '$lib/api/admin';
 
 	initI18n();
+
+	let alertCount = $state(0);
+
 	onMount(() => {
 		authStore.initialize();
+		loadAlertCount();
 	});
+
+	async function loadAlertCount() {
+		try {
+			const res = await adminRequest<{ active_count: number }>('/quota-alerts/count');
+			alertCount = res.active_count;
+		} catch {
+			alertCount = 0;
+		}
+	}
 
 	let { children } = $props();
 
@@ -18,7 +32,8 @@
 		{ href: '/admin/sources', labelKey: 'admin.layout.sources' },
 		{ href: '/admin/ai-config', labelKey: 'admin.layout.ai_config' },
 		{ href: '/admin/settings', labelKey: 'admin.layout.settings' },
-		{ href: '/admin/audit', labelKey: 'admin.layout.audit' }
+		{ href: '/admin/audit', labelKey: 'admin.layout.audit' },
+		{ href: '/admin/quota-alerts', labelKey: 'admin.layout.quota_alerts' }
 	];
 </script>
 
@@ -44,9 +59,12 @@
 				{#each menuItems as item}
 					<a
 						href={item.href}
-						class="block px-6 py-3 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
+						class="flex items-center gap-2 px-6 py-3 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
 					>
 						{$t(item.labelKey)}
+						{#if item.href === '/admin/quota-alerts' && alertCount > 0}
+							<span class="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full">{alertCount}</span>
+						{/if}
 					</a>
 				{/each}
 			</nav>

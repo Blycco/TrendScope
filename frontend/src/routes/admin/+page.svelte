@@ -8,6 +8,7 @@
 	let activeSubscriptions = $state(0);
 	let apiUsageCount = $state(0);
 	let todayTrends = $state(0);
+	let alertCount = $state(0);
 	let loading = $state(true);
 	let errorOpen = $state(false);
 	let errorCode = $state('');
@@ -39,8 +40,18 @@
 		}
 	}
 
+	async function fetchAlertCount(): Promise<void> {
+		try {
+			const res = await adminRequest<{ active_count: number }>('/quota-alerts/count');
+			alertCount = res.active_count;
+		} catch {
+			alertCount = 0;
+		}
+	}
+
 	onMount(() => {
 		fetchAnalytics();
+		fetchAlertCount();
 	});
 
 	const cards = $derived([
@@ -52,6 +63,13 @@
 </script>
 
 <div>
+	{#if alertCount > 0}
+		<div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 flex items-center justify-between">
+			<span class="text-sm text-red-800">{$t('admin.quota_alerts.banner', { values: { count: alertCount } })}</span>
+			<a href="/admin/quota-alerts" class="text-sm font-medium text-red-600 hover:text-red-800 underline">{$t('admin.quota_alerts.view_all')}</a>
+		</div>
+	{/if}
+
 	<h2 class="text-2xl font-bold text-gray-900 mb-6">{$t('admin.home.title')}</h2>
 
 	{#if loading}
