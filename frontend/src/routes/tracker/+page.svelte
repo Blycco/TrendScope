@@ -23,7 +23,7 @@
 		if (keywords.includes(trimmed)) return;
 
 		try {
-			await apiRequest('/tracker/keywords', {
+			await apiRequest('/notifications/keywords', {
 				method: 'POST',
 				body: { keyword: trimmed },
 			});
@@ -50,7 +50,7 @@
 
 	async function removeKeyword(keyword: string): Promise<void> {
 		try {
-			await apiRequest(`/tracker/keywords/${encodeURIComponent(keyword)}`, {
+			await apiRequest(`/notifications/keywords/${encodeURIComponent(keyword)}`, {
 				method: 'DELETE',
 			});
 			keywords = keywords.filter((k) => k !== keyword);
