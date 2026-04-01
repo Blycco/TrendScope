@@ -165,3 +165,77 @@ class QuotaAlertCountResponse(BaseModel):
 class AdminAnalyticsResponse(BaseModel):
     metric: str
     data: dict
+
+
+# --- Feed Sources ---
+class FeedSourceItem(BaseModel):
+    id: str
+    source_config_id: str | None = None
+    source_type: str
+    name: str
+    url: str
+    category: str
+    locale: str
+    is_active: bool
+    priority: int = 0
+    config: dict = Field(default_factory=dict)
+    health_status: str = "unknown"
+    last_crawled_at: datetime | None = None
+    last_success_at: datetime | None = None
+    last_error: str | None = None
+    last_error_at: datetime | None = None
+    consecutive_failures: int = 0
+    avg_latency_ms: float | None = None
+    total_crawl_count: int = 0
+    total_error_count: int = 0
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+class FeedSourceListResponse(BaseModel):
+    feeds: list[FeedSourceItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class FeedSourceCreateRequest(BaseModel):
+    source_type: str = Field(..., pattern=r"^(rss|reddit|nitter|community|google_trends)$")
+    name: str = Field(..., min_length=1, max_length=200)
+    url: str = Field(..., min_length=1)
+    category: str = "general"
+    locale: str = Field("ko", pattern=r"^[a-z]{2}$")
+    source_config_id: str | None = None
+    is_active: bool = True
+    priority: int = 0
+    config: dict = Field(default_factory=dict)
+
+
+class FeedSourceUpdateRequest(BaseModel):
+    name: str | None = None
+    url: str | None = None
+    category: str | None = None
+    locale: str | None = None
+    source_config_id: str | None = None
+    is_active: bool | None = None
+    priority: int | None = None
+    config: dict | None = None
+
+
+class FeedSourceBulkToggleRequest(BaseModel):
+    feed_ids: list[str] = Field(..., min_length=1)
+    is_active: bool
+
+
+class FeedHealthSummaryItem(BaseModel):
+    source_type: str
+    total: int
+    healthy: int
+    degraded: int
+    error: int
+    unknown: int
+
+
+class FeedHealthDashboardResponse(BaseModel):
+    summary: list[FeedHealthSummaryItem]
+    last_updated: datetime

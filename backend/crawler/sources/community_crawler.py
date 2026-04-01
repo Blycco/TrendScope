@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import time
 from datetime import datetime, timezone
 from typing import Any
 
@@ -15,7 +16,8 @@ from bs4 import BeautifulSoup
 from backend.common.metrics import CRAWLER_REQUESTS
 from backend.crawler.quota_guard import check_quota, increment_quota
 from backend.crawler.sources.robots import is_allowed
-from backend.crawler.sources.rss_feeds import COMMUNITY_FEEDS, FeedSource
+from backend.crawler.sources.rss_feeds import FeedSource
+from backend.db.queries.feed_sources import get_feed_sources_for_crawl, update_feed_health
 
 logger = structlog.get_logger(__name__)
 
@@ -34,24 +36,40 @@ def _content_fp(title: str, body: str) -> str:
 
 
 async def crawl_dc_inside(db_pool: asyncpg.Pool) -> list[dict[str, Any]]:
-    """Crawl DC Inside gallery feeds via RSS."""
+    """Crawl DC Inside gallery feeds from DB via RSS."""
     try:
         if not await check_quota("dc_inside", db_pool):
             return []
 
-        dc_feeds = [f for f in COMMUNITY_FEEDS if f["name"].startswith("DC ")]
+        feed_rows = await get_feed_sources_for_crawl(db_pool, "community")
+        dc_rows = [r for r in feed_rows if r["name"].startswith("DC ")]
         articles: list[dict[str, Any]] = []
 
         async with httpx.AsyncClient(
             timeout=_HTTP_TIMEOUT,
             headers={"User-Agent": "TrendScopeBot/1.0"},
         ) as client:
-            for feed in dc_feeds:
+            for row in dc_rows:
+                feed: FeedSource = {
+                    "url": row["url"],
+                    "name": row["name"],
+                    "category": row["category"],
+                    "locale": row["locale"],
+                }
+                t0 = time.monotonic()
                 try:
                     new_items = await _crawl_rss_feed(client, feed, db_pool)
+                    elapsed_ms = (time.monotonic() - t0) * 1000
+                    await update_feed_health(
+                        db_pool, row["id"], success=True, latency_ms=elapsed_ms
+                    )
                     articles.extend(new_items)
                     await increment_quota("dc_inside", db_pool)
                 except Exception as exc:
+                    elapsed_ms = (time.monotonic() - t0) * 1000
+                    await update_feed_health(
+                        db_pool, row["id"], success=False, latency_ms=elapsed_ms, error=str(exc)
+                    )
                     logger.warning("dc_feed_error", feed=feed["name"], error=str(exc))
                     continue
 
@@ -65,12 +83,13 @@ async def crawl_dc_inside(db_pool: asyncpg.Pool) -> list[dict[str, Any]]:
 
 
 async def crawl_fm_korea(db_pool: asyncpg.Pool) -> list[dict[str, Any]]:
-    """Crawl FM Korea feeds via RSS, with HTML scrape fallback."""
+    """Crawl FM Korea feeds from DB via RSS, with HTML scrape fallback."""
     try:
         if not await check_quota("fm_korea", db_pool):
             return []
 
-        fm_feeds = [f for f in COMMUNITY_FEEDS if f["name"].startswith("FM Korea")]
+        feed_rows = await get_feed_sources_for_crawl(db_pool, "community")
+        fm_rows = [r for r in feed_rows if r["name"].startswith("FM Korea")]
         articles: list[dict[str, Any]] = []
 
         async with httpx.AsyncClient(
@@ -78,14 +97,29 @@ async def crawl_fm_korea(db_pool: asyncpg.Pool) -> list[dict[str, Any]]:
             headers={"User-Agent": "TrendScopeBot/1.0"},
             follow_redirects=True,
         ) as client:
-            for feed in fm_feeds:
+            for row in fm_rows:
+                feed: FeedSource = {
+                    "url": row["url"],
+                    "name": row["name"],
+                    "category": row["category"],
+                    "locale": row["locale"],
+                }
+                t0 = time.monotonic()
                 try:
                     new_items = await _crawl_rss_feed(client, feed, db_pool)
                     if not new_items:
                         new_items = await _crawl_fm_html(client, feed, db_pool)
+                    elapsed_ms = (time.monotonic() - t0) * 1000
+                    await update_feed_health(
+                        db_pool, row["id"], success=True, latency_ms=elapsed_ms
+                    )
                     articles.extend(new_items)
                     await increment_quota("fm_korea", db_pool)
                 except Exception as exc:
+                    elapsed_ms = (time.monotonic() - t0) * 1000
+                    await update_feed_health(
+                        db_pool, row["id"], success=False, latency_ms=elapsed_ms, error=str(exc)
+                    )
                     logger.warning("fm_feed_error", feed=feed["name"], error=str(exc))
                     continue
 

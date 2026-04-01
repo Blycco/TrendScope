@@ -37,6 +37,7 @@ from backend.api.routers import (
 from backend.api.routers.admin import ai_config as admin_ai_config
 from backend.api.routers.admin import analytics as admin_analytics
 from backend.api.routers.admin import audit as admin_audit
+from backend.api.routers.admin import feed_sources as admin_feed_sources
 from backend.api.routers.admin import quota_alerts as admin_quota_alerts
 from backend.api.routers.admin import settings as admin_settings
 from backend.api.routers.admin import sources as admin_sources
@@ -129,8 +130,8 @@ def create_app() -> FastAPI:
         CORSMiddleware,
         allow_origins=[o.strip() for o in allowed_origins if o.strip()],
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "Accept"],
     )
 
     app.include_router(health.router)
@@ -155,6 +156,7 @@ def create_app() -> FastAPI:
     app.include_router(admin_users.router, prefix="/admin/v1")
     app.include_router(admin_subscriptions.router, prefix="/admin/v1")
     app.include_router(admin_sources.router, prefix="/admin/v1")
+    app.include_router(admin_feed_sources.router, prefix="/admin/v1")
     app.include_router(admin_ai_config.router, prefix="/admin/v1")
     app.include_router(admin_settings.router, prefix="/admin/v1")
     app.include_router(admin_audit.router, prefix="/admin/v1")

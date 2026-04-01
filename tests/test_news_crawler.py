@@ -189,12 +189,43 @@ class TestCrawlFeed:
             assert isinstance(result, list)
 
 
+def _make_feed_row(
+    feed_id: str = "feed-1",
+    url: str = "https://example.com/rss",
+    name: str = "Test Feed",
+    category: str = "it",
+    locale: str = "ko",
+) -> MagicMock:
+    row = MagicMock()
+    data = {
+        "id": feed_id,
+        "url": url,
+        "name": name,
+        "category": category,
+        "locale": locale,
+        "config": {},
+    }
+    row.__getitem__ = lambda self, key: data[key]
+    return row
+
+
 class TestCrawlAll:
     async def test_returns_list(self) -> None:
         pool = _make_db_pool()
-        with patch(
-            "backend.crawler.sources.news_crawler.crawl_feed",
-            AsyncMock(return_value=[{"title": "article"}]),
+        feed_row = _make_feed_row()
+        with (
+            patch(
+                "backend.crawler.sources.news_crawler.get_feed_sources_for_crawl",
+                AsyncMock(return_value=[feed_row]),
+            ),
+            patch(
+                "backend.crawler.sources.news_crawler.crawl_feed",
+                AsyncMock(return_value=[{"title": "article"}]),
+            ),
+            patch(
+                "backend.crawler.sources.news_crawler.update_feed_health",
+                AsyncMock(),
+            ),
         ):
             result = await crawl_all(pool)
             assert isinstance(result, list)
@@ -203,8 +234,55 @@ class TestCrawlAll:
     async def test_returns_empty_on_all_failures(self) -> None:
         pool = _make_db_pool()
         with patch(
-            "backend.crawler.sources.news_crawler.crawl_feed",
+            "backend.crawler.sources.news_crawler.get_feed_sources_for_crawl",
             AsyncMock(return_value=[]),
         ):
             result = await crawl_all(pool)
             assert result == []
+
+    async def test_updates_health_on_success(self) -> None:
+        pool = _make_db_pool()
+        feed_row = _make_feed_row()
+        mock_health = AsyncMock()
+        with (
+            patch(
+                "backend.crawler.sources.news_crawler.get_feed_sources_for_crawl",
+                AsyncMock(return_value=[feed_row]),
+            ),
+            patch(
+                "backend.crawler.sources.news_crawler.crawl_feed",
+                AsyncMock(return_value=[]),
+            ),
+            patch(
+                "backend.crawler.sources.news_crawler.update_feed_health",
+                mock_health,
+            ),
+        ):
+            await crawl_all(pool)
+            mock_health.assert_awaited_once()
+            call_kwargs = mock_health.call_args.kwargs
+            assert call_kwargs["success"] is True
+
+    async def test_updates_health_on_failure(self) -> None:
+        pool = _make_db_pool()
+        feed_row = _make_feed_row()
+        mock_health = AsyncMock()
+        with (
+            patch(
+                "backend.crawler.sources.news_crawler.get_feed_sources_for_crawl",
+                AsyncMock(return_value=[feed_row]),
+            ),
+            patch(
+                "backend.crawler.sources.news_crawler.crawl_feed",
+                AsyncMock(side_effect=RuntimeError("timeout")),
+            ),
+            patch(
+                "backend.crawler.sources.news_crawler.update_feed_health",
+                mock_health,
+            ),
+        ):
+            await crawl_all(pool)
+            mock_health.assert_awaited_once()
+            call_kwargs = mock_health.call_args.kwargs
+            assert call_kwargs["success"] is False
+            assert "timeout" in call_kwargs["error"]

@@ -23,7 +23,10 @@ MIGRATIONS: List[str] = [
     "migrations.008_indexes",
     "migrations.009_audit_archive",
     "migrations.010_index_tuning",
-    "migrations.011_api_quota_alert",
+    "migrations.011_feed_sources",
+    "migrations.012_seed_feed_sources",
+    "migrations.013_api_quota_alert",
+
 ]
 
 
