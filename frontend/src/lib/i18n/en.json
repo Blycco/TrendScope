@@ -281,5 +281,25 @@
 	"trends.share.copied": "Link copied.",
 	"trends.share.error": "Failed to generate link.",
 	"trends.map.title": "Trend Map",
-	"trends.map.empty": "No related trend data available."
+	"trends.map.empty": "No related trend data available.",
+
+	"admin.layout.quota_alerts": "API Alerts",
+	"admin.quota_alerts.title": "API Rate Limit Alerts",
+	"admin.quota_alerts.banner": "{count} unresolved API quota alert(s)",
+	"admin.quota_alerts.view_all": "View All",
+	"admin.quota_alerts.col_service": "Service",
+	"admin.quota_alerts.col_error_type": "Error Type",
+	"admin.quota_alerts.col_detail": "Detail",
+	"admin.quota_alerts.col_endpoint": "Endpoint",
+	"admin.quota_alerts.col_email_sent": "Email Sent",
+	"admin.quota_alerts.col_created_at": "Occurred At",
+	"admin.quota_alerts.col_status": "Status",
+	"admin.quota_alerts.dismiss": "Dismiss",
+	"admin.quota_alerts.dismissed": "Dismissed",
+	"admin.quota_alerts.active": "Active",
+	"admin.quota_alerts.filter_service": "Service Filter",
+	"admin.quota_alerts.filter_all": "All",
+	"admin.quota_alerts.no_alerts": "No alerts",
+	"admin.quota_alerts.yes": "Yes",
+	"admin.quota_alerts.no": "No"
 }
