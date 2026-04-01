@@ -321,5 +321,25 @@
 	"trends.share.copied": "링크가 복사되었습니다.",
 	"trends.share.error": "링크 생성에 실패했습니다.",
 	"trends.map.title": "트렌드 맵",
-	"trends.map.empty": "관련 트렌드 데이터가 없습니다."
+	"trends.map.empty": "관련 트렌드 데이터가 없습니다.",
+
+	"admin.layout.quota_alerts": "API 알림",
+	"admin.quota_alerts.title": "API Rate Limit 알림",
+	"admin.quota_alerts.banner": "{count}건의 미확인 API 할당량 알림이 있습니다",
+	"admin.quota_alerts.view_all": "전체 보기",
+	"admin.quota_alerts.col_service": "서비스",
+	"admin.quota_alerts.col_error_type": "에러 유형",
+	"admin.quota_alerts.col_detail": "상세",
+	"admin.quota_alerts.col_endpoint": "엔드포인트",
+	"admin.quota_alerts.col_email_sent": "이메일 발송",
+	"admin.quota_alerts.col_created_at": "발생 시각",
+	"admin.quota_alerts.col_status": "상태",
+	"admin.quota_alerts.dismiss": "확인 처리",
+	"admin.quota_alerts.dismissed": "확인됨",
+	"admin.quota_alerts.active": "미확인",
+	"admin.quota_alerts.filter_service": "서비스 필터",
+	"admin.quota_alerts.filter_all": "전체",
+	"admin.quota_alerts.no_alerts": "알림이 없습니다",
+	"admin.quota_alerts.yes": "예",
+	"admin.quota_alerts.no": "아니오"
 }

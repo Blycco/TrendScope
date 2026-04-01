@@ -135,6 +135,32 @@ class AdminAuditListResponse(BaseModel):
     page_size: int
 
 
+# --- Quota Alerts ---
+class QuotaAlertItem(BaseModel):
+    id: str
+    service_name: str
+    error_type: str
+    status_code: int | None = None
+    detail: str | None = None
+    endpoint_url: str | None = None
+    is_dismissed: bool
+    dismissed_by: str | None = None
+    dismissed_at: datetime | None = None
+    email_sent: bool
+    created_at: datetime | None = None
+
+
+class QuotaAlertListResponse(BaseModel):
+    alerts: list[QuotaAlertItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class QuotaAlertCountResponse(BaseModel):
+    active_count: int
+
+
 # --- Analytics ---
 class AdminAnalyticsResponse(BaseModel):
     metric: str

@@ -433,3 +433,84 @@ async def admin_get_analytics_api_usage(pool: asyncpg.Pool) -> dict:
     except Exception as exc:
         logger.error("admin_get_analytics_api_usage_failed", error=str(exc))
         raise
+
+
+# --- Quota Alerts ---
+async def admin_list_quota_alerts(
+    pool: asyncpg.Pool,
+    *,
+    service_name: str | None = None,
+    is_dismissed: bool | None = None,
+    page: int = 1,
+    page_size: int = 50,
+) -> tuple[list[asyncpg.Record], int]:
+    """List api_quota_alert rows with optional filters."""
+    try:
+        async with pool.acquire() as conn:
+            conditions: list[str] = []
+            params: list[object] = []
+            idx = 1
+
+            if service_name:
+                conditions.append(f"service_name = ${idx}")
+                params.append(service_name)
+                idx += 1
+            if is_dismissed is not None:
+                conditions.append(f"is_dismissed = ${idx}")
+                params.append(is_dismissed)
+                idx += 1
+
+            where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+            offset = (page - 1) * page_size
+
+            total = await conn.fetchval(
+                f"SELECT count(*) FROM api_quota_alert {where}",  # noqa: S608
+                *params,
+            )
+            rows = await conn.fetch(
+                f"SELECT * FROM api_quota_alert {where} ORDER BY created_at DESC "  # noqa: S608
+                f"LIMIT ${idx} OFFSET ${idx + 1}",
+                *params,
+                page_size,
+                offset,
+            )
+            return rows, total or 0
+    except Exception as exc:
+        logger.error("admin_list_quota_alerts_failed", error=str(exc))
+        raise
+
+
+async def admin_dismiss_quota_alert(
+    pool: asyncpg.Pool,
+    alert_id: str,
+    dismissed_by: str,
+) -> asyncpg.Record | None:
+    """Mark a quota alert as dismissed."""
+    try:
+        async with pool.acquire() as conn:
+            return await conn.fetchrow(
+                """
+                UPDATE api_quota_alert
+                SET is_dismissed = TRUE, dismissed_by = $2::uuid, dismissed_at = now()
+                WHERE id = $1::uuid
+                RETURNING *
+                """,
+                alert_id,
+                dismissed_by,
+            )
+    except Exception as exc:
+        logger.error("admin_dismiss_quota_alert_failed", alert_id=alert_id, error=str(exc))
+        raise
+
+
+async def admin_get_active_alert_count(pool: asyncpg.Pool) -> int:
+    """Count undismissed quota alerts."""
+    try:
+        async with pool.acquire() as conn:
+            count = await conn.fetchval(
+                "SELECT count(*) FROM api_quota_alert WHERE is_dismissed = FALSE"
+            )
+            return count or 0
+    except Exception as exc:
+        logger.error("admin_get_active_alert_count_failed", error=str(exc))
+        raise

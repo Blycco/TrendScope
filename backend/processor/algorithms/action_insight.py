@@ -129,7 +129,12 @@ class ActionInsightEngine:
         role_prompt = self._build_prompt(req.role)
 
         try:
-            result_str, degraded = await summarize(context_text, role_prompt, self.ai_config)
+            result_str, degraded = await summarize(
+                context_text,
+                role_prompt,
+                self.ai_config,
+                db_pool=self.pool,
+            )
         except Exception as exc:
             logger.warning(
                 "insight_summarize_failed",
