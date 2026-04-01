@@ -33,6 +33,7 @@ from backend.auth.password import hash_password, verify_password
 from backend.auth.token_store import delete_auth_token, get_auth_token, save_auth_token
 from backend.common.audit import write_audit_log
 from backend.common.errors import ErrorCode, http_error
+from backend.common.quota_alert import handle_api_exception
 from backend.db.queries.users import (
     create_identity,
     create_user,
@@ -217,6 +218,7 @@ async def oauth_google(body: OAuthCallbackRequest, request: Request) -> TokenRes
         userinfo = await fetch_userinfo(tokens["access_token"])
     except Exception as exc:
         logger.error("google_oauth_failed", error=str(exc))
+        await handle_api_exception(exc, "google_oauth", request.app.state.db_pool)
         raise http_error(ErrorCode.OAUTH_FAILED, "Google OAuth failed", status_code=502) from exc
 
     google_uid: str = userinfo["sub"]
@@ -269,6 +271,7 @@ async def oauth_kakao(body: KakaoOAuthCallbackRequest, request: Request) -> Toke
         userinfo = await fetch_kakao_userinfo(tokens["access_token"])
     except Exception as exc:
         logger.error("kakao_oauth_failed", error=str(exc))
+        await handle_api_exception(exc, "kakao_oauth", request.app.state.db_pool)
         raise http_error(ErrorCode.OAUTH_FAILED, "Kakao OAuth failed", status_code=502) from exc
 
     kakao_uid: str = userinfo["uid"]

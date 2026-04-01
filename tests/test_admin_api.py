@@ -517,3 +517,104 @@ class TestAdminAIConfig:
         data = resp.json()
         assert data["success"] is True
         assert data["response_time_ms"] is not None
+
+
+# ---------------------------------------------------------------------------
+# Quota Alerts
+# ---------------------------------------------------------------------------
+
+
+class TestQuotaAlerts:
+    @pytest.mark.asyncio
+    async def test_list_quota_alerts_requires_admin(self, admin_client: AsyncClient) -> None:
+        resp = await admin_client.get("/admin/v1/quota-alerts", headers=_general_user_header())
+        assert resp.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_list_quota_alerts_success(
+        self, admin_client: AsyncClient, mock_db_pool: MagicMock
+    ) -> None:
+        import uuid
+        from datetime import datetime, timezone
+
+        alert_id = uuid.uuid4()
+        alert_row = MagicMock()
+        alert_row.__getitem__ = lambda self, key: {
+            "id": alert_id,
+            "service_name": "youtube",
+            "error_type": "rate_limit_429",
+            "status_code": 429,
+            "detail": "Too Many Requests",
+            "endpoint_url": "https://api.example.com",
+            "is_dismissed": False,
+            "dismissed_by": None,
+            "dismissed_at": None,
+            "email_sent": False,
+            "created_at": datetime.now(tz=timezone.utc),
+        }[key]
+
+        with patch(
+            "backend.api.routers.admin.quota_alerts.admin_list_quota_alerts",
+            new_callable=AsyncMock,
+            return_value=([alert_row], 1),
+        ):
+            resp = await admin_client.get("/admin/v1/quota-alerts", headers=_admin_header())
+            assert resp.status_code == 200
+            data = resp.json()
+            assert data["total"] == 1
+            assert len(data["alerts"]) == 1
+            assert data["alerts"][0]["service_name"] == "youtube"
+
+    @pytest.mark.asyncio
+    async def test_get_active_alert_count(
+        self, admin_client: AsyncClient, mock_db_pool: MagicMock
+    ) -> None:
+        with patch(
+            "backend.api.routers.admin.quota_alerts.admin_get_active_alert_count",
+            new_callable=AsyncMock,
+            return_value=3,
+        ):
+            resp = await admin_client.get("/admin/v1/quota-alerts/count", headers=_admin_header())
+            assert resp.status_code == 200
+            assert resp.json()["active_count"] == 3
+
+    @pytest.mark.asyncio
+    async def test_dismiss_quota_alert(
+        self, admin_client: AsyncClient, mock_db_pool: MagicMock
+    ) -> None:
+        import uuid
+        from datetime import datetime, timezone
+
+        alert_id = uuid.uuid4()
+        dismissed_row = MagicMock()
+        dismissed_row.__getitem__ = lambda self, key: {
+            "id": alert_id,
+            "service_name": "youtube",
+            "error_type": "rate_limit_429",
+            "status_code": 429,
+            "detail": "Too Many Requests",
+            "endpoint_url": None,
+            "is_dismissed": True,
+            "dismissed_by": uuid.uuid4(),
+            "dismissed_at": datetime.now(tz=timezone.utc),
+            "email_sent": False,
+            "created_at": datetime.now(tz=timezone.utc),
+        }[key]
+
+        with (
+            patch(
+                "backend.api.routers.admin.quota_alerts.admin_dismiss_quota_alert",
+                new_callable=AsyncMock,
+                return_value=dismissed_row,
+            ),
+            patch(
+                "backend.api.routers.admin.quota_alerts.write_audit_log",
+                new_callable=AsyncMock,
+            ),
+        ):
+            resp = await admin_client.post(
+                f"/admin/v1/quota-alerts/{alert_id}/dismiss",
+                headers=_admin_header(),
+            )
+            assert resp.status_code == 200
+            assert resp.json()["is_dismissed"] is True
