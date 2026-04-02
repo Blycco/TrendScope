@@ -24,7 +24,7 @@ async def _fetch_unprocessed(db_pool: asyncpg.Pool) -> list[dict[str, Any]]:
     rows = await db_pool.fetch(
         """
         SELECT id, url, url_hash, title, body, source, author,
-               publish_time, locale
+               publish_time, locale, category
         FROM news_article
         WHERE group_id IS NULL
         ORDER BY publish_time DESC

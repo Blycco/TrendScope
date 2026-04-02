@@ -167,8 +167,9 @@ async def _crawl_rss_feed(
 
             await db_pool.execute(
                 "INSERT INTO news_article "
-                "(url, url_hash, content_fp, title, body, source, author, publish_time, locale) "
-                "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) "
+                "(url, url_hash, content_fp, title, body, source, "
+                "author, publish_time, locale, category) "
+                "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) "
                 "ON CONFLICT DO NOTHING",
                 url,
                 uhash,
@@ -179,6 +180,7 @@ async def _crawl_rss_feed(
                 entry.get("author", ""),
                 published,
                 feed["locale"],
+                feed["category"],
             )
 
             articles.append(
@@ -244,9 +246,9 @@ async def _crawl_fm_html(
 
                 await db_pool.execute(
                     "INSERT INTO news_article "
-                    "(url, url_hash, content_fp, title, body, source, author, publish_time, locale)"
-                    " "
-                    "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) "
+                    "(url, url_hash, content_fp, title, body, source, "
+                    "author, publish_time, locale, category) "
+                    "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) "
                     "ON CONFLICT DO NOTHING",
                     href,
                     uhash,
@@ -257,6 +259,7 @@ async def _crawl_fm_html(
                     "",
                     datetime.now(tz=timezone.utc),
                     feed["locale"],
+                    feed["category"],
                 )
 
                 articles.append(
