@@ -64,8 +64,11 @@ async def process_articles(
     # Stage 4: Extract keywords
     with_keywords = _stage_extract_keywords(clean)
 
-    # Stage 5: Semantic clustering
-    clusters = _stage_cluster(with_keywords)
+    # Stage 4.5: Match articles against existing groups (cross-batch grouping)
+    unmatched = await _stage_match_existing_groups(with_keywords, db_pool)
+
+    # Stage 5: Semantic clustering (only unmatched articles form new clusters)
+    clusters = _stage_cluster(unmatched)
 
     # Stage 6: Score calculation
     scored_clusters = _stage_score(clusters)
@@ -84,6 +87,7 @@ async def process_articles(
         input=len(articles),
         unique=len(unique_articles),
         clean=len(clean),
+        matched_existing=len(with_keywords) - len(unmatched),
         clusters=len(clusters),
         saved=saved,
     )
@@ -158,6 +162,146 @@ def _stage_extract_keywords(articles: list[dict[str, Any]]) -> list[dict[str, An
             article["keywords"] = []
             article["keyword_importance"] = 0.0
     return articles
+
+
+_EXISTING_GROUP_MATCH_THRESHOLD = 0.25
+_EXISTING_GROUP_LIMIT = 500
+
+
+def _jaccard(set_a: set[str], set_b: set[str]) -> float:
+    """Compute Jaccard similarity between two keyword sets."""
+    if not set_a or not set_b:
+        return 0.0
+    intersection = len(set_a & set_b)
+    union = len(set_a | set_b)
+    return intersection / union if union > 0 else 0.0
+
+
+async def _stage_match_existing_groups(
+    articles: list[dict[str, Any]],
+    db_pool: asyncpg.Pool,
+) -> list[dict[str, Any]]:
+    """Stage 4.5: Match articles against recent existing groups.
+
+    Assigns matching articles to an existing group via Jaccard keyword
+    similarity and returns the remaining unmatched articles for new clustering.
+    """
+    try:
+        group_rows = await db_pool.fetch(
+            """
+            SELECT id, title, keywords, score, category
+            FROM news_group
+            WHERE created_at > now() - interval '48 hours'
+            ORDER BY score DESC
+            LIMIT $1
+            """,
+            _EXISTING_GROUP_LIMIT,
+        )
+    except Exception as exc:
+        logger.warning("pipeline_match_existing_fetch_failed", error=str(exc))
+        return articles
+
+    if not group_rows:
+        return articles
+
+    # Pre-build keyword sets for each existing group (title words + keywords array)
+    import uuid as _uuid  # noqa: PLC0415
+
+    group_kw_sets: list[tuple[_uuid.UUID, set[str], float]] = []
+    for row in group_rows:
+        group_id: _uuid.UUID = row["id"]
+        raw_kw: list[str] = list(row["keywords"] or [])
+        title_words = set(row["title"].split()) if row["title"] else set()
+        combined: set[str] = set(raw_kw) | title_words
+        group_kw_sets.append((group_id, combined, float(row["score"])))
+
+    unmatched: list[dict[str, Any]] = []
+
+    for article in articles:
+        try:
+            article_kw_set: set[str] = set(article.get("keywords", []))
+            if not article_kw_set:
+                unmatched.append(article)
+                continue
+
+            best_group_id: _uuid.UUID | None = None
+            best_score: float = 0.0
+            best_current_score: float = 0.0
+
+            for group_id, group_kws, current_score in group_kw_sets:
+                sim = _jaccard(article_kw_set, group_kws)
+                if sim > best_score:
+                    best_score = sim
+                    best_group_id = group_id
+                    best_current_score = current_score
+
+            if best_group_id is not None and best_score >= _EXISTING_GROUP_MATCH_THRESHOLD:
+                url_hash = article.get("url_hash", "")
+                if url_hash:
+                    await db_pool.execute(
+                        "UPDATE news_article SET group_id = $1 WHERE url_hash = $2",
+                        best_group_id,
+                        url_hash,
+                    )
+
+                # Recalculate group score: increment article_count by 1
+                try:
+                    article_count_row = await db_pool.fetchrow(
+                        "SELECT COUNT(*) AS cnt FROM news_article WHERE group_id = $1",
+                        best_group_id,
+                    )
+                    new_article_count = int(article_count_row["cnt"]) if article_count_row else 1
+
+                    pub_time = article.get("publish_time", datetime.now(tz=timezone.utc))
+                    if isinstance(pub_time, str):
+                        pub_time = datetime.fromisoformat(pub_time)
+
+                    score_input = ScoreInput(
+                        published_at=pub_time,
+                        category=article.get("category", "general"),
+                        source_type=article.get("source", "default"),
+                        article_count=new_article_count,
+                        keyword_importance=article.get("keyword_importance", 0.0),
+                    )
+                    new_score_result: ScoreResult = calculate_score(score_input)
+                    new_score = max(best_current_score, new_score_result.total)
+
+                    await db_pool.execute(
+                        "UPDATE news_group SET score = $1, updated_at = now() WHERE id = $2",
+                        new_score,
+                        best_group_id,
+                    )
+                except Exception as score_exc:
+                    logger.warning(
+                        "pipeline_match_score_update_failed",
+                        group_id=best_group_id,
+                        error=str(score_exc),
+                    )
+
+                logger.debug(
+                    "pipeline_article_matched_existing_group",
+                    url_hash=url_hash,
+                    group_id=best_group_id,
+                    jaccard=best_score,
+                )
+            else:
+                unmatched.append(article)
+
+        except Exception as exc:
+            logger.warning(
+                "pipeline_match_existing_error",
+                url=article.get("url", "?"),
+                error=str(exc),
+            )
+            unmatched.append(article)
+
+    logger.info(
+        "pipeline_match_existing_complete",
+        total=len(articles),
+        matched=len(articles) - len(unmatched),
+        unmatched=len(unmatched),
+    )
+    return unmatched
 
 
 def _stage_cluster(articles: list[dict[str, Any]]) -> list[Cluster]:
