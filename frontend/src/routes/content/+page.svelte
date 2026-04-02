@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { t } from 'svelte-i18n';
 	import { onMount } from 'svelte';
-	import { apiRequest, ApiRequestError } from '$lib/api';
+	import { apiRequest, ApiRequestError, PlanGateRequestError } from '$lib/api';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
+	import PlanGate from '$lib/ui/PlanGate.svelte';
 	import ContentIdeaCard from '$lib/components/ContentIdeaCard.svelte';
+	import { authStore } from '$lib/stores/auth.svelte';
 
 	interface ContentIdea {
 		title: string;
@@ -19,6 +21,11 @@
 	let errorOpen = $state(false);
 	let errorCode = $state('');
 	let errorMessageKey = $state('');
+
+	let planGateOpen = $state(false);
+	let planGateRequired = $state('pro');
+
+	const isFreePlan = $derived(authStore.user?.plan === 'free');
 
 	function showError(code: string, key: string): void {
 		errorCode = code;
@@ -37,7 +44,10 @@
 			ideas = res.ideas;
 			cached = res.cached;
 		} catch (error) {
-			if (error instanceof ApiRequestError) {
+			if (error instanceof PlanGateRequestError) {
+				planGateRequired = error.requiredPlan;
+				planGateOpen = true;
+			} else if (error instanceof ApiRequestError) {
 				showError(error.errorCode, 'error.server');
 			} else {
 				showError('ERR_NETWORK', 'error.network');
@@ -49,7 +59,16 @@
 </script>
 
 <div class="space-y-6">
-	<h1 class="text-2xl font-bold text-gray-900">{$t('content.title')}</h1>
+	<div class="flex items-center gap-3">
+		<h1 class="text-2xl font-bold text-gray-900">{$t('content.title')}</h1>
+		<span class="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-700">Pro+</span>
+	</div>
+
+	{#if isFreePlan}
+		<div class="rounded-md bg-purple-50 border border-purple-200 p-4">
+			<p class="text-sm text-purple-800">{$t('content.pro_only_notice')}</p>
+		</div>
+	{/if}
 
 	<div class="flex items-center gap-3">
 		<input
@@ -92,6 +111,7 @@
 	{/if}
 </div>
 
+<PlanGate open={planGateOpen} requiredPlan={planGateRequired} onClose={() => (planGateOpen = false)} />
 <ErrorModal
 	open={errorOpen}
 	errorCode={errorCode}
