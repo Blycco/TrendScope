@@ -1,11 +1,14 @@
-import { init, register, getLocaleFromNavigator } from 'svelte-i18n';
+import { init, addMessages, getLocaleFromNavigator } from 'svelte-i18n';
+import ko from './ko.json';
+import en from './en.json';
 
-register('ko', () => import('./ko.json'));
-register('en', () => import('./en.json'));
+addMessages('ko', ko);
+addMessages('en', en);
 
 export function initI18n(): void {
+	const isBrowser = typeof window !== 'undefined';
 	init({
 		fallbackLocale: 'ko',
-		initialLocale: getLocaleFromNavigator() ?? 'ko'
+		initialLocale: isBrowser ? (getLocaleFromNavigator() ?? 'ko') : 'ko'
 	});
 }

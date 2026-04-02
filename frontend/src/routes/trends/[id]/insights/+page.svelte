@@ -4,7 +4,7 @@
 	import { onMount } from 'svelte';
 	import { apiRequest, ApiRequestError, PlanGateRequestError } from '$lib/api';
 	import type { InsightResponse } from '$lib/api';
-	import { authStore } from '$lib/stores/auth';
+	import { authStore } from '$lib/stores/auth.svelte';
 	import ActionPointCard from '../../../../components/ActionPointCard.svelte';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
 	import PlanGate from '$lib/ui/PlanGate.svelte';
