@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { t } from 'svelte-i18n';
 	import { goto } from '$app/navigation';
-	import { authStore } from '$lib/stores/auth';
+	import { authStore } from '$lib/stores/auth.svelte';
 	import { ApiRequestError } from '$lib/api';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
 

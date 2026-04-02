@@ -562,7 +562,7 @@
 
 <!-- Create/Edit Modal -->
 {#if showModal}
-	<div class="fixed inset-0 z-50 bg-black/40 flex items-center justify-center" onclick|self={() => (showModal = false)}>
+	<div class="fixed inset-0 z-50 bg-black/40 flex items-center justify-center" onclick={(e) => { if (e.target === e.currentTarget) showModal = false; }}>
 		<div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg">
 			<h3 class="text-lg font-bold mb-4">
 				{modalMode === 'create' ? $t('admin.feeds.add_feed') : $t('admin.feeds.edit_feed')}
@@ -627,7 +627,7 @@
 
 <!-- Delete Confirm Modal -->
 {#if showDeleteConfirm}
-	<div class="fixed inset-0 z-50 bg-black/40 flex items-center justify-center" onclick|self={() => (showDeleteConfirm = false)}>
+	<div class="fixed inset-0 z-50 bg-black/40 flex items-center justify-center" onclick={(e) => { if (e.target === e.currentTarget) showDeleteConfirm = false; }}>
 		<div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm">
 			<h3 class="text-lg font-bold mb-2">{$t('admin.feeds.delete_feed')}</h3>
 			<p class="text-sm text-gray-600 mb-4">{$t('admin.feeds.delete_confirm')}</p>

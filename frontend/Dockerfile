@@ -17,6 +17,7 @@ RUN npm ci --omit=dev
 
 COPY --from=build /app/build ./build
 
-EXPOSE 4173
+EXPOSE 3000
 
-CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "4173"]
+ENV PORT=3000
+CMD ["node", "build/index.js"]

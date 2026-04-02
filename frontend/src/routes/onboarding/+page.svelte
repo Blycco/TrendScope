@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { apiRequest, ApiRequestError } from '$lib/api';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
-	import { authStore } from '$lib/stores/auth';
+	import { authStore } from '$lib/stores/auth.svelte';
 	import { onMount } from 'svelte';
 	import { Check } from 'lucide-svelte';
 

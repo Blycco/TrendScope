@@ -2,7 +2,7 @@
 	import '../app.css';
 	import { initI18n } from '$lib/i18n';
 	import { isLoading, t } from 'svelte-i18n';
-	import { authStore } from '$lib/stores/auth';
+	import { authStore } from '$lib/stores/auth.svelte';
 	import { onMount } from 'svelte';
 
 	initI18n();
