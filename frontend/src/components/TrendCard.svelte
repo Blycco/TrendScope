@@ -2,6 +2,7 @@
 	import { t } from 'svelte-i18n';
 	import type { TrendItem } from '$lib/api';
 	import EarlyBadge from './EarlyBadge.svelte';
+	import { formatDate } from '$lib/utils/locale';
 
 	interface Props {
 		trend: TrendItem;
@@ -10,11 +11,7 @@
 	let { trend }: Props = $props();
 
 	const formattedDate = $derived(
-		new Date(trend.created_at).toLocaleDateString('ko-KR', {
-			year: 'numeric',
-			month: 'short',
-			day: 'numeric'
-		})
+		formatDate(trend.created_at, { year: 'numeric', month: 'short', day: 'numeric' })
 	);
 </script>
 
