@@ -297,8 +297,8 @@ async def update_feed_health(
                         last_success_at = now(),
                         consecutive_failures = 0,
                         avg_latency_ms = CASE
-                            WHEN avg_latency_ms IS NULL THEN $2
-                            ELSE (avg_latency_ms * 0.7 + $2 * 0.3)
+                            WHEN avg_latency_ms IS NULL THEN $2::float8
+                            ELSE (avg_latency_ms * 0.7 + $2::float8 * 0.3)
                         END,
                         total_crawl_count = total_crawl_count + 1,
                         updated_at = now()
@@ -316,8 +316,8 @@ async def update_feed_health(
                         last_error_at = now(),
                         consecutive_failures = consecutive_failures + 1,
                         avg_latency_ms = CASE
-                            WHEN avg_latency_ms IS NULL THEN $3
-                            ELSE (avg_latency_ms * 0.7 + $3 * 0.3)
+                            WHEN avg_latency_ms IS NULL THEN $3::float8
+                            ELSE (avg_latency_ms * 0.7 + $3::float8 * 0.3)
                         END,
                         total_crawl_count = total_crawl_count + 1,
                         total_error_count = total_error_count + 1,

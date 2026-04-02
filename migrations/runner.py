@@ -26,7 +26,7 @@ MIGRATIONS: List[str] = [
     "migrations.011_feed_sources",
     "migrations.012_seed_feed_sources",
     "migrations.013_api_quota_alert",
-
+    "migrations.014_seed_source_config",
 ]
 
 
