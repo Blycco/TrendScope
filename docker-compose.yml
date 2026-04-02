@@ -27,8 +27,8 @@ services:
 
   processor:
     build:
-      context: ./backend
-      dockerfile: Dockerfile.processor
+      context: .
+      dockerfile: backend/Dockerfile.processor
     image: trendscope/processor:latest
     container_name: trendscope-processor
     restart: unless-stopped
@@ -47,8 +47,8 @@ services:
 
   crawler:
     build:
-      context: ./backend
-      dockerfile: Dockerfile.crawler
+      context: .
+      dockerfile: backend/Dockerfile.crawler
     image: trendscope/crawler:latest
     container_name: trendscope-crawler
     restart: unless-stopped

@@ -2,8 +2,9 @@ FROM python:3.11-slim AS builder
 
 WORKDIR /build
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+COPY requirements/base.txt requirements/base.txt
+COPY requirements/crawler.txt requirements/crawler.txt
+RUN pip install --no-cache-dir --prefix=/install -r requirements/crawler.txt
 
 
 FROM python:3.11-slim AS runtime
@@ -14,7 +15,7 @@ RUN groupadd --gid 1001 appgroup && \
 WORKDIR /app
 
 COPY --from=builder /install /usr/local
-COPY . .
+COPY backend/ ./backend/
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \

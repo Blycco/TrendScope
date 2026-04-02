@@ -2,8 +2,26 @@ FROM python:3.11-slim AS builder
 
 WORKDIR /build
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+COPY requirements/base.txt requirements/base.txt
+COPY requirements/processor.txt requirements/processor.txt
+
+# 1) torch CPU 설치 → 시스템 site-packages에 설치되어 pip이 인식
+RUN pip install --no-cache-dir \
+    torch --index-url https://download.pytorch.org/whl/cpu
+
+# 2) 나머지 패키지 설치 — torch는 이미 satisfied → GPU 재설치 안 함
+RUN pip install --no-cache-dir \
+    -r requirements/processor.txt
+
+# 3) 런타임 불필요 패키지 삭제
+RUN pip uninstall -y \
+    matplotlib fonttools pillow kiwisolver cycler contourpy \
+    nvidia-nccl-cu12 \
+    pip setuptools wheel 2>/dev/null || true && \
+    rm -rf /usr/local/lib/python3.11/site-packages/functorch \
+           /usr/local/lib/python3.11/site-packages/mpl_toolkits \
+           /usr/local/lib/python3.11/site-packages/pkg_resources && \
+    find /usr/local/lib/python3.11/site-packages -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
 
 
 FROM python:3.11-slim AS runtime
@@ -13,8 +31,9 @@ RUN groupadd --gid 1001 appgroup && \
 
 WORKDIR /app
 
-COPY --from=builder /install /usr/local
-COPY . .
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+COPY backend/ ./backend/
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
