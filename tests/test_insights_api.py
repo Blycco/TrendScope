@@ -1,4 +1,4 @@
-"""Tests for GET /api/v1/trends/{keyword}/insights endpoint."""
+"""Tests for GET /api/v1/trends/{group_id}/insights endpoint."""
 
 from __future__ import annotations
 
@@ -356,3 +356,114 @@ class TestParseContent:
         content = resp.json()["content"]
         assert "sns_drafts" in content
         assert "engagement_methods" in content
+
+
+class TestGetTrendInsightsGroupId:
+    """Tests for UUID-based group_id path (the primary use case from frontend)."""
+
+    async def test_uuid_group_id_resolves_keywords(
+        self, mock_db_pool: MagicMock, mock_redis: AsyncMock
+    ) -> None:
+        from backend.api.main import create_app
+
+        app = create_app()
+        app.state.db_pool = mock_db_pool
+
+        pro_user = _make_pro_user()
+        app.dependency_overrides[require_auth] = lambda: pro_user
+        app.dependency_overrides[rate_limit_check] = lambda: pro_user
+        app.dependency_overrides[check_insight_quota] = lambda: pro_user
+
+        pro_token = create_access_token("user-pro-001", "pro", "general")
+
+        group_uuid = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        mock_group_info = MagicMock()
+        mock_group_info.__getitem__ = lambda self, key: {
+            "title": "AI 트렌드",
+            "keywords": ["AI", "인공지능", "머신러닝"],
+        }[key]
+
+        engine_result = _make_engine_result("general")
+
+        with (
+            patch("backend.api.routers.health.get_redis", return_value=mock_redis),
+            patch("backend.api.middleware.rate_limit.get_redis", return_value=mock_redis),
+            patch(
+                "backend.api.routers.insights.get_ai_config",
+                new=AsyncMock(return_value=_make_ai_config()),
+            ),
+            patch(
+                "backend.api.routers.insights.fetch_group_info",
+                new=AsyncMock(return_value=mock_group_info),
+            ),
+            patch(
+                "backend.api.routers.insights.fetch_news_for_keywords",
+                new=AsyncMock(return_value=[]),
+            ),
+            patch(
+                "backend.api.routers.insights.fetch_sns_for_keywords",
+                new=AsyncMock(return_value=[]),
+            ),
+            patch(
+                "backend.api.routers.insights.write_audit_log",
+                new=AsyncMock(return_value=None),
+            ),
+            patch(
+                "backend.api.routers.insights.increment_insight_usage",
+                new=AsyncMock(return_value=None),
+            ),
+            patch(
+                "backend.api.routers.insights.ActionInsightEngine.generate",
+                new=AsyncMock(return_value=engine_result),
+            ),
+        ):
+            async with AsyncClient(
+                transport=ASGITransport(app=app),
+                base_url="http://test",
+                headers={"Authorization": f"Bearer {pro_token}"},
+            ) as ac:
+                resp = await ac.get(f"/api/v1/trends/{group_uuid}/insights")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["keyword"] == "AI 트렌드"
+        app.dependency_overrides.clear()
+
+    async def test_uuid_group_not_found_returns_404(
+        self, mock_db_pool: MagicMock, mock_redis: AsyncMock
+    ) -> None:
+        from backend.api.main import create_app
+
+        app = create_app()
+        app.state.db_pool = mock_db_pool
+
+        pro_user = _make_pro_user()
+        app.dependency_overrides[require_auth] = lambda: pro_user
+        app.dependency_overrides[rate_limit_check] = lambda: pro_user
+        app.dependency_overrides[check_insight_quota] = lambda: pro_user
+
+        pro_token = create_access_token("user-pro-001", "pro", "general")
+
+        group_uuid = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+
+        with (
+            patch("backend.api.routers.health.get_redis", return_value=mock_redis),
+            patch("backend.api.middleware.rate_limit.get_redis", return_value=mock_redis),
+            patch(
+                "backend.api.routers.insights.get_ai_config",
+                new=AsyncMock(return_value=_make_ai_config()),
+            ),
+            patch(
+                "backend.api.routers.insights.fetch_group_info",
+                new=AsyncMock(return_value=None),
+            ),
+        ):
+            async with AsyncClient(
+                transport=ASGITransport(app=app),
+                base_url="http://test",
+                headers={"Authorization": f"Bearer {pro_token}"},
+            ) as ac:
+                resp = await ac.get(f"/api/v1/trends/{group_uuid}/insights")
+
+        assert resp.status_code == 404
+        app.dependency_overrides.clear()
