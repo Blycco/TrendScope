@@ -4,7 +4,7 @@
 	import { page } from '$app/stores';
 	import { authStore } from '$lib/stores/auth.svelte';
 
-	onMount(() => {
+	onMount(async () => {
 		const params = $page.url.searchParams;
 		const accessToken = params.get('access_token');
 		const refreshToken = params.get('refresh_token');
