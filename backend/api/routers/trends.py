@@ -36,14 +36,15 @@ async def list_trends(
     request: Request,
     category: str | None = Query(default=None),
     locale: str | None = Query(default=None),
+    since: int | None = Query(default=None, description="Filter by hours (e.g. 1, 6, 24)"),
     limit: int = Query(default=20, ge=1, le=100),
     cursor: str | None = Query(default=None),
 ) -> Response:
     """Return trend feed from news_group ordered by score DESC."""
     cache_key = _trend_cache_key(category, locale)
 
-    # Only use cache for first page (no cursor)
-    if not cursor:
+    # Only use cache for first page (no cursor, no time filter)
+    if not cursor and not since:
         cached = await get_cached(cache_key)
         if cached is not None:
             return Response(content=cached, media_type="application/json")
@@ -51,11 +52,10 @@ async def list_trends(
     try:
         pool = request.app.state.db_pool
 
-        # Quota stub: api_usage INSERT would go here (not enforced yet)
-        logger.info("trends_request", category=category, locale=locale, cursor=cursor)
+        logger.info("trends_request", category=category, locale=locale, since=since, cursor=cursor)
 
         rows = await fetch_trends(
-            pool, category=category, locale=locale, limit=limit, cursor=cursor
+            pool, category=category, locale=locale, since_hours=since, limit=limit, cursor=cursor
         )
     except Exception as exc:
         logger.error("trends_fetch_failed", error=str(exc))

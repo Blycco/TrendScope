@@ -15,14 +15,24 @@
 		locale_ratio: number;
 	}
 
-	const ALL_CATEGORIES = ['tech', 'finance', 'entertainment', 'lifestyle'] as const;
+	const ALL_CATEGORIES = ['tech', 'economy', 'entertainment', 'lifestyle', 'politics', 'sports', 'society'] as const;
 	type Category = (typeof ALL_CATEGORIES)[number];
+
+	const TIME_OPTIONS = [
+		{ label: 'filter.time.1h', value: 1 },
+		{ label: 'filter.time.6h', value: 6 },
+		{ label: 'filter.time.24h', value: 24 },
+		{ label: 'filter.time.7d', value: 168 },
+		{ label: 'filter.time.30d', value: 720 },
+	] as const;
 
 	let trends = $state<TrendItem[]>([]);
 	let nextCursor = $state<string | null>(null);
 	let isLoading = $state(true);
 	let isLoadingMore = $state(false);
 	let personalization = $state<PersonalizationSettings | null>(null);
+	let selectedCategory = $state<string | null>(null);
+	let selectedTime = $state<number | null>(null);
 
 	let errorOpen = $state(false);
 	let errorCode = $state('');
@@ -63,6 +73,8 @@
 			if (cursor) params.set('cursor', cursor);
 			const locale = getLocaleParam();
 			if (locale) params.set('locale', locale);
+			if (selectedCategory) params.set('category', selectedCategory);
+			if (selectedTime) params.set('since', String(selectedTime));
 
 			const data = await apiRequest<TrendListResponse>(`/trends?${params.toString()}`);
 			if (cursor) {
@@ -224,15 +236,33 @@
 		</div>
 	</div>
 
-	{#if personalization}
-		<div class="flex gap-2 flex-wrap">
-			{#each getSortedCategories() as cat}
-				<span class="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-600">
-					{cat}
-				</span>
-			{/each}
-		</div>
-	{/if}
+	<!-- Category filter -->
+	<div class="flex gap-2 flex-wrap">
+		<button
+			onclick={() => { selectedCategory = null; trends = []; nextCursor = null; loadTrends(); }}
+			class="rounded-full px-3 py-1 text-xs font-medium transition-colors {selectedCategory === null ? 'bg-blue-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
+		>{$t('filter.all')}</button>
+		{#each ALL_CATEGORIES as cat}
+			<button
+				onclick={() => { selectedCategory = cat; trends = []; nextCursor = null; loadTrends(); }}
+				class="rounded-full px-3 py-1 text-xs font-medium transition-colors {selectedCategory === cat ? 'bg-blue-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
+			>{$t(`filter.category.${cat}`)}</button>
+		{/each}
+	</div>
+
+	<!-- Time filter -->
+	<div class="flex gap-2 flex-wrap">
+		<button
+			onclick={() => { selectedTime = null; trends = []; nextCursor = null; loadTrends(); }}
+			class="rounded-full px-2.5 py-1 text-xs font-medium transition-colors {selectedTime === null ? 'bg-gray-800 text-white' : 'border border-gray-200 bg-white text-gray-500 hover:bg-gray-50'}"
+		>{$t('filter.all')}</button>
+		{#each TIME_OPTIONS as opt}
+			<button
+				onclick={() => { selectedTime = opt.value; trends = []; nextCursor = null; loadTrends(); }}
+				class="rounded-full px-2.5 py-1 text-xs font-medium transition-colors {selectedTime === opt.value ? 'bg-gray-800 text-white' : 'border border-gray-200 bg-white text-gray-500 hover:bg-gray-50'}"
+			>{$t(opt.label)}</button>
+		{/each}
+	</div>
 
 	{#if isLoading}
 		<p class="text-gray-500">{$t('status.loading')}</p>

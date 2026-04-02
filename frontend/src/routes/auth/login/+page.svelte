@@ -82,13 +82,13 @@
 
 	<div class="mt-6 space-y-3">
 		<a
-			href="/api/v1/auth/oauth/google"
+			href="/api/v1/auth/oauth/google/start"
 			class="flex w-full items-center justify-center gap-2 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
 		>
 			{$t('button.google_login')}
 		</a>
 		<a
-			href="/api/v1/auth/oauth/kakao"
+			href="/api/v1/auth/oauth/kakao/start"
 			class="flex w-full items-center justify-center gap-2 rounded-md border border-gray-300 bg-yellow-300 px-4 py-2 text-sm font-medium text-gray-900 hover:bg-yellow-400"
 		>
 			{$t('button.kakao_login')}

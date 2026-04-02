@@ -19,14 +19,30 @@ async def list_news(
     request: Request,
     category: str | None = Query(default=None),
     locale: str | None = Query(default=None),
+    source_type: str | None = Query(default=None),
+    since: int | None = Query(default=None, description="Filter by hours (e.g. 1, 6, 24)"),
     limit: int = Query(default=20, ge=1, le=100),
     cursor: str | None = Query(default=None),
 ) -> Response:
-    """Return news articles ordered by publish_time DESC."""
+    """Return news articles ordered by publish_time DESC, grouped by news_group."""
     try:
         pool = request.app.state.db_pool
-        logger.info("news_request", category=category, locale=locale, cursor=cursor)
-        rows = await fetch_news(pool, category=category, locale=locale, limit=limit, cursor=cursor)
+        logger.info(
+            "news_request",
+            category=category,
+            locale=locale,
+            source_type=source_type,
+            cursor=cursor,
+        )
+        rows = await fetch_news(
+            pool,
+            category=category,
+            locale=locale,
+            source_type=source_type,
+            since_hours=since,
+            limit=limit,
+            cursor=cursor,
+        )
     except Exception as exc:
         logger.error("news_fetch_failed", error=str(exc))
         return error_response(ErrorCode.DB_ERROR, "Failed to fetch news", status_code=500)
@@ -39,6 +55,7 @@ async def list_news(
             source=row["source"],
             publish_time=row["publish_time"],
             summary=row["summary"],
+            article_count=row.get("article_count", 1),
         )
         for row in rows
     ]
