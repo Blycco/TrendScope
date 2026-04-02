@@ -643,4 +643,4 @@
 	</div>
 {/if}
 
-<ErrorModal open={errorOpen} {errorCode} onClose={() => (errorOpen = false)} onRetry={refreshFeeds} />
+<ErrorModal open={errorOpen} errorCode={errorCode} messageKey="error.server" onClose={() => (errorOpen = false)} onRetry={refreshFeeds} />

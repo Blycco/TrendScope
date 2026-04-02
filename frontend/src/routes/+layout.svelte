@@ -3,18 +3,23 @@
 	import { initI18n } from '$lib/i18n';
 	import { isLoading, t } from 'svelte-i18n';
 	import { authStore } from '$lib/stores/auth.svelte';
+	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 
 	initI18n();
 	onMount(() => authStore.initialize());
 
 	let { children } = $props();
+
+	const isAdmin = $derived($page.url.pathname.startsWith('/admin'));
 </script>
 
 {#if $isLoading}
 	<div class="flex h-screen items-center justify-center">
 		<p class="text-gray-500">{$t('status.loading')}</p>
 	</div>
+{:else if isAdmin}
+	{@render children()}
 {:else}
 	<div class="min-h-screen bg-gray-50">
 		<nav class="bg-white border-b border-gray-200">
