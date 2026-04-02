@@ -35,9 +35,9 @@ async def up(conn: asyncpg.Connection) -> None:
         CREATE INDEX IF NOT EXISTS idx_api_quota_alert_active
         ON api_quota_alert (is_dismissed, created_at DESC)
     """)
-    logger.info("migration_011_api_quota_alert_applied")
+    logger.info("migration_013_api_quota_alert_applied")
 
 
 async def down(conn: asyncpg.Connection) -> None:
     await conn.execute("DROP TABLE IF EXISTS api_quota_alert")
-    logger.info("migration_011_api_quota_alert_rolled_back")
+    logger.info("migration_013_api_quota_alert_rolled_back")
