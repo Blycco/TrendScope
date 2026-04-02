@@ -2,10 +2,9 @@ FROM python:3.11-slim AS builder
 
 WORKDIR /build
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir --prefix=/install \
-    torch --index-url https://download.pytorch.org/whl/cpu
-RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+COPY requirements/base.txt requirements/base.txt
+COPY requirements/api.txt requirements/api.txt
+RUN pip install --no-cache-dir --prefix=/install -r requirements/api.txt
 
 
 FROM python:3.11-slim AS runtime
