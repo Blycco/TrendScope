@@ -1,4 +1,4 @@
-"""011_api_quota_alert — 외부 API rate limit/quota 초과 알림 테이블."""
+"""013_api_quota_alert — 외부 API rate limit/quota 초과 알림 테이블."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
-VERSION = "011"
+VERSION = "013"
 DESCRIPTION = "Create api_quota_alert table for external API rate limit tracking"
 
 
