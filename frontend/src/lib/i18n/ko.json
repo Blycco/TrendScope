@@ -87,6 +87,8 @@
 	"trend.source_count": "소스 수",
 	"trend.first_seen": "최초 발견",
 	"trend.category": "카테고리",
+	"trend.detail.insights": "인사이트 보기",
+	"trend.detail.articles": "관련 기사",
 	"trend.sentiment": "감성 분석",
 
 	"insight.action_points": "액션 포인트",

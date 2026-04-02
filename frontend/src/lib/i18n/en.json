@@ -87,6 +87,8 @@
 	"trend.source_count": "Source Count",
 	"trend.first_seen": "First Seen",
 	"trend.category": "Category",
+	"trend.detail.insights": "View Insights",
+	"trend.detail.articles": "Related Articles",
 	"trend.sentiment": "Sentiment",
 
 	"insight.action_points": "Action Points",

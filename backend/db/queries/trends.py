@@ -130,6 +130,47 @@ async def fetch_early_trends(
 
 
 # ---------------------------------------------------------------------------
+# Trend detail (group + articles)
+# ---------------------------------------------------------------------------
+
+
+async def fetch_trend_detail(
+    pool: asyncpg.Pool,
+    *,
+    group_id: str,
+) -> dict | None:
+    """Fetch a single news_group with its articles."""
+    try:
+        async with pool.acquire() as conn:
+            group = await conn.fetchrow(
+                """
+                SELECT id::text, category, locale, title, summary,
+                       score, early_trend_score, keywords, created_at
+                FROM news_group WHERE id = $1::uuid
+                """,
+                group_id,
+            )
+            if not group:
+                return None
+
+            articles = await conn.fetch(
+                """
+                SELECT id::text, title, url, source, body,
+                       publish_time, locale, category
+                FROM news_article
+                WHERE group_id = $1::uuid
+                ORDER BY publish_time DESC
+                LIMIT 50
+                """,
+                group_id,
+            )
+            return {"group": group, "articles": articles}
+    except Exception as exc:
+        logger.error("fetch_trend_detail_failed", group_id=group_id, error=str(exc))
+        raise
+
+
+# ---------------------------------------------------------------------------
 # Related trends query  (same category, ordered by score DESC)
 # ---------------------------------------------------------------------------
 
