@@ -43,8 +43,10 @@ async def test_close_redis() -> None:
 
 @pytest.mark.asyncio
 async def test_get_cached_hit() -> None:
+    """Uncompressed value stored with new prefix is returned without prefix."""
     mock_redis = AsyncMock()
-    mock_redis.get = AsyncMock(return_value=b"cached_value")
+    # Simulate a value written by the new set_cached (uncompressed prefix b'\x00')
+    mock_redis.get = AsyncMock(return_value=b"\x00cached_value")
     cache_manager._redis_pool = mock_redis
 
     result = await cache_manager.get_cached("test_key")
@@ -163,7 +165,8 @@ async def test_release_lock() -> None:
 @pytest.mark.asyncio
 async def test_get_or_compute_cache_hit() -> None:
     mock_redis = AsyncMock()
-    mock_redis.get = AsyncMock(return_value=b"cached")
+    # Prefixed uncompressed value
+    mock_redis.get = AsyncMock(return_value=b"\x00cached")
     cache_manager._redis_pool = mock_redis
 
     compute_fn = AsyncMock(return_value=b"computed")
@@ -193,3 +196,112 @@ async def test_get_or_compute_cache_miss_with_lock() -> None:
     compute_fn = AsyncMock(return_value=b"fresh_value")
     result = await cache_manager.get_or_compute("key", compute_fn, 60)
     assert result == b"fresh_value"
+
+
+# --- Compression / decompression round-trip tests ---
+
+
+def test_decompress_value_uncompressed_prefix() -> None:
+    """Values stored with \\x00 prefix are returned without the prefix."""
+    raw = b"\x00hello world"
+    assert cache_manager._decompress_value(raw) == b"hello world"
+
+
+def test_decompress_value_compressed_prefix() -> None:
+    """Values stored with \\x01 prefix are decompressed correctly."""
+    original = b"hello world" * 200
+    compressed = cache_manager._PREFIX_COMPRESSED + __import__("zlib").compress(original)
+    assert cache_manager._decompress_value(compressed) == original
+
+
+def test_decompress_value_legacy_zlib() -> None:
+    """Legacy values (no prefix, raw zlib) are detected and decompressed."""
+    import zlib
+
+    original = b"legacy data" * 200
+    raw = zlib.compress(original)  # starts with \x78\x9c or similar
+    assert cache_manager._decompress_value(raw) == original
+
+
+def test_decompress_value_legacy_plain() -> None:
+    """Legacy values that are neither prefixed nor zlib are returned as-is."""
+    raw = b"plain old bytes"
+    assert cache_manager._decompress_value(raw) == raw
+
+
+def test_decompress_value_empty() -> None:
+    assert cache_manager._decompress_value(b"") == b""
+
+
+@pytest.mark.asyncio
+async def test_set_cached_small_value_stores_uncompressed_prefix() -> None:
+    """Small values are stored with \\x00 prefix (no compression)."""
+    mock_redis = AsyncMock()
+    mock_redis.setex = AsyncMock()
+    cache_manager._redis_pool = mock_redis
+
+    payload = b"small"
+    await cache_manager.set_cached("k", payload, 60)
+
+    args = mock_redis.setex.call_args[0]
+    stored: bytes = args[2]
+    assert stored[:1] == b"\x00"
+    assert stored[1:] == payload
+
+
+@pytest.mark.asyncio
+async def test_set_cached_large_value_stores_compressed_prefix() -> None:
+    """Values over threshold are stored with \\x01 prefix and zlib-compressed."""
+    import zlib
+
+    mock_redis = AsyncMock()
+    mock_redis.setex = AsyncMock()
+    cache_manager._redis_pool = mock_redis
+
+    payload = b"x" * 2000  # exceeds DEFAULT_COMPRESS_THRESHOLD
+    await cache_manager.set_cached("k", payload, 60)
+
+    args = mock_redis.setex.call_args[0]
+    stored: bytes = args[2]
+    assert stored[:1] == b"\x01"
+    assert zlib.decompress(stored[1:]) == payload
+
+
+@pytest.mark.asyncio
+async def test_get_cached_decompresses_compressed_value() -> None:
+    """get_cached() transparently decompresses a \\x01-prefixed value."""
+    import zlib
+
+    original = b"important json data" * 100
+    compressed_stored = b"\x01" + zlib.compress(original)
+
+    mock_redis = AsyncMock()
+    mock_redis.get = AsyncMock(return_value=compressed_stored)
+    cache_manager._redis_pool = mock_redis
+
+    result = await cache_manager.get_cached("k")
+    assert result == original
+
+
+@pytest.mark.asyncio
+async def test_set_get_round_trip_large_value() -> None:
+    """set_cached then get_cached returns the original bytes for large values."""
+    stored_value: bytes | None = None
+
+    mock_redis = AsyncMock()
+
+    async def fake_setex(key: str, ttl: int, value: bytes) -> None:
+        nonlocal stored_value
+        stored_value = value
+
+    async def fake_get(key: str) -> bytes | None:
+        return stored_value
+
+    mock_redis.setex = fake_setex
+    mock_redis.get = fake_get
+    cache_manager._redis_pool = mock_redis
+
+    original = b"round trip test data" * 200  # > 1024 bytes
+    await cache_manager.set_cached("k", original, 60)
+    result = await cache_manager.get_cached("k")
+    assert result == original
