@@ -43,5 +43,8 @@
 			<span>{news.source}</span>
 		{/if}
 		<span>{formattedDate}</span>
+		{#if news.article_count > 1}
+			<span class="rounded-full bg-blue-50 px-2 py-0.5 text-blue-600 font-medium">+{news.article_count - 1}</span>
+		{/if}
 	</div>
 </article>

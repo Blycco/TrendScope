@@ -10,6 +10,8 @@ from typing import Any
 import asyncpg
 import structlog
 
+from backend.processor.shared.ai_config import get_ai_config
+from backend.processor.shared.ai_summarizer import summarize
 from backend.processor.shared.cache_manager import set_cached
 from backend.processor.shared.dedupe_filter import is_duplicate
 from backend.processor.shared.keyword_extractor import Keyword, extract_keywords
@@ -67,6 +69,9 @@ async def process_articles(
 
     # Stage 6: Score calculation
     scored_clusters = _stage_score(clusters)
+
+    # Stage 6.5: Generate summaries
+    await _stage_summarize(scored_clusters, db_pool)
 
     # Stage 7: Save to DB
     saved = await _stage_save(scored_clusters, db_pool)
@@ -235,6 +240,43 @@ def _stage_score(clusters: list[Cluster]) -> list[dict[str, Any]]:
     return scored
 
 
+_SUMMARY_PROMPT = (
+    "Summarize the following news articles into exactly 3 concise sentences in Korean. "
+    "Focus on what happened, who is involved, and why it matters."
+)
+
+
+async def _stage_summarize(
+    scored_clusters: list[dict[str, Any]],
+    db_pool: asyncpg.Pool,
+) -> None:
+    """Stage 6.5: Generate AI summary for each cluster."""
+    try:
+        config = await get_ai_config(db_pool)
+    except Exception as exc:
+        logger.warning("pipeline_ai_config_failed", error=str(exc))
+        return
+
+    for item in scored_clusters:
+        try:
+            articles: list[dict[str, Any]] = item.get("articles", [])
+            combined = "\n\n".join(
+                f"[{a.get('source', '')}] {a.get('title', '')}\n{a.get('body', '')[:500]}"
+                for a in articles[:5]
+            )
+            if not combined.strip():
+                item["summary"] = None
+                continue
+
+            summary_text, degraded = await summarize(combined, _SUMMARY_PROMPT, config, db_pool)
+            item["summary"] = summary_text.strip() if summary_text else None
+            if degraded:
+                logger.debug("pipeline_summary_degraded", title=item.get("title", "?"))
+        except Exception as exc:
+            logger.warning("pipeline_summary_error", title=item.get("title", "?"), error=str(exc))
+            item["summary"] = None
+
+
 async def _stage_save(
     scored_clusters: list[dict[str, Any]],
     db_pool: asyncpg.Pool,
@@ -244,11 +286,12 @@ async def _stage_save(
     for item in scored_clusters:
         try:
             group_id = await db_pool.fetchval(
-                "INSERT INTO news_group (category, locale, title, score, keywords) "
-                "VALUES ($1, $2, $3, $4, $5) RETURNING id",
+                "INSERT INTO news_group (category, locale, title, summary, score, keywords) "
+                "VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
                 item["category"],
                 item["locale"],
                 item["title"],
+                item.get("summary"),
                 item["score"],
                 item["keywords"],
             )

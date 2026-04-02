@@ -30,6 +30,7 @@ class NewsItem(BaseModel):
     source: str | None
     publish_time: datetime
     summary: str | None
+    article_count: int = 1
 
 
 class NewsListResponse(BaseModel):

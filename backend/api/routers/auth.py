@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import os
 import secrets
+from urllib.parse import urlencode
 
 import pyotp
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse, RedirectResponse, Response
 
 from backend.api.schemas.auth import (
     EmailVerifySendResponse,
@@ -206,7 +208,83 @@ async def logout(_current_user: CurrentUser = Depends(require_auth)) -> Response
 
 
 # ---------------------------------------------------------------------------
-# Google OAuth
+# Google OAuth — redirect flow
+# ---------------------------------------------------------------------------
+
+_GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
+_KAKAO_AUTH_URL = "https://kauth.kakao.com/oauth/authorize"
+
+
+@router.get("/oauth/google/start")
+async def oauth_google_start(request: Request) -> RedirectResponse:
+    """Redirect user to Google consent screen."""
+    client_id = os.environ.get("OAUTH_GOOGLE_CLIENT_ID", "")
+    base_url = os.environ.get("BASE_URL", "http://localhost:3000")
+    redirect_uri = f"{base_url}/api/v1/auth/oauth/google/callback"
+    params = urlencode(
+        {
+            "client_id": client_id,
+            "redirect_uri": redirect_uri,
+            "response_type": "code",
+            "scope": "openid email profile",
+            "access_type": "offline",
+            "prompt": "consent",
+        }
+    )
+    return RedirectResponse(url=f"{_GOOGLE_AUTH_URL}?{params}")
+
+
+@router.get("/oauth/google/callback")
+async def oauth_google_callback(code: str, request: Request) -> RedirectResponse:
+    """Handle Google OAuth callback: exchange code, create/find user, redirect with tokens."""
+    base_url = os.environ.get("BASE_URL", "http://localhost:3000")
+    redirect_uri = f"{base_url}/api/v1/auth/oauth/google/callback"
+    try:
+        tokens = await exchange_code(code, redirect_uri)
+        userinfo = await fetch_userinfo(tokens["access_token"])
+    except Exception as exc:
+        logger.error("google_oauth_callback_failed", error=str(exc))
+        return RedirectResponse(url=f"{base_url}/auth/login?error=oauth_failed")
+
+    google_uid: str = userinfo["sub"]
+    email: str = userinfo.get("email", "")
+    display_name: str | None = userinfo.get("name")
+
+    try:
+        pool = request.app.state.db_pool
+        identity = await get_identity_by_provider_uid(
+            pool,
+            provider="google",
+            provider_uid=google_uid,
+        )
+        if identity:
+            user = await get_user_by_id(pool, identity["user_id"])
+        else:
+            user = await get_user_by_email(pool, email)
+            if not user:
+                user = await create_user(pool, email=email, display_name=display_name)
+            await create_identity(
+                pool,
+                user_id=user["id"],
+                provider="google",
+                provider_uid=google_uid,
+            )
+
+        if not user["is_active"]:
+            return RedirectResponse(url=f"{base_url}/auth/login?error=account_deactivated")
+
+        access = create_access_token(user["id"], user["plan"], user["role"])
+        refresh = create_refresh_token(user["id"])
+        logger.info("google_oauth_callback_success", user_id=user["id"])
+        params = urlencode({"access_token": access, "refresh_token": refresh})
+        return RedirectResponse(url=f"{base_url}/auth/callback?{params}")
+    except Exception as exc:
+        logger.error("google_oauth_callback_db_failed", error=str(exc))
+        return RedirectResponse(url=f"{base_url}/auth/login?error=oauth_failed")
+
+
+# ---------------------------------------------------------------------------
+# Google OAuth — POST (legacy)
 # ---------------------------------------------------------------------------
 
 
@@ -259,7 +337,78 @@ async def oauth_google(body: OAuthCallbackRequest, request: Request) -> TokenRes
 
 
 # ---------------------------------------------------------------------------
-# Kakao OAuth
+# Kakao OAuth — redirect flow
+# ---------------------------------------------------------------------------
+
+
+@router.get("/oauth/kakao/start")
+async def oauth_kakao_start(request: Request) -> RedirectResponse:
+    """Redirect user to Kakao consent screen."""
+    client_id = os.environ.get("KAKAO_CLIENT_ID", "")
+    base_url = os.environ.get("BASE_URL", "http://localhost:3000")
+    redirect_uri = f"{base_url}/api/v1/auth/oauth/kakao/callback"
+    params = urlencode(
+        {
+            "client_id": client_id,
+            "redirect_uri": redirect_uri,
+            "response_type": "code",
+        }
+    )
+    return RedirectResponse(url=f"{_KAKAO_AUTH_URL}?{params}")
+
+
+@router.get("/oauth/kakao/callback")
+async def oauth_kakao_callback(code: str, request: Request) -> RedirectResponse:
+    """Handle Kakao OAuth callback: exchange code, create/find user, redirect with tokens."""
+    base_url = os.environ.get("BASE_URL", "http://localhost:3000")
+    redirect_uri = f"{base_url}/api/v1/auth/oauth/kakao/callback"
+    try:
+        tokens = await exchange_kakao_code(code, redirect_uri)
+        userinfo = await fetch_kakao_userinfo(tokens["access_token"])
+    except Exception as exc:
+        logger.error("kakao_oauth_callback_failed", error=str(exc))
+        return RedirectResponse(url=f"{base_url}/auth/login?error=oauth_failed")
+
+    kakao_uid: str = userinfo["uid"]
+    email: str | None = userinfo.get("email")
+    if not email:
+        return RedirectResponse(url=f"{base_url}/auth/login?error=kakao_no_email")
+
+    try:
+        pool = request.app.state.db_pool
+        identity = await get_identity_by_provider_uid(
+            pool,
+            provider="kakao",
+            provider_uid=kakao_uid,
+        )
+        if identity:
+            user = await get_user_by_id(pool, identity["user_id"])
+        else:
+            user = await get_user_by_email(pool, email)
+            if not user:
+                user = await create_user(pool, email=email, display_name=None)
+            await create_identity(
+                pool,
+                user_id=user["id"],
+                provider="kakao",
+                provider_uid=kakao_uid,
+            )
+
+        if not user["is_active"]:
+            return RedirectResponse(url=f"{base_url}/auth/login?error=account_deactivated")
+
+        access = create_access_token(user["id"], user["plan"], user["role"])
+        refresh = create_refresh_token(user["id"])
+        logger.info("kakao_oauth_callback_success", user_id=user["id"])
+        params = urlencode({"access_token": access, "refresh_token": refresh})
+        return RedirectResponse(url=f"{base_url}/auth/callback?{params}")
+    except Exception as exc:
+        logger.error("kakao_oauth_callback_db_failed", error=str(exc))
+        return RedirectResponse(url=f"{base_url}/auth/login?error=oauth_failed")
+
+
+# ---------------------------------------------------------------------------
+# Kakao OAuth — POST (legacy)
 # ---------------------------------------------------------------------------
 
 

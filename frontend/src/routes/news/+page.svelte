@@ -7,10 +7,24 @@
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
 	import QuotaExceededModal from '$lib/ui/QuotaExceededModal.svelte';
 
+	const ALL_CATEGORIES = ['tech', 'economy', 'entertainment', 'lifestyle', 'politics', 'sports', 'society'] as const;
+	const SOURCE_TYPES = ['news', 'community', 'sns'] as const;
+	const TIME_OPTIONS = [
+		{ label: 'filter.time.1h', value: 1 },
+		{ label: 'filter.time.6h', value: 6 },
+		{ label: 'filter.time.24h', value: 24 },
+		{ label: 'filter.time.7d', value: 168 },
+		{ label: 'filter.time.30d', value: 720 },
+	] as const;
+
 	let news = $state<NewsItem[]>([]);
 	let nextCursor = $state<string | null>(null);
 	let isLoading = $state(true);
 	let isLoadingMore = $state(false);
+
+	let selectedCategory = $state<string | null>(null);
+	let selectedSourceType = $state<string | null>(null);
+	let selectedTime = $state<number | null>(null);
 
 	let errorOpen = $state(false);
 	let errorCode = $state('');
@@ -25,6 +39,9 @@
 		try {
 			const params = new URLSearchParams({ limit: '20' });
 			if (cursor) params.set('cursor', cursor);
+			if (selectedCategory) params.set('category', selectedCategory);
+			if (selectedSourceType) params.set('source_type', selectedSourceType);
+			if (selectedTime) params.set('since', String(selectedTime));
 
 			const data = await apiRequest<NewsListResponse>(`/news?${params.toString()}`);
 			if (cursor) {
@@ -51,6 +68,15 @@
 		}
 	}
 
+	function applyFilter(type: 'category' | 'source' | 'time', value: string | number | null): void {
+		if (type === 'category') selectedCategory = value as string | null;
+		else if (type === 'source') selectedSourceType = value as string | null;
+		else if (type === 'time') selectedTime = value as number | null;
+		news = [];
+		nextCursor = null;
+		loadNews();
+	}
+
 	async function loadMore(): Promise<void> {
 		if (!nextCursor || isLoadingMore) return;
 		isLoadingMore = true;
@@ -64,8 +90,51 @@
 	});
 </script>
 
-<div class="space-y-6">
+<div class="space-y-4">
 	<h1 class="text-2xl font-bold text-gray-900">{$t('page.news.title')}</h1>
+
+	<!-- Category filter -->
+	<div class="flex gap-2 flex-wrap">
+		<button
+			onclick={() => applyFilter('category', null)}
+			class="rounded-full px-3 py-1 text-xs font-medium transition-colors {selectedCategory === null ? 'bg-blue-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
+		>{$t('filter.all')}</button>
+		{#each ALL_CATEGORIES as cat}
+			<button
+				onclick={() => applyFilter('category', cat)}
+				class="rounded-full px-3 py-1 text-xs font-medium transition-colors {selectedCategory === cat ? 'bg-blue-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
+			>{$t(`filter.category.${cat}`)}</button>
+		{/each}
+	</div>
+
+	<!-- Source type + Time filters -->
+	<div class="flex gap-4 flex-wrap">
+		<div class="flex gap-2">
+			<button
+				onclick={() => applyFilter('source', null)}
+				class="rounded-full px-3 py-1 text-xs font-medium transition-colors {selectedSourceType === null ? 'bg-green-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
+			>{$t('filter.all')}</button>
+			{#each SOURCE_TYPES as src}
+				<button
+					onclick={() => applyFilter('source', src)}
+					class="rounded-full px-3 py-1 text-xs font-medium transition-colors {selectedSourceType === src ? 'bg-green-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
+				>{$t(`filter.source.${src}`)}</button>
+			{/each}
+		</div>
+
+		<div class="flex gap-2">
+			<button
+				onclick={() => applyFilter('time', null)}
+				class="rounded-full px-2.5 py-1 text-xs font-medium transition-colors {selectedTime === null ? 'bg-gray-800 text-white' : 'border border-gray-200 bg-white text-gray-500 hover:bg-gray-50'}"
+			>{$t('filter.all')}</button>
+			{#each TIME_OPTIONS as opt}
+				<button
+					onclick={() => applyFilter('time', opt.value)}
+					class="rounded-full px-2.5 py-1 text-xs font-medium transition-colors {selectedTime === opt.value ? 'bg-gray-800 text-white' : 'border border-gray-200 bg-white text-gray-500 hover:bg-gray-50'}"
+				>{$t(opt.label)}</button>
+			{/each}
+		</div>
+	</div>
 
 	{#if isLoading}
 		<p class="text-gray-500">{$t('status.loading')}</p>

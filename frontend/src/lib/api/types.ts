@@ -81,6 +81,7 @@ export interface NewsItem {
 	source: string | null;
 	publish_time: string;
 	summary: string | null;
+	article_count: number;
 }
 
 export interface NewsListResponse {

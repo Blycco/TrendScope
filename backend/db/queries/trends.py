@@ -41,13 +41,14 @@ async def fetch_trends(
     *,
     category: str | None,
     locale: str | None,
+    since_hours: int | None = None,
     limit: int = 20,
     cursor: str | None = None,
 ) -> list[asyncpg.Record]:
     """Fetch news_group rows ordered by score DESC with cursor pagination."""
     try:
         params: list[object] = []
-        conditions: list[str] = []
+        conditions: list[str] = ["score >= 5.0"]
 
         if category:
             params.append(category)
@@ -55,6 +56,9 @@ async def fetch_trends(
         if locale:
             params.append(locale)
             conditions.append(f"locale = ${len(params)}")
+        if since_hours:
+            params.append(since_hours)
+            conditions.append(f"created_at > now() - make_interval(hours => ${len(params)})")
 
         if cursor:
             pivot_score, pivot_id = decode_cursor(cursor)
@@ -169,10 +173,16 @@ async def fetch_news(
     *,
     category: str | None,
     locale: str | None,
+    source_type: str | None = None,
+    since_hours: int | None = None,
     limit: int = 20,
     cursor: str | None = None,
 ) -> list[asyncpg.Record]:
-    """Fetch news_article rows joined with news_group, ordered by publish_time DESC."""
+    """Fetch news grouped by news_group (deduped), ordered by publish_time DESC.
+
+    Articles in the same news_group are collapsed to the most recent one,
+    with article_count showing how many articles are in the group.
+    """
     try:
         params: list[object] = []
         conditions: list[str] = []
@@ -183,10 +193,15 @@ async def fetch_news(
         if locale:
             params.append(locale)
             conditions.append(f"na.locale = ${len(params)}")
+        if source_type:
+            params.append(source_type)
+            conditions.append(f"na.source = ${len(params)}")
+        if since_hours:
+            params.append(since_hours)
+            conditions.append(f"na.publish_time > now() - make_interval(hours => ${len(params)})")
 
         if cursor:
             pivot_score, pivot_id = decode_cursor(cursor)
-            # cursor stores (publish_time_float, id) — encode with unix timestamp
             import datetime  # noqa: PLC0415
 
             pivot_time = datetime.datetime.fromtimestamp(pivot_score, tz=datetime.timezone.utc)
@@ -200,13 +215,26 @@ async def fetch_news(
         where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
         params.append(limit)
 
+        # Use DISTINCT ON to collapse articles with same group_id into one row.
+        # Articles without a group_id (unprocessed) are treated individually.
         query = f"""
-            SELECT na.id::text, na.title, na.url, na.source,
-                   na.publish_time, ng.summary
-            FROM news_article na
-            LEFT JOIN news_group ng ON na.group_id = ng.id
-            {where}
-            ORDER BY na.publish_time DESC, na.id ASC
+            SELECT sub.id, sub.title, sub.url, sub.source,
+                   sub.publish_time, sub.summary, sub.article_count
+            FROM (
+                SELECT DISTINCT ON (COALESCE(na.group_id, na.id))
+                    na.id::text AS id, na.title, na.url, na.source,
+                    na.publish_time, ng.summary,
+                    COALESCE(
+                        (SELECT count(*) FROM news_article na2
+                         WHERE na2.group_id = na.group_id AND na.group_id IS NOT NULL),
+                        1
+                    )::int AS article_count
+                FROM news_article na
+                LEFT JOIN news_group ng ON na.group_id = ng.id
+                {where}
+                ORDER BY COALESCE(na.group_id, na.id), na.publish_time DESC
+            ) sub
+            ORDER BY sub.publish_time DESC, sub.id ASC
             LIMIT ${len(params)}
         """  # noqa: S608
 
