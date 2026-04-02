@@ -2,6 +2,23 @@
 > Format: {date} | {completed} | {next} | {notes}
 > Most recent at top.
 
+## 2026-04-03 | 운영 안정화 및 버그 수정 일괄 진행
+- **Completed (open PRs → develop)**:
+  - PR #85: 코드 무결성 검증
+  - PR #84: 로그 로테이션 구현
+  - PR #81: 캐시 zlib 디컴프레션 누락 수정
+  - PR #80: Admin sources $effect 무한 루프 수정
+  - PR #77: 프로젝트 상태 문서 업데이트
+  - PR #75: UX 폴리시
+  - PR #73: 에러 로그 시스템
+  - PR #71: early_trend_score 항상 0 버그 수정
+  - PR #69: Insights UUID→keyword 불일치 수정
+- **State**: Phase 1–5 완료, Production Readiness 단계
+- **Next**: open PR 리뷰·머지 후 develop → main 릴리스 준비
+- **Notes**:
+  - 모든 open PR은 develop 브랜치 대상
+  - 763 tests / 77.31% coverage (Issue #42 시점 기준)
+
 ## 2026-03-18 | 백엔드 API 라우터 + Infra/CI/CD 구현 완료
 - **Completed**:
   - Auth 완성 (이메일 인증, 비밀번호 재설정, TOTP 2FA, Kakao OAuth)
