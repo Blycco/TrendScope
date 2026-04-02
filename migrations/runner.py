@@ -28,6 +28,7 @@ MIGRATIONS: List[str] = [
     "migrations.013_api_quota_alert",
     "migrations.014_seed_source_config",
     "migrations.015_article_category",
+    "migrations.017_error_log",
 ]
 
 
