@@ -87,7 +87,7 @@ CREATE_TABLES: list[str] = [
         email           TEXT UNIQUE NOT NULL,
         display_name    TEXT,
         role            TEXT NOT NULL DEFAULT 'general'
-                            CHECK (role IN ('marketer', 'creator', 'owner', 'general')),
+                            CHECK (role IN ('marketer', 'creator', 'owner', 'general', 'admin', 'operator')),
         locale          CHAR(2) NOT NULL DEFAULT 'ko',
         category_weights JSONB NOT NULL DEFAULT '{}',
         plan            TEXT NOT NULL DEFAULT 'free'
