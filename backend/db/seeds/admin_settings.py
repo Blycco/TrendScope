@@ -7,6 +7,11 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
+_AI_CONFIG_JSON = (
+    '{"provider":"textrank","model":"textrank","api_key":"",'
+    '"max_tokens":512,"temperature":0.0,"fallback_provider":"textrank"}'
+)
+
 SEEDS: list[tuple[str, str, str, str]] = [
     ("payment_provider", "toss", "toss", "결제 제공자"),
     ("ai_model_primary", "gemini-flash", "gemini-flash", "AI 주 모델"),
@@ -16,6 +21,7 @@ SEEDS: list[tuple[str, str, str, str]] = [
     ("early_trend_w_burst", "0.5", "0.5", "EarlyTrend 버스트 가중치"),
     ("early_trend_w_velocity", "0.3", "0.3", "EarlyTrend 속도 가중치"),
     ("early_trend_w_diversity", "0.2", "0.2", "EarlyTrend 다양성 가중치"),
+    ("ai.config", _AI_CONFIG_JSON, _AI_CONFIG_JSON, "AI summarization provider config"),
 ]
 
 

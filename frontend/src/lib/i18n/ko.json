@@ -10,6 +10,10 @@
 
 	"page.home.title": "TrendScope",
 	"page.home.description": "트렌드 인텔리전스 대시보드",
+
+	"dashboard.hot_trends": "핫 트렌드",
+	"dashboard.latest_news": "최신 뉴스",
+	"dashboard.view_all": "전체 보기",
 	"page.trends.title": "트렌드 피드",
 	"page.news.title": "뉴스 피드",
 	"page.insights.title": "액션 인사이트",
@@ -133,6 +137,7 @@
 	"content.input_placeholder": "키워드 입력...",
 	"content.generate": "아이디어 생성",
 	"content.cached_badge": "캐시됨",
+	"content.pro_only_notice": "콘텐츠 아이디어는 Pro 이상 플랜에서 사용할 수 있습니다. 업그레이드하시면 AI 기반 콘텐츠 추천을 받을 수 있습니다.",
 	"content.idea.platform": "플랫폼",
 	"content.idea.difficulty": "난이도",
 

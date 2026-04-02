@@ -10,6 +10,10 @@
 
 	"page.home.title": "TrendScope",
 	"page.home.description": "Trend Intelligence Dashboard",
+
+	"dashboard.hot_trends": "Hot Trends",
+	"dashboard.latest_news": "Latest News",
+	"dashboard.view_all": "View All",
 	"page.trends.title": "Trend Feed",
 	"page.news.title": "News Feed",
 	"page.insights.title": "Action Insights",
@@ -133,6 +137,7 @@
 	"content.input_placeholder": "Enter keyword...",
 	"content.generate": "Generate Ideas",
 	"content.cached_badge": "Cached",
+	"content.pro_only_notice": "Content Ideas is available on Pro plan and above. Upgrade to get AI-powered content recommendations.",
 	"content.idea.platform": "Platform",
 	"content.idea.difficulty": "Difficulty",
 
