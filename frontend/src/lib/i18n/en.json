@@ -171,6 +171,8 @@
 	"filter.time.24h": "24h",
 	"filter.time.7d": "7d",
 	"filter.time.30d": "30d",
+	"filter.locale.domestic": "Domestic",
+	"filter.locale.international": "International",
 	"news.article_count": "+{count} more",
 
 	"admin.layout.title": "Admin Panel",

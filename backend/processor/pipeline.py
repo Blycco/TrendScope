@@ -211,7 +211,11 @@ async def _stage_match_existing_groups(
     for row in group_rows:
         group_id: _uuid.UUID = row["id"]
         raw_kw: list[str] = list(row["keywords"] or [])
-        title_words = set(row["title"].split()) if row["title"] else set()
+        title_words = {
+            w
+            for w in (row["title"].split() if row["title"] else [])
+            if len(w) >= 2 and not w.isdigit()
+        }
         combined: set[str] = set(raw_kw) | title_words
         group_kw_sets.append((group_id, combined, float(row["score"])))
 
@@ -365,7 +369,9 @@ def _stage_score(clusters: list[Cluster]) -> list[dict[str, Any]]:
             all_keywords: list[str] = []
             for a in articles:
                 all_keywords.extend(a.get("keywords", []))
-            unique_keywords = list(dict.fromkeys(all_keywords))[:20]
+            unique_keywords = [
+                kw for kw in dict.fromkeys(all_keywords) if not kw.isdigit() and len(kw) >= 2
+            ][:20]
 
             scored.append(
                 {
