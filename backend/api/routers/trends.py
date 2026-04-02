@@ -204,10 +204,21 @@ async def export_trends(
         )
 
     # PDF: Business+ only (already gate-checked above)
-    return error_response(
-        ErrorCode.INTERNAL_ERROR,
-        "PDF generation is not yet implemented",
-        status_code=501,
+    try:
+        from backend.api.utils.pdf_export import generate_trends_pdf
+
+        pdf_bytes = generate_trends_pdf(rows)
+    except Exception as exc:
+        logger.error("pdf_generation_failed", error=str(exc))
+        return error_response(
+            ErrorCode.INTERNAL_ERROR,
+            "Failed to generate PDF report",
+            status_code=500,
+        )
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": "attachment; filename=trends.pdf"},
     )
 
 

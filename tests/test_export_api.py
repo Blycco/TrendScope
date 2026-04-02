@@ -107,18 +107,21 @@ class TestExportPlanGate:
         data = resp.json()
         assert data["code"] == "E0031"
 
-    async def test_business_user_can_request_pdf_format(
+    async def test_business_user_can_export_pdf(
         self, export_client: AsyncClient, mock_db_pool: MagicMock
     ) -> None:
-        """Business user passes gate but gets 501 (PDF not yet implemented)."""
+        """Business user can export PDF."""
         token = _make_token("business")
-        mock_db_pool.acquire.return_value.__aenter__.return_value.fetch = AsyncMock(return_value=[])
+        mock_db_pool.acquire.return_value.__aenter__.return_value.fetch = AsyncMock(
+            return_value=[_make_trend_row()]
+        )
         resp = await export_client.get(
             "/api/v1/trends/export?format=pdf",
             headers={"Authorization": f"Bearer {token}"},
         )
-        # PDF gate passes for Business, implementation returns 501
-        assert resp.status_code == 501
+        assert resp.status_code == 200
+        assert resp.headers["content-type"] == "application/pdf"
+        assert resp.content[:5] == b"%PDF-"
 
     async def test_enterprise_user_can_export_csv(
         self, export_client: AsyncClient, mock_db_pool: MagicMock
