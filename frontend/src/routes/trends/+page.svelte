@@ -4,6 +4,7 @@
 	import { apiRequest, ApiRequestError, QuotaExceededRequestError, PlanGateRequestError } from '$lib/api';
 	import type { TrendListResponse, TrendItem } from '$lib/api';
 	import TrendCard from '../../components/TrendCard.svelte';
+	import SkeletonCard from '../../components/SkeletonCard.svelte';
 	import TrendMap from '$lib/components/TrendMap.svelte';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
 	import QuotaExceededModal from '$lib/ui/QuotaExceededModal.svelte';
@@ -265,7 +266,11 @@
 	</div>
 
 	{#if isLoading}
-		<p class="text-gray-500">{$t('status.loading')}</p>
+		<div class="space-y-3">
+			{#each Array(5) as _}
+				<SkeletonCard />
+			{/each}
+		</div>
 	{:else if trends.length === 0}
 		<p class="text-gray-500">{$t('status.no_results')}</p>
 	{:else}

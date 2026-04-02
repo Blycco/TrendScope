@@ -61,7 +61,17 @@
 <div class="space-y-6">
 	<div class="flex items-center gap-3">
 		<h1 class="text-2xl font-bold text-gray-900">{$t('content.title')}</h1>
-		<span class="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-700">Pro+</span>
+		<span class="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-700">{$t('content.pro_badge')}</span>
+	</div>
+
+	<div class="rounded-md bg-blue-50 border border-blue-200 p-4">
+		<h2 class="text-sm font-semibold text-blue-900">{$t('content.guide_title')}</h2>
+		<p class="mt-1 text-sm text-blue-700">{$t('content.guide_desc')}</p>
+		<div class="mt-2 flex flex-wrap gap-2 text-xs text-blue-600">
+			<span class="rounded bg-blue-100 px-2 py-0.5">{$t('content.example_marketer')}</span>
+			<span class="rounded bg-blue-100 px-2 py-0.5">{$t('content.example_creator')}</span>
+			<span class="rounded bg-blue-100 px-2 py-0.5">{$t('content.example_owner')}</span>
+		</div>
 	</div>
 
 	{#if isFreePlan}

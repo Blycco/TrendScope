@@ -365,5 +365,15 @@
 	"admin.quota_alerts.filter_all": "All",
 	"admin.quota_alerts.no_alerts": "No alerts",
 	"admin.quota_alerts.yes": "Yes",
-	"admin.quota_alerts.no": "No"
+	"admin.quota_alerts.no": "No",
+
+	"pricing.per_month": "/mo",
+	"admin.layout.brand": "TrendScope Admin",
+	"admin.layout.error_logs": "Error Logs",
+	"content.pro_badge": "Pro+",
+	"content.guide_title": "Content Idea Generator",
+	"content.guide_desc": "Enter a keyword and AI will suggest content ideas tailored to your role.",
+	"content.example_marketer": "e.g., AI Marketing, Instagram Reels",
+	"content.example_creator": "e.g., YouTube Shorts, Blog Topics",
+	"content.example_owner": "e.g., Cafe Startup, Small Business Trends"
 }

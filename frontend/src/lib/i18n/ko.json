@@ -365,5 +365,15 @@
 	"admin.quota_alerts.filter_all": "전체",
 	"admin.quota_alerts.no_alerts": "알림이 없습니다",
 	"admin.quota_alerts.yes": "예",
-	"admin.quota_alerts.no": "아니오"
+	"admin.quota_alerts.no": "아니오",
+
+	"pricing.per_month": "/월",
+	"admin.layout.brand": "TrendScope Admin",
+	"admin.layout.error_logs": "에러 로그",
+	"content.pro_badge": "Pro+",
+	"content.guide_title": "콘텐츠 아이디어 생성",
+	"content.guide_desc": "키워드를 입력하면 AI가 역할에 맞는 콘텐츠 아이디어를 제안합니다.",
+	"content.example_marketer": "예: AI 마케팅, 인스타 릴스",
+	"content.example_creator": "예: 유튜브 쇼츠, 블로그 주제",
+	"content.example_owner": "예: 카페 창업, 소상공인 트렌드"
 }

@@ -9,7 +9,7 @@
 	let { news }: Props = $props();
 
 	const formattedDate = $derived(
-		new Date(news.publish_time).toLocaleDateString('ko-KR', {
+		new Date(news.publish_time).toLocaleDateString(undefined, {
 			year: 'numeric',
 			month: 'short',
 			day: 'numeric',
