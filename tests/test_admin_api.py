@@ -36,10 +36,12 @@ def _admin_header() -> dict:
 
 @pytest.fixture
 async def admin_client(mock_db_pool: MagicMock, mock_redis: AsyncMock) -> AsyncClient:
-    from backend.api.main import create_app
+    from backend.api.main import admin_app, create_app
 
     app = create_app()
     app.state.db_pool = mock_db_pool
+    # Admin sub-app uses request.app.state.db_pool — propagate the mock pool.
+    admin_app.state.db_pool = mock_db_pool
 
     with (
         patch("backend.api.routers.health.get_redis", return_value=mock_redis),
