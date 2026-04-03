@@ -9,6 +9,7 @@ import signal
 import asyncpg
 import structlog
 
+from backend.common.logging_config import setup_logging
 from backend.crawler.scheduler import create_scheduler, start_scheduler, stop_scheduler
 from backend.crawler.sources.news_crawler import crawl_all as news_crawl_all
 from backend.processor.shared.cache_manager import close_redis, init_redis
@@ -18,6 +19,8 @@ logger = structlog.get_logger(__name__)
 
 async def main() -> None:
     """Boot crawler: connect DB, run initial crawl, then start scheduler loop."""
+    setup_logging("crawler")
+
     database_url = os.environ.get("DATABASE_URL")
     if not database_url:
         raise RuntimeError("DATABASE_URL not set")
