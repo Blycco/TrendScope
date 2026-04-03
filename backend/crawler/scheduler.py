@@ -10,6 +10,7 @@ from backend.crawler.quota_guard import reset_all_quotas
 from backend.crawler.sources.community_crawler import crawl_all as community_crawl_all
 from backend.crawler.sources.news_crawler import crawl_all as news_crawl_all
 from backend.crawler.sources.sns_crawler import collect_all as sns_collect_all
+from backend.jobs.burst_job import run_burst_job
 from backend.jobs.early_trend_update import run_early_trend_update
 
 logger = structlog.get_logger(__name__)
@@ -43,12 +44,20 @@ async def _job_community_crawl(db_pool: asyncpg.Pool) -> None:
 
 
 async def _job_early_trend_update(db_pool: asyncpg.Pool) -> None:
-    """Scheduled job: recalculate early_trend_score every 15 minutes."""
+    """Scheduled job: recalculate early_trend_score, then evaluate burst triggers."""
     try:
         updated = await run_early_trend_update(db_pool)
         logger.info("scheduled_early_trend_update_done", updated=updated)
     except Exception as exc:
         logger.error("scheduled_early_trend_update_failed", error=str(exc))
+        return
+
+    try:
+        burst_count = await run_burst_job(db_pool, trigger_source="auto")
+        if burst_count > 0:
+            logger.info("scheduled_burst_triggered", burst_count=burst_count)
+    except Exception as exc:
+        logger.error("scheduled_burst_job_failed", error=str(exc))
 
 
 async def _job_quota_reset(db_pool: asyncpg.Pool) -> None:
