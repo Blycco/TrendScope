@@ -101,7 +101,7 @@
 							<span class="text-3xl font-bold text-gray-900">₩0</span>
 						{:else}
 							<span class="text-3xl font-bold text-gray-900">₩{plan.price.toLocaleString()}</span>
-							<span class="text-sm text-gray-500">/월</span>
+							<span class="text-sm text-gray-500">{$t('pricing.per_month')}</span>
 						{/if}
 					</div>
 				</div>

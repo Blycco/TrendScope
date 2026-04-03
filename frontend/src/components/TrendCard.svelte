@@ -10,7 +10,7 @@
 	let { trend }: Props = $props();
 
 	const formattedDate = $derived(
-		new Date(trend.created_at).toLocaleDateString('ko-KR', {
+		new Date(trend.created_at).toLocaleDateString(undefined, {
 			year: 'numeric',
 			month: 'short',
 			day: 'numeric'
@@ -22,7 +22,7 @@
 	<div class="flex items-start justify-between">
 		<div class="flex-1">
 			<div class="flex items-center gap-2">
-				<a href="/trends/{trend.id}/insights" class="text-base font-semibold text-gray-900 hover:text-blue-600">
+				<a href="/trends/{trend.id}" class="text-base font-semibold text-gray-900 hover:text-blue-600">
 					{trend.title}
 				</a>
 				<EarlyBadge score={trend.early_trend_score} />

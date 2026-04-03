@@ -36,6 +36,7 @@ from backend.api.routers import (
 from backend.api.routers.admin import ai_config as admin_ai_config
 from backend.api.routers.admin import analytics as admin_analytics
 from backend.api.routers.admin import audit as admin_audit
+from backend.api.routers.admin import error_logs as admin_error_logs
 from backend.api.routers.admin import feed_sources as admin_feed_sources
 from backend.api.routers.admin import quota_alerts as admin_quota_alerts
 from backend.api.routers.admin import settings as admin_settings
@@ -43,6 +44,7 @@ from backend.api.routers.admin import sources as admin_sources
 from backend.api.routers.admin import subscriptions as admin_subscriptions
 from backend.api.routers.admin import users as admin_users
 from backend.api.routers.webhooks import payment as webhooks_payment
+from backend.common.errors import set_error_log_pool
 from backend.common.logging_config import setup_logging
 from backend.jobs.audit_archive import register_archive_job
 from backend.processor.shared.cache_manager import close_redis, init_redis
@@ -73,6 +75,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             max_size=10,
             command_timeout=30,
         )
+        set_error_log_pool(app.state.db_pool)
         logger.info("db_pool_created")
     except Exception as exc:
         logger.error("db_pool_creation_failed", error=str(exc))
@@ -150,6 +153,7 @@ def create_app() -> FastAPI:
     app.include_router(admin_audit.router, prefix="/admin/v1")
     app.include_router(admin_analytics.router, prefix="/admin/v1")
     app.include_router(admin_quota_alerts.router, prefix="/admin/v1")
+    app.include_router(admin_error_logs.router, prefix="/admin/v1")
 
     Instrumentator().instrument(app).expose(app)
 

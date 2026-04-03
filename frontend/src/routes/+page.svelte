@@ -5,6 +5,7 @@
 	import type { TrendListResponse, TrendItem, NewsListResponse, NewsItem } from '$lib/api';
 	import TrendCard from '../components/TrendCard.svelte';
 	import NewsCard from '../components/NewsCard.svelte';
+	import SkeletonCard from '../components/SkeletonCard.svelte';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
 	import { TrendingUp, Newspaper, ArrowRight } from 'lucide-svelte';
 
@@ -58,7 +59,11 @@
 	</div>
 
 	{#if isLoading}
-		<p class="text-gray-500">{$t('status.loading')}</p>
+		<div class="space-y-3">
+			{#each Array(3) as _}
+				<SkeletonCard />
+			{/each}
+		</div>
 	{:else}
 		<!-- Hot Trends -->
 		<section>

@@ -2,11 +2,24 @@
 
 from __future__ import annotations
 
+import asyncio
 from enum import Enum
 
+import structlog
 from fastapi import HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+
+logger = structlog.get_logger(__name__)
+
+# Set by app startup to enable automatic error logging for 5xx responses.
+_db_pool: object = None
+
+
+def set_error_log_pool(pool: object) -> None:
+    """Called at app startup to set the DB pool for error logging."""
+    global _db_pool  # noqa: PLW0603
+    _db_pool = pool
 
 
 class ErrorCode(str, Enum):
@@ -48,6 +61,25 @@ def error_response(
     status_code: int = 400,
 ) -> JSONResponse:
     body = ErrorResponse(code=code.value, message=message, detail=detail)
+
+    # Auto-log server errors (5xx) to error_log table
+    if status_code >= 500 and _db_pool is not None:
+        try:
+            from backend.common.error_log import write_error_log  # noqa: PLC0415
+
+            asyncio.ensure_future(
+                write_error_log(
+                    _db_pool,
+                    service="api",
+                    message=message,
+                    severity="error",
+                    error_code=code.value,
+                    detail={"detail": detail} if detail else None,
+                )
+            )
+        except Exception:
+            logger.warning("error_log_auto_write_skipped", code=code.value)
+
     return JSONResponse(status_code=status_code, content=body.model_dump())
 
 
