@@ -10,6 +10,7 @@ from backend.crawler.quota_guard import reset_all_quotas
 from backend.crawler.sources.community_crawler import crawl_all as community_crawl_all
 from backend.crawler.sources.news_crawler import crawl_all as news_crawl_all
 from backend.crawler.sources.sns_crawler import collect_all as sns_collect_all
+from backend.jobs.early_trend_update import run_early_trend_update
 
 logger = structlog.get_logger(__name__)
 
@@ -39,6 +40,15 @@ async def _job_community_crawl(db_pool: asyncpg.Pool) -> None:
         logger.info("scheduled_community_crawl_done", articles=len(articles))
     except Exception as exc:
         logger.error("scheduled_community_crawl_failed", error=str(exc))
+
+
+async def _job_early_trend_update(db_pool: asyncpg.Pool) -> None:
+    """Scheduled job: recalculate early_trend_score every 15 minutes."""
+    try:
+        updated = await run_early_trend_update(db_pool)
+        logger.info("scheduled_early_trend_update_done", updated=updated)
+    except Exception as exc:
+        logger.error("scheduled_early_trend_update_failed", error=str(exc))
 
 
 async def _job_quota_reset(db_pool: asyncpg.Pool) -> None:
@@ -90,6 +100,17 @@ def create_scheduler(db_pool: asyncpg.Pool) -> AsyncIOScheduler:
         args=[db_pool],
         id="community_crawl",
         name="Community Crawler",
+        max_instances=1,
+        coalesce=True,
+    )
+
+    scheduler.add_job(
+        _job_early_trend_update,
+        "interval",
+        minutes=15,
+        args=[db_pool],
+        id="early_trend_update",
+        name="Early Trend Score Recalculation",
         max_instances=1,
         coalesce=True,
     )
