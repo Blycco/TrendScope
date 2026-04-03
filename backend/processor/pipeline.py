@@ -211,7 +211,11 @@ async def _stage_match_existing_groups(
     for row in group_rows:
         group_id: _uuid.UUID = row["id"]
         raw_kw: list[str] = list(row["keywords"] or [])
-        title_words = set(row["title"].split()) if row["title"] else set()
+        title_words = {
+            w
+            for w in (row["title"].split() if row["title"] else [])
+            if len(w) >= 2 and not w.isdigit()
+        }
         combined: set[str] = set(raw_kw) | title_words
         group_kw_sets.append((group_id, combined, float(row["score"])))
 
@@ -266,9 +270,14 @@ async def _stage_match_existing_groups(
                     new_score_result: ScoreResult = calculate_score(score_input)
                     new_score = max(best_current_score, new_score_result.total)
 
+                    # Recalculate early_trend_score based on updated article count
+                    early_score = min(1.0, new_article_count / 10.0) * 0.4 + 0.3
+
                     await db_pool.execute(
-                        "UPDATE news_group SET score = $1, updated_at = now() WHERE id = $2",
+                        "UPDATE news_group SET score = $1, early_trend_score = $2, "
+                        "updated_at = now() WHERE id = $3",
                         new_score,
+                        early_score,
                         best_group_id,
                     )
                 except Exception as score_exc:
@@ -341,6 +350,41 @@ def _stage_cluster(articles: list[dict[str, Any]]) -> list[Cluster]:
         return []
 
 
+def _compute_early_trend_score(articles: list[dict[str, Any]]) -> float:
+    """Compute a lightweight early trend score from cluster article data.
+
+    Combines three signals:
+    - velocity: normalized article count (more articles = faster growing)
+    - source_diversity: ratio of unique sources (broader coverage = stronger signal)
+    - recency: how recent the newest article is (newer = more likely emerging)
+
+    Returns a score in [0.0, 1.0].
+    """
+    if not articles:
+        return 0.0
+
+    # Velocity: article count normalized (10+ articles → 1.0)
+    velocity = min(1.0, len(articles) / 10.0)
+
+    # Source diversity: unique sources / total articles
+    sources = {a.get("source", "") for a in articles if a.get("source")}
+    source_diversity = len(sources) / max(len(articles), 1)
+
+    # Recency: newest article within last 6 hours → 1.0, 48h+ → 0.0
+    now = datetime.now(tz=timezone.utc)
+    newest_hours = 48.0
+    for a in articles:
+        pub_time = a.get("publish_time")
+        if isinstance(pub_time, str):
+            pub_time = datetime.fromisoformat(pub_time)
+        if isinstance(pub_time, datetime):
+            hours_ago = (now - pub_time).total_seconds() / 3600
+            newest_hours = min(newest_hours, max(0.0, hours_ago))
+    recency = max(0.0, 1.0 - (newest_hours / 48.0))
+
+    return round(0.4 * velocity + 0.3 * source_diversity + 0.3 * recency, 4)
+
+
 def _stage_score(clusters: list[Cluster]) -> list[dict[str, Any]]:
     """Stage 6: Calculate score for each cluster."""
     scored: list[dict[str, Any]] = []
@@ -365,13 +409,18 @@ def _stage_score(clusters: list[Cluster]) -> list[dict[str, Any]]:
             all_keywords: list[str] = []
             for a in articles:
                 all_keywords.extend(a.get("keywords", []))
-            unique_keywords = list(dict.fromkeys(all_keywords))[:20]
+            unique_keywords = [
+                kw for kw in dict.fromkeys(all_keywords) if not kw.isdigit() and len(kw) >= 2
+            ][:20]
+
+            early_score = _compute_early_trend_score(articles)
 
             scored.append(
                 {
                     "cluster": cluster,
                     "articles": articles,
                     "score": result.total,
+                    "early_trend_score": early_score,
                     "title": rep_article.get("title", ""),
                     "category": rep_article.get("category", "general"),
                     "locale": rep_article.get("locale", "ko"),
@@ -430,13 +479,15 @@ async def _stage_save(
     for item in scored_clusters:
         try:
             group_id = await db_pool.fetchval(
-                "INSERT INTO news_group (category, locale, title, summary, score, keywords) "
-                "VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
+                "INSERT INTO news_group "
+                "(category, locale, title, summary, score, early_trend_score, keywords) "
+                "VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id",
                 item["category"],
                 item["locale"],
                 item["title"],
                 item.get("summary"),
                 item["score"],
+                item.get("early_trend_score", 0.0),
                 item["keywords"],
             )
 

@@ -4,6 +4,7 @@
 	import { apiRequest, ApiRequestError, QuotaExceededRequestError } from '$lib/api';
 	import type { NewsListResponse, NewsItem } from '$lib/api';
 	import NewsCard from '../../components/NewsCard.svelte';
+	import SkeletonCard from '../../components/SkeletonCard.svelte';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
 	import QuotaExceededModal from '$lib/ui/QuotaExceededModal.svelte';
 
@@ -25,6 +26,7 @@
 	let selectedCategory = $state<string | null>(null);
 	let selectedSourceType = $state<string | null>(null);
 	let selectedTime = $state<number | null>(null);
+	let selectedLocale = $state<string | null>(null);
 
 	let errorOpen = $state(false);
 	let errorCode = $state('');
@@ -42,6 +44,7 @@
 			if (selectedCategory) params.set('category', selectedCategory);
 			if (selectedSourceType) params.set('source_type', selectedSourceType);
 			if (selectedTime) params.set('since', String(selectedTime));
+			if (selectedLocale) params.set('locale', selectedLocale);
 
 			const data = await apiRequest<NewsListResponse>(`/news?${params.toString()}`);
 			if (cursor) {
@@ -68,10 +71,11 @@
 		}
 	}
 
-	function applyFilter(type: 'category' | 'source' | 'time', value: string | number | null): void {
+	function applyFilter(type: 'category' | 'source' | 'time' | 'locale', value: string | number | null): void {
 		if (type === 'category') selectedCategory = value as string | null;
 		else if (type === 'source') selectedSourceType = value as string | null;
 		else if (type === 'time') selectedTime = value as number | null;
+		else if (type === 'locale') selectedLocale = value as string | null;
 		news = [];
 		nextCursor = null;
 		loadNews();
@@ -92,6 +96,22 @@
 
 <div class="space-y-4">
 	<h1 class="text-2xl font-bold text-gray-900">{$t('page.news.title')}</h1>
+
+	<!-- Locale filter -->
+	<div class="flex gap-2 flex-wrap">
+		<button
+			onclick={() => applyFilter('locale', null)}
+			class="rounded-full px-3 py-1 text-xs font-medium transition-colors {selectedLocale === null ? 'bg-indigo-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
+		>{$t('filter.all')}</button>
+		<button
+			onclick={() => applyFilter('locale', 'ko')}
+			class="rounded-full px-3 py-1 text-xs font-medium transition-colors {selectedLocale === 'ko' ? 'bg-indigo-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
+		>{$t('filter.locale.domestic')}</button>
+		<button
+			onclick={() => applyFilter('locale', 'en')}
+			class="rounded-full px-3 py-1 text-xs font-medium transition-colors {selectedLocale === 'en' ? 'bg-indigo-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
+		>{$t('filter.locale.international')}</button>
+	</div>
 
 	<!-- Category filter -->
 	<div class="flex gap-2 flex-wrap">
@@ -137,7 +157,11 @@
 	</div>
 
 	{#if isLoading}
-		<p class="text-gray-500">{$t('status.loading')}</p>
+		<div class="space-y-3">
+			{#each Array(5) as _}
+				<SkeletonCard />
+			{/each}
+		</div>
 	{:else if news.length === 0}
 		<p class="text-gray-500">{$t('status.no_results')}</p>
 	{:else}

@@ -39,11 +39,10 @@ export async function adminRequest<T>(
 
 		if (!response.ok) {
 			const errorBody = await response.json().catch(() => ({}));
-			throw {
-				status: response.status,
-				code: errorBody.code ?? errorBody.detail?.code ?? 'UNKNOWN',
-				message: errorBody.message ?? errorBody.detail?.message ?? response.statusText
-			};
+			const detail = errorBody.detail ?? {};
+			const code = errorBody.code ?? detail.code ?? (response.status === 401 ? 'E0010' : response.status === 403 ? 'E0011' : 'UNKNOWN');
+			const message = errorBody.message ?? detail.message ?? response.statusText;
+			throw { status: response.status, code, message };
 		}
 
 		if (response.status === 204) {

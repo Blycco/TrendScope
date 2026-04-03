@@ -10,6 +10,74 @@ import structlog
 logger = structlog.get_logger(__name__)
 
 
+async def fetch_group_info(
+    pool: asyncpg.Pool,
+    group_id: str,
+) -> asyncpg.Record | None:
+    """Fetch news_group title and keywords by group UUID."""
+    try:
+        query = """
+            SELECT title, keywords
+            FROM news_group
+            WHERE id = $1::uuid
+        """
+        async with pool.acquire() as conn:
+            return await conn.fetchrow(query, group_id)
+    except Exception as exc:
+        logger.error("fetch_group_info_failed", group_id=group_id, error=str(exc))
+        raise
+
+
+async def fetch_news_for_keywords(
+    pool: asyncpg.Pool,
+    keywords: list[str],
+    limit: int = 10,
+) -> list[asyncpg.Record]:
+    """Fetch news_article rows matching any of the given keywords in title."""
+    try:
+        # Build parameterized OR conditions — only indices are interpolated, not user input
+        conditions = " OR ".join(f"title ILIKE ${i + 1}" for i in range(len(keywords)))
+        query = f"""
+            SELECT id::text, title, url, source, publish_time, body
+            FROM news_article
+            WHERE {conditions}
+            ORDER BY publish_time DESC
+            LIMIT ${len(keywords) + 1}
+        """  # noqa: S608
+        params: list[object] = [f"%{kw}%" for kw in keywords]
+        params.append(limit)
+        async with pool.acquire() as conn:
+            return await conn.fetch(query, *params)
+    except Exception as exc:
+        logger.error("fetch_news_for_keywords_failed", keywords=keywords, error=str(exc))
+        raise
+
+
+async def fetch_sns_for_keywords(
+    pool: asyncpg.Pool,
+    keywords: list[str],
+    limit: int = 20,
+) -> list[asyncpg.Record]:
+    """Fetch sns_trend rows matching any of the given keywords."""
+    try:
+        # Build parameterized OR conditions — only indices are interpolated, not user input
+        conditions = " OR ".join(f"keyword ILIKE ${i + 1}" for i in range(len(keywords)))
+        query = f"""
+            SELECT id::text, platform, keyword, locale, score, snapshot_at
+            FROM sns_trend
+            WHERE {conditions}
+            ORDER BY score DESC
+            LIMIT ${len(keywords) + 1}
+        """  # noqa: S608
+        params: list[object] = [f"%{kw}%" for kw in keywords]
+        params.append(limit)
+        async with pool.acquire() as conn:
+            return await conn.fetch(query, *params)
+    except Exception as exc:
+        logger.error("fetch_sns_for_keywords_failed", keywords=keywords, error=str(exc))
+        raise
+
+
 async def fetch_news_for_keyword(
     pool: asyncpg.Pool,
     keyword: str,

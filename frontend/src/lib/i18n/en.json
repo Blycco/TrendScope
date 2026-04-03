@@ -87,6 +87,8 @@
 	"trend.source_count": "Source Count",
 	"trend.first_seen": "First Seen",
 	"trend.category": "Category",
+	"trend.detail.insights": "View Insights",
+	"trend.detail.articles": "Related Articles",
 	"trend.sentiment": "Sentiment",
 
 	"insight.action_points": "Action Points",
@@ -171,6 +173,8 @@
 	"filter.time.24h": "24h",
 	"filter.time.7d": "7d",
 	"filter.time.30d": "30d",
+	"filter.locale.domestic": "Domestic",
+	"filter.locale.international": "International",
 	"news.article_count": "+{count} more",
 
 	"admin.layout.title": "Admin Panel",
@@ -265,6 +269,9 @@
 	"admin.feeds.cancel": "Cancel",
 	"admin.feeds.save": "Save",
 	"admin.feeds.confirm_delete": "Delete",
+	"admin.feeds.priority": "Priority",
+	"admin.feeds.feed_off": "off",
+	"admin.feeds.health_total": "{count} total",
 
 	"admin.ai_config.title": "AI Model Configuration",
 	"admin.ai_config.primary_model": "Primary Model",
@@ -365,5 +372,15 @@
 	"admin.quota_alerts.filter_all": "All",
 	"admin.quota_alerts.no_alerts": "No alerts",
 	"admin.quota_alerts.yes": "Yes",
-	"admin.quota_alerts.no": "No"
+	"admin.quota_alerts.no": "No",
+
+	"pricing.per_month": "/mo",
+	"admin.layout.brand": "TrendScope Admin",
+	"admin.layout.error_logs": "Error Logs",
+	"content.pro_badge": "Pro+",
+	"content.guide_title": "Content Idea Generator",
+	"content.guide_desc": "Enter a keyword and AI will suggest content ideas tailored to your role.",
+	"content.example_marketer": "e.g., AI Marketing, Instagram Reels",
+	"content.example_creator": "e.g., YouTube Shorts, Blog Topics",
+	"content.example_owner": "e.g., Cafe Startup, Small Business Trends"
 }

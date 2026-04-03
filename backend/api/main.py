@@ -8,7 +8,6 @@ from contextlib import asynccontextmanager
 
 import asyncpg
 import structlog
-import structlog.stdlib
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -36,23 +35,13 @@ from backend.api.routers import (
     trends,
 )
 from backend.api.routers.webhooks import payment as webhooks_payment
+from backend.common.errors import set_error_log_pool
+from backend.common.logging_config import setup_logging
 from backend.jobs.audit_archive import register_archive_job
 from backend.processor.shared.cache_manager import close_redis, init_redis
 
 # --- Logging setup ---
-structlog.configure(
-    processors=[
-        structlog.stdlib.add_log_level,
-        structlog.stdlib.add_logger_name,
-        structlog.processors.TimeStamper(fmt="iso"),
-        structlog.processors.StackInfoRenderer(),
-        structlog.processors.format_exc_info,
-        structlog.processors.JSONRenderer(),
-    ],
-    wrapper_class=structlog.stdlib.BoundLogger,
-    context_class=dict,
-    logger_factory=structlog.stdlib.LoggerFactory(),
-)
+setup_logging("api")
 
 logger = structlog.get_logger(__name__)
 
@@ -81,6 +70,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             max_size=10,
             command_timeout=30,
         )
+        set_error_log_pool(app.state.db_pool)
         logger.info("db_pool_created")
     except Exception as exc:
         logger.error("db_pool_creation_failed", error=str(exc))

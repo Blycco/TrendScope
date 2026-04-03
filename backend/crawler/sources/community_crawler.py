@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 import time
 from datetime import datetime, timezone
 from typing import Any
@@ -18,6 +19,9 @@ from backend.crawler.quota_guard import check_quota, increment_quota
 from backend.crawler.sources.robots import is_allowed
 from backend.crawler.sources.rss_feeds import FeedSource
 from backend.db.queries.feed_sources import get_feed_sources_for_crawl, update_feed_health
+
+_TRAILING_COUNT_RE = re.compile(r"[\s]*[\[(]\d+[\])]\s*$")
+_TRAILING_NUM_RE = re.compile(r"\s+\d+\s*$")
 
 logger = structlog.get_logger(__name__)
 
@@ -148,9 +152,13 @@ async def _crawl_rss_feed(
     for entry in parsed.entries:
         try:
             url = entry.get("link", "")
-            title = entry.get("title", "").strip()
-            if not url or not title:
+            raw_title = entry.get("title", "").strip()
+            if not url or not raw_title:
                 continue
+            # Strip trailing comment/view counts: "제목"[1162] → "제목"
+            title = _TRAILING_COUNT_RE.sub("", raw_title)
+            title = _TRAILING_NUM_RE.sub("", title).strip()
+            title = title.strip('"').strip()
 
             uhash = _url_hash(url)
 
@@ -226,10 +234,12 @@ async def _crawl_fm_html(
 
         for link_tag in soup.select("a.hotdeal_var8"):
             try:
-                title = link_tag.get_text(strip=True)
+                raw_title = link_tag.get_text(strip=True)
                 href = link_tag.get("href", "")
-                if not title or not href:
+                if not raw_title or not href:
                     continue
+                title = _TRAILING_COUNT_RE.sub("", raw_title)
+                title = _TRAILING_NUM_RE.sub("", title).strip()
 
                 if href.startswith("/"):
                     href = f"https://www.fmkorea.com{href}"

@@ -2,8 +2,8 @@
 > Always read this file. Keep under 120 lines. Details in context/.
 ---
 ## Current Status
-- **Phase**: 1 (Foundation Infrastructure)
-- **Active Task**: `.claude/tasks/phase1/`
+- **Phase**: Production Readiness (Phase 1–5 완료, 안정화·최적화 진행 중)
+- **Active Task**: 버그 수정 및 운영 안정화 (open PRs → develop)
 - **Last Session**: `.claude/memory.md`
 
 ---

@@ -1,7 +1,8 @@
-"""GET /api/v1/trends/{keyword}/insights — Pro+ plan-gated action insights."""
+"""GET /api/v1/trends/{group_id}/insights — Pro+ plan-gated action insights."""
 
 from __future__ import annotations
 
+import re
 import urllib.parse
 from datetime import datetime, timezone
 
@@ -22,8 +23,11 @@ from backend.auth.dependencies import CurrentUser, require_plan
 from backend.common.audit import write_audit_log
 from backend.common.errors import ErrorCode, error_response
 from backend.db.queries.insights import (
+    fetch_group_info,
     fetch_news_for_keyword,
+    fetch_news_for_keywords,
     fetch_sns_for_keyword,
+    fetch_sns_for_keywords,
     increment_insight_usage,
 )
 from backend.processor.algorithms.action_insight import ActionInsightEngine, SourceItem
@@ -31,6 +35,10 @@ from backend.processor.shared.ai_config import get_ai_config
 
 router = APIRouter(tags=["insights"])
 logger = structlog.get_logger(__name__)
+
+_UUID_RE = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE
+)
 
 
 def _parse_content(
@@ -60,9 +68,9 @@ def _parse_content(
         return GeneralInsight(**{k: content_dict.get(k, []) for k in keys})
 
 
-@router.get("/trends/{keyword}/insights", response_model=InsightResponse)
+@router.get("/trends/{group_id}/insights", response_model=InsightResponse)
 async def get_trend_insights(
-    keyword: str,
+    group_id: str,
     request: Request,
     role: str = Query(default="general"),
     locale: str = Query(default="ko"),
@@ -70,9 +78,13 @@ async def get_trend_insights(
     _rate_limit: CurrentUser = Depends(rate_limit_check),  # noqa: B008
     _quota: CurrentUser = Depends(check_insight_quota),  # noqa: B008
 ) -> InsightResponse:
-    """Return AI-generated action insights for a keyword, gated to Pro+ users."""
+    """Return AI-generated action insights for a trend group or keyword.
+
+    Accepts either a UUID (news_group.id) or a keyword string.
+    When a UUID is given, resolves the group's title and keywords for source lookup.
+    """
     try:
-        decoded_keyword = urllib.parse.unquote(keyword)
+        decoded_input = urllib.parse.unquote(group_id)
 
         role = role if role in {"marketer", "creator", "owner", "general"} else current_user.role
 
@@ -80,8 +92,22 @@ async def get_trend_insights(
 
         ai_config = await get_ai_config(pool)
 
-        news_rows = await fetch_news_for_keyword(pool, decoded_keyword, limit=10)
-        sns_rows = await fetch_sns_for_keyword(pool, decoded_keyword, limit=20)
+        # Resolve keywords: UUID → look up group title/keywords, else use as keyword
+        if _UUID_RE.match(decoded_input):
+            group_info = await fetch_group_info(pool, decoded_input)
+            if not group_info:
+                return error_response(ErrorCode.NOT_FOUND, "Trend group not found", status_code=404)
+            resolved_keyword = group_info["title"]
+            search_keywords = list(group_info["keywords"] or [])
+            if resolved_keyword and resolved_keyword not in search_keywords:
+                search_keywords.insert(0, resolved_keyword)
+            # Use multi-keyword search for better results
+            news_rows = await fetch_news_for_keywords(pool, search_keywords, limit=10)
+            sns_rows = await fetch_sns_for_keywords(pool, search_keywords, limit=20)
+        else:
+            resolved_keyword = decoded_input
+            news_rows = await fetch_news_for_keyword(pool, decoded_input, limit=10)
+            sns_rows = await fetch_sns_for_keyword(pool, decoded_input, limit=20)
 
         sources: list[SourceItem] = []
         for row in news_rows:
@@ -104,7 +130,7 @@ async def get_trend_insights(
             )
 
         engine = ActionInsightEngine(pool, ai_config)
-        insight_req = InsightRequest(keyword=decoded_keyword, role=role, locale=locale)
+        insight_req = InsightRequest(keyword=resolved_keyword, role=role, locale=locale)
         result = await engine.generate(insight_req, sources)
 
         today_reset_at = datetime.now(timezone.utc).replace(
@@ -117,7 +143,7 @@ async def get_trend_insights(
                 user_id=current_user.user_id,
                 action="insight_generated",
                 target_type="keyword",
-                target_id=decoded_keyword,
+                target_id=resolved_keyword,
                 ip_address=request.client.host if request.client else None,
                 user_agent=request.headers.get("user-agent"),
                 detail={"role": role, "locale": locale, "cached": result["cached"]},
@@ -128,7 +154,7 @@ async def get_trend_insights(
         content_obj = _parse_content(role, result["content"])
 
         return InsightResponse(
-            keyword=decoded_keyword,
+            keyword=resolved_keyword,
             role=role,
             locale=locale,
             content=content_obj,
@@ -140,7 +166,7 @@ async def get_trend_insights(
     except Exception as exc:
         logger.error(
             "insight_generation_failed",
-            keyword=keyword,
+            group_id=group_id,
             role=role,
             user_id=getattr(current_user, "user_id", None),
             error=str(exc),

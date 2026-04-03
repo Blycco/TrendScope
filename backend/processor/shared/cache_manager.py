@@ -17,6 +17,12 @@ _redis_pool: aioredis.Redis | None = None
 LOCK_TTL_SECONDS = 30
 DEFAULT_COMPRESS_THRESHOLD = 1024  # bytes
 
+# 1-byte prefix constants for compression marker
+_PREFIX_COMPRESSED: bytes = b"\x01"
+_PREFIX_UNCOMPRESSED: bytes = b"\x00"
+# zlib magic bytes for backwards-compatibility detection (no prefix)
+_ZLIB_MAGIC: tuple[bytes, ...] = (b"\x78\x01", b"\x78\x9c", b"\x78\xda")
+
 
 async def init_redis(redis_url: str) -> None:
     """Initialize the global Redis connection pool."""
@@ -45,12 +51,49 @@ def get_redis() -> aioredis.Redis:
     return _redis_pool
 
 
+def _decompress_value(raw: bytes) -> bytes:
+    """Decode a stored cache value, handling prefix and legacy formats.
+
+    Format (new):
+      b'\\x01' + zlib.compress(data)  — compressed
+      b'\\x00' + data                 — uncompressed
+
+    Format (legacy, no prefix):
+      Detect zlib magic bytes and decompress; otherwise return as-is.
+    """
+    if len(raw) < 1:
+        return raw
+
+    first = raw[:1]
+
+    if first == _PREFIX_COMPRESSED:
+        return zlib.decompress(raw[1:])
+
+    if first == _PREFIX_UNCOMPRESSED:
+        return raw[1:]
+
+    # Backwards-compatibility: data written before the prefix scheme
+    if raw[:2] in _ZLIB_MAGIC:
+        try:
+            return zlib.decompress(raw)
+        except zlib.error:
+            logger.warning("cache_decompress_legacy_failed_returning_raw")
+            return raw
+
+    return raw
+
+
 async def get_cached(key: str) -> bytes | None:
-    """Return cached bytes for key, or None on miss / error."""
+    """Return cached bytes for key, or None on miss / error.
+
+    Transparently decompresses values stored with set_cached().
+    """
     try:
-        value = await get_redis().get(key)
-        CACHE_REQUESTS.labels(result="hit" if value is not None else "miss").inc()
-        return value
+        raw = await get_redis().get(key)
+        CACHE_REQUESTS.labels(result="hit" if raw is not None else "miss").inc()
+        if raw is None:
+            return None
+        return _decompress_value(raw)
     except Exception as exc:
         CACHE_REQUESTS.labels(result="miss").inc()
         logger.warning("cache_get_failed", key=key, error=str(exc))
@@ -58,12 +101,18 @@ async def get_cached(key: str) -> bytes | None:
 
 
 async def set_cached(key: str, value: bytes | str, ttl: int) -> None:
-    """Set key with TTL. Compresses values larger than threshold."""
+    """Set key with TTL.
+
+    Compresses values larger than threshold and prepends a 1-byte prefix
+    so get_cached() can reliably decompress on retrieval.
+    """
     try:
         data = value if isinstance(value, bytes) else value.encode()
         if len(data) > DEFAULT_COMPRESS_THRESHOLD:
-            data = zlib.compress(data)
-        await get_redis().setex(key, ttl, data)
+            stored = _PREFIX_COMPRESSED + zlib.compress(data)
+        else:
+            stored = _PREFIX_UNCOMPRESSED + data
+        await get_redis().setex(key, ttl, stored)
     except Exception as exc:
         logger.warning("cache_set_failed", key=key, error=str(exc))
 
@@ -108,6 +157,9 @@ async def get_or_compute(
 
     On cache miss: acquires lock, computes, stores, releases lock.
     On lock failure with stale_on_lock=True: returns stale value if present.
+
+    get_cached() transparently decompresses, so callers always receive
+    plain bytes regardless of whether the value was compressed at write time.
     """
     cached = await get_cached(key)
     if cached is not None:
