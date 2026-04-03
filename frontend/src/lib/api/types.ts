@@ -58,6 +58,7 @@ export interface TrendItem {
 	id: string;
 	title: string;
 	category: string;
+	summary: string | null;
 	score: number;
 	early_trend_score: number;
 	keywords: string[];

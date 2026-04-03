@@ -15,6 +15,7 @@ describe('API Types', () => {
 			id: '1',
 			title: 'Test Trend',
 			category: 'tech',
+			summary: 'AI trend summary',
 			score: 0.85,
 			early_trend_score: 0.6,
 			keywords: ['ai', 'ml'],
@@ -22,6 +23,7 @@ describe('API Types', () => {
 		};
 		expect(trend.id).toBe('1');
 		expect(trend.keywords).toHaveLength(2);
+		expect(trend.summary).toBe('AI trend summary');
 	});
 
 	it('NewsItem shape is correct', () => {
@@ -31,7 +33,8 @@ describe('API Types', () => {
 			url: 'https://example.com',
 			source: 'TestSource',
 			publish_time: '2024-01-01T00:00:00Z',
-			summary: 'A summary'
+			summary: 'A summary',
+			article_count: 3
 		};
 		expect(news.source).toBe('TestSource');
 		expect(news.summary).toBe('A summary');
@@ -44,7 +47,8 @@ describe('API Types', () => {
 			url: 'https://example.com',
 			source: null,
 			publish_time: '2024-01-01T00:00:00Z',
-			summary: null
+			summary: null,
+			article_count: 1
 		};
 		expect(news.source).toBeNull();
 		expect(news.summary).toBeNull();
