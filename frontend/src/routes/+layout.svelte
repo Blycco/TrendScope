@@ -4,7 +4,9 @@
 	import { isLoading, t } from 'svelte-i18n';
 	import { authStore } from '$lib/stores/auth.svelte';
 	import { page } from '$app/stores';
+	import { afterNavigate } from '$app/navigation';
 	import { onMount } from 'svelte';
+	import { Menu, X } from 'lucide-svelte';
 
 	initI18n();
 	onMount(() => authStore.initialize());
@@ -12,6 +14,11 @@
 	let { children } = $props();
 
 	const isAdmin = $derived($page.url.pathname.startsWith('/admin'));
+	let mobileMenuOpen = $state(false);
+
+	afterNavigate(() => {
+		mobileMenuOpen = false;
+	});
 </script>
 
 {#if $isLoading}
@@ -35,19 +42,55 @@
 					</div>
 					<div class="flex items-center gap-4">
 						{#if authStore.isAuthenticated}
-							<span class="text-sm text-gray-600">{authStore.user?.display_name ?? authStore.user?.email}</span>
+							<span class="hidden sm:inline text-sm text-gray-600">{authStore.user?.display_name ?? authStore.user?.email}</span>
 							<button
 								onclick={() => authStore.logout()}
-								class="text-sm text-gray-600 hover:text-gray-900"
+								class="hidden sm:inline text-sm text-gray-600 hover:text-gray-900"
 							>
 								{$t('nav.sidebar.logout')}
 							</button>
 						{:else}
-							<a href="/auth/login" class="text-sm text-gray-600 hover:text-gray-900">{$t('nav.sidebar.login')}</a>
+							<a href="/auth/login" class="hidden sm:inline text-sm text-gray-600 hover:text-gray-900">{$t('nav.sidebar.login')}</a>
 						{/if}
+						<button
+							onclick={() => (mobileMenuOpen = !mobileMenuOpen)}
+							class="sm:hidden p-1.5 text-gray-600 hover:text-gray-900"
+							aria-label={mobileMenuOpen ? $t('nav.mobile.close') : $t('nav.mobile.menu')}
+						>
+							{#if mobileMenuOpen}
+								<X size={24} />
+							{:else}
+								<Menu size={24} />
+							{/if}
+						</button>
 					</div>
 				</div>
 			</div>
+
+			{#if mobileMenuOpen}
+				<div class="sm:hidden border-t border-gray-200 bg-white">
+					<div class="px-4 py-3 space-y-1">
+						<a href="/trends" class="block rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">{$t('nav.sidebar.trends')}</a>
+						<a href="/news" class="block rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">{$t('nav.sidebar.news')}</a>
+						<a href="/content" class="block rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">{$t('nav.content')}</a>
+						<a href="/settings" class="block rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">{$t('nav.sidebar.settings')}</a>
+					</div>
+					<div class="border-t border-gray-200 px-4 py-3">
+						{#if authStore.isAuthenticated}
+							<p class="px-3 text-xs text-gray-500">{authStore.user?.display_name ?? authStore.user?.email}</p>
+							<button
+								onclick={() => authStore.logout()}
+								class="mt-1 block w-full rounded-md px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+							>
+								{$t('nav.sidebar.logout')}
+							</button>
+						{:else}
+							<a href="/auth/login" class="block rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">{$t('nav.sidebar.login')}</a>
+							<a href="/auth/register" class="block rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">{$t('nav.sidebar.register')}</a>
+						{/if}
+					</div>
+				</div>
+			{/if}
 		</nav>
 
 		<main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
