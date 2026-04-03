@@ -13,3 +13,10 @@ class PersonalizationResponse(BaseModel):
 class PersonalizationUpdate(BaseModel):
     category_weights: dict[str, float] = {}
     locale_ratio: float = 0.5
+
+
+class BehaviorStatsResponse(BaseModel):
+    category_counts: dict[str, int]
+    total_events: int
+    action_counts: dict[str, int]
+    suggested_weights: dict[str, float]

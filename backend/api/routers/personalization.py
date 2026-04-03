@@ -5,9 +5,14 @@ from __future__ import annotations
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from backend.api.schemas.personalization import PersonalizationResponse, PersonalizationUpdate
+from backend.api.schemas.personalization import (
+    BehaviorStatsResponse,
+    PersonalizationResponse,
+    PersonalizationUpdate,
+)
 from backend.auth.dependencies import CurrentUser, require_auth
 from backend.common.errors import ErrorCode, http_error
+from backend.db.queries.events import get_behavior_stats
 from backend.db.queries.personalization import get_personalization, upsert_personalization
 
 router = APIRouter(prefix="/personalization", tags=["personalization"])
@@ -71,5 +76,86 @@ async def update_my_personalization(
         raise http_error(
             ErrorCode.DB_ERROR,
             "Failed to update personalization settings",
+            status_code=500,
+        ) from exc
+
+
+def _compute_suggested_weights(category_counts: dict[str, int]) -> dict[str, float]:
+    """Derive category weights (0.5–2.0) from behavior counts."""
+    if not category_counts:
+        return {}
+    max_count = max(category_counts.values())
+    if max_count == 0:
+        return {}
+    return {cat: round(0.5 + 1.5 * (cnt / max_count), 2) for cat, cnt in category_counts.items()}
+
+
+@router.get("/behavior", response_model=BehaviorStatsResponse)
+async def get_behavior_analysis(
+    request: Request,
+    current_user: CurrentUser = Depends(require_auth),  # noqa: B008
+) -> BehaviorStatsResponse:
+    """Return aggregated behavior stats and suggested weights for the authenticated user."""
+    try:
+        pool = request.app.state.db_pool
+        stats = await get_behavior_stats(pool, user_id=current_user.user_id)
+        suggested = _compute_suggested_weights(stats["category_counts"])
+        return BehaviorStatsResponse(
+            category_counts=stats["category_counts"],
+            total_events=stats["total_events"],
+            action_counts=stats["action_counts"],
+            suggested_weights=suggested,
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("get_behavior_analysis_failed", user_id=current_user.user_id, error=str(exc))
+        raise http_error(
+            ErrorCode.DB_ERROR,
+            "Failed to fetch behavior analysis",
+            status_code=500,
+        ) from exc
+
+
+@router.post("/behavior/apply", response_model=PersonalizationResponse)
+async def apply_behavior_weights(
+    request: Request,
+    current_user: CurrentUser = Depends(require_auth),  # noqa: B008
+) -> PersonalizationResponse:
+    """Apply behavior-derived weights to user personalization settings."""
+    try:
+        pool = request.app.state.db_pool
+        stats = await get_behavior_stats(pool, user_id=current_user.user_id)
+        suggested = _compute_suggested_weights(stats["category_counts"])
+        if not suggested:
+            raise http_error(
+                ErrorCode.VALIDATION_ERROR,
+                "Not enough behavior data to generate weights",
+                status_code=400,
+            )
+        current = await get_personalization(pool, user_id=current_user.user_id)
+        locale_ratio = current["locale_ratio"] if current else 0.5
+        await upsert_personalization(
+            pool,
+            user_id=current_user.user_id,
+            category_weights=suggested,
+            locale_ratio=locale_ratio,
+        )
+        logger.info(
+            "behavior_weights_applied",
+            user_id=current_user.user_id,
+            weights=suggested,
+        )
+        return PersonalizationResponse(
+            category_weights=suggested,
+            locale_ratio=locale_ratio,
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("apply_behavior_weights_failed", user_id=current_user.user_id, error=str(exc))
+        raise http_error(
+            ErrorCode.DB_ERROR,
+            "Failed to apply behavior weights",
             status_code=500,
         ) from exc
