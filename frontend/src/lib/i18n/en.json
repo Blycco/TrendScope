@@ -138,6 +138,7 @@
 	"settings.security.2fa_success": "Two-factor authentication has been successfully enabled.",
 
 	"nav.content": "Content Ideas",
+	"nav.menu": "Menu",
 
 	"content.title": "Content Ideas",
 	"content.input_placeholder": "Enter keyword...",
