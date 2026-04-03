@@ -59,7 +59,8 @@ class TestExtractBody:
             assert "Readability text" in result
 
     async def test_stage3_fallback(self) -> None:
-        html = "<html><body><p>Some text content here.</p></body></html>"
+        long_text = "Some text content that is long enough to pass the quality gate. " * 2
+        html = f"<html><body><p>{long_text}</p></body></html>"
         with (
             patch(
                 "backend.crawler.sources.extractor._stage1_newspaper",
@@ -73,23 +74,49 @@ class TestExtractBody:
             result = await extract_body("https://example.com", html=html)
             assert "Some text content" in result
 
+    async def test_all_stages_failed_returns_empty(self) -> None:
+        html = "<html><body><p>Hi</p></body></html>"
+        with (
+            patch(
+                "backend.crawler.sources.extractor._stage1_newspaper",
+                return_value="",
+            ),
+            patch(
+                "backend.crawler.sources.extractor._stage2_readability",
+                return_value="",
+            ),
+            patch(
+                "backend.crawler.sources.extractor._stage3_bs4",
+                return_value="",
+            ),
+        ):
+            result = await extract_body("https://example.com", html=html)
+            assert result == ""
+
 
 class TestStage3Bs4:
     def test_strips_script_tags(self) -> None:
-        html = "<html><body><script>alert('x')</script><p>Clean text.</p></body></html>"
+        body = "Clean text that is long enough to pass the minimum body length quality gate easily."
+        html = f"<html><body><script>alert('x')</script><p>{body}</p></body></html>"
         result = _stage3_bs4(html)
         assert "alert" not in result
         assert "Clean text" in result
 
     def test_strips_nav_footer(self) -> None:
-        html = "<html><body><nav>Menu</nav><p>Article</p><footer>Footer</footer></body></html>"
+        body = "Article content that is definitely long enough to pass the fifty char quality gate."
+        html = f"<html><body><nav>Menu</nav><p>{body}</p><footer>Footer</footer></body></html>"
         result = _stage3_bs4(html)
         assert "Menu" not in result
         assert "Footer" not in result
-        assert "Article" in result
+        assert "Article content" in result
 
     def test_empty_html(self) -> None:
         result = _stage3_bs4("")
+        assert result == ""
+
+    def test_short_text_returns_empty(self) -> None:
+        html = "<html><body><p>Hi</p></body></html>"
+        result = _stage3_bs4(html)
         assert result == ""
 
     def test_returns_empty_string_on_error(self) -> None:
@@ -145,3 +172,14 @@ class TestFetchHtml:
 
             result = await _fetch_html("https://broken.com")
             assert result == ""
+
+    async def test_reuses_provided_client(self) -> None:
+        mock_resp = MagicMock()
+        mock_resp.text = "<html>reused</html>"
+        mock_resp.raise_for_status = MagicMock()
+        mock_client = MagicMock()
+        mock_client.get = AsyncMock(return_value=mock_resp)
+
+        result = await _fetch_html("https://example.com", client=mock_client)
+        assert result == "<html>reused</html>"
+        mock_client.get.assert_awaited_once()
