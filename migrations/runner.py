@@ -29,6 +29,7 @@ MIGRATIONS: List[str] = [
     "migrations.014_seed_source_config",
     "migrations.015_article_category",
     "migrations.016_clean_titles",
+    "migrations.017_error_log",
 ]
 
 
