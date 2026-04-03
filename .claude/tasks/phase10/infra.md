@@ -7,7 +7,6 @@
 - [x] Alert threshold tuning (per context/monitoring.md) — alert.rules.yml
 - [ ] Audit log archival strategy — 미구현
 - [ ] Full blue-green deployment drill — 미확인
-- [ ] .github/workflows/ CI/CD 파이프라인 — 미생성
 
-Done (partial): 모니터링·부하테스트·인덱스 완료, CI/CD·아카이빙 미완
+Done (partial): 모니터링·부하테스트·인덱스 완료, 아카이빙·배포 드릴 미완
 Approval: Orchestrator → Jiny for production launch
