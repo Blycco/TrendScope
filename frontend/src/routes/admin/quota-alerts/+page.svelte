@@ -98,7 +98,7 @@
 	<h2 class="text-2xl font-bold text-gray-900 mb-6">{$t('admin.quota_alerts.title')}</h2>
 
 	<!-- Filters -->
-	<div class="flex gap-4 mb-4">
+	<div class="flex flex-wrap gap-2 sm:gap-4 mb-4">
 		<select
 			bind:value={filterService}
 			onchange={() => { page = 1; fetchAlerts(); }}
@@ -128,7 +128,7 @@
 		<p class="text-gray-500">{$t('admin.quota_alerts.no_alerts')}</p>
 	{:else}
 		<div class="overflow-x-auto">
-			<table class="min-w-full bg-white border border-gray-200 rounded-lg">
+			<table class="min-w-[640px] w-full bg-white border border-gray-200 rounded-lg">
 				<thead class="bg-gray-50">
 					<tr>
 						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.quota_alerts.col_service')}</th>

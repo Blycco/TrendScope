@@ -78,13 +78,13 @@
 
 <div class="space-y-8">
 	<div class="text-center">
-		<h1 class="text-3xl font-bold text-gray-900">{$t('pricing.title')}</h1>
+		<h1 class="text-2xl sm:text-3xl font-bold text-gray-900">{$t('pricing.title')}</h1>
 	</div>
 
-	<div class="grid grid-cols-1 gap-6 md:grid-cols-3">
+	<div class="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-3 px-1 sm:px-0">
 		{#each plans as plan}
 			<div
-				class="relative rounded-xl border border-gray-200 bg-white p-6 shadow-sm flex flex-col"
+				class="relative rounded-xl border border-gray-200 bg-white p-4 sm:p-6 shadow-sm flex flex-col"
 				class:ring-2={plan.key === 'pro'}
 				class:ring-blue-500={plan.key === 'pro'}
 			>
@@ -98,15 +98,15 @@
 					<h2 class="text-xl font-bold text-gray-900">{$t(plan.nameKey)}</h2>
 					<div class="mt-2">
 						{#if plan.price === 0}
-							<span class="text-3xl font-bold text-gray-900">₩0</span>
+							<span class="text-2xl sm:text-3xl font-bold text-gray-900">₩0</span>
 						{:else}
-							<span class="text-3xl font-bold text-gray-900">₩{plan.price.toLocaleString()}</span>
+							<span class="text-2xl sm:text-3xl font-bold text-gray-900">₩{plan.price.toLocaleString()}</span>
 							<span class="text-sm text-gray-500">{$t('pricing.per_month')}</span>
 						{/if}
 					</div>
 				</div>
 
-				<ul class="mb-6 space-y-2 flex-1">
+				<ul class="mb-4 sm:mb-6 space-y-1.5 sm:space-y-2 flex-1">
 					{#each plan.features as featureKey}
 						<li class="flex items-center gap-2 text-sm text-gray-700">
 							<Check size={16} class="shrink-0 text-green-500" />
