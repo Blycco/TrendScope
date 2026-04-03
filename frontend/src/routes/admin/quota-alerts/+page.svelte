@@ -2,6 +2,7 @@
 	import { t } from 'svelte-i18n';
 	import { onMount, onDestroy } from 'svelte';
 	import { adminRequest } from '$lib/api/admin';
+	import ErrorModal from '$lib/ui/ErrorModal.svelte';
 
 	interface QuotaAlert {
 		id: string;
@@ -32,6 +33,8 @@
 	let filterDismissed = $state<string>('false');
 	let loading = $state(true);
 	let pollTimer: ReturnType<typeof setInterval> | null = null;
+	let errorOpen = $state(false);
+	let errorCode = $state('');
 
 	const services = ['google_oauth', 'kakao_oauth', 'youtube', 'gemini', 'openai', 'reddit'];
 
@@ -50,6 +53,8 @@
 		} catch {
 			alerts = [];
 			total = 0;
+			errorCode = 'QUOTA_ALERT_FETCH';
+			errorOpen = true;
 		} finally {
 			loading = false;
 		}
@@ -60,7 +65,8 @@
 			await adminRequest(`/quota-alerts/${alertId}/dismiss`, { method: 'POST' });
 			await fetchAlerts();
 		} catch {
-			// ignore
+			errorCode = 'QUOTA_ALERT_DISMISS';
+			errorOpen = true;
 		}
 	}
 
@@ -193,3 +199,5 @@
 		{/if}
 	{/if}
 </div>
+
+<ErrorModal open={errorOpen} errorCode={errorCode} messageKey="error.server" onClose={() => (errorOpen = false)} onRetry={() => { errorOpen = false; fetchAlerts(); }} />

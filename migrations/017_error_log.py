@@ -6,10 +6,11 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
+VERSION = "017_error_log"
 DESCRIPTION = "Create error_log table for permanent error recording"
 
 
-async def apply(conn: object) -> None:
+async def up(conn: object) -> None:
     """Create error_log table and indexes."""
     logger.info("migration_017_start")
 

@@ -20,15 +20,6 @@ groups:
           summary: "HTTP 5xx error rate > 1%"
           description: "Error rate is {{ $value | humanizePercentage }}"
 
-      - alert: HighMemoryUsage
-        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 80
-        for: 5m
-        labels:
-          severity: warning
-        annotations:
-          summary: "Memory usage > 80%"
-          description: "Memory usage is {{ $value }}%"
-
       - alert: LowCacheHitRate
         expr: rate(cache_requests_total{result="hit"}[5m]) / rate(cache_requests_total[5m]) < 0.7
         for: 5m
