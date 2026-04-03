@@ -94,65 +94,68 @@
 	});
 </script>
 
-<div class="space-y-4">
-	<h1 class="text-2xl font-bold text-gray-900">{$t('page.news.title')}</h1>
+<div class="space-y-3 sm:space-y-4">
+	<h1 class="text-xl sm:text-2xl font-bold text-gray-900">{$t('page.news.title')}</h1>
 
-	<!-- Locale filter -->
-	<div class="flex gap-2 flex-wrap">
-		<button
-			onclick={() => applyFilter('locale', null)}
-			class="rounded-full px-3 py-1 text-xs font-medium transition-colors {selectedLocale === null ? 'bg-indigo-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
-		>{$t('filter.all')}</button>
-		<button
-			onclick={() => applyFilter('locale', 'ko')}
-			class="rounded-full px-3 py-1 text-xs font-medium transition-colors {selectedLocale === 'ko' ? 'bg-indigo-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
-		>{$t('filter.locale.domestic')}</button>
-		<button
-			onclick={() => applyFilter('locale', 'en')}
-			class="rounded-full px-3 py-1 text-xs font-medium transition-colors {selectedLocale === 'en' ? 'bg-indigo-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
-		>{$t('filter.locale.international')}</button>
-	</div>
-
-	<!-- Category filter -->
-	<div class="flex gap-2 flex-wrap">
-		<button
-			onclick={() => applyFilter('category', null)}
-			class="rounded-full px-3 py-1 text-xs font-medium transition-colors {selectedCategory === null ? 'bg-blue-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
-		>{$t('filter.all')}</button>
-		{#each ALL_CATEGORIES as cat}
+	<!-- Filters -->
+	<div class="space-y-2 sm:space-y-3">
+		<!-- Locale filter -->
+		<div class="flex gap-1.5 sm:gap-2 flex-wrap">
 			<button
-				onclick={() => applyFilter('category', cat)}
-				class="rounded-full px-3 py-1 text-xs font-medium transition-colors {selectedCategory === cat ? 'bg-blue-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
-			>{$t(`filter.category.${cat}`)}</button>
-		{/each}
-	</div>
-
-	<!-- Source type + Time filters -->
-	<div class="flex gap-4 flex-wrap">
-		<div class="flex gap-2">
-			<button
-				onclick={() => applyFilter('source', null)}
-				class="rounded-full px-3 py-1 text-xs font-medium transition-colors {selectedSourceType === null ? 'bg-green-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
+				onclick={() => applyFilter('locale', null)}
+				class="rounded-full px-2.5 py-1 sm:px-3 text-xs font-medium transition-colors {selectedLocale === null ? 'bg-indigo-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
 			>{$t('filter.all')}</button>
-			{#each SOURCE_TYPES as src}
+			<button
+				onclick={() => applyFilter('locale', 'ko')}
+				class="rounded-full px-2.5 py-1 sm:px-3 text-xs font-medium transition-colors {selectedLocale === 'ko' ? 'bg-indigo-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
+			>{$t('filter.locale.domestic')}</button>
+			<button
+				onclick={() => applyFilter('locale', 'en')}
+				class="rounded-full px-2.5 py-1 sm:px-3 text-xs font-medium transition-colors {selectedLocale === 'en' ? 'bg-indigo-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
+			>{$t('filter.locale.international')}</button>
+		</div>
+
+		<!-- Category filter -->
+		<div class="flex gap-1.5 sm:gap-2 flex-wrap">
+			<button
+				onclick={() => applyFilter('category', null)}
+				class="rounded-full px-2.5 py-1 sm:px-3 text-xs font-medium transition-colors {selectedCategory === null ? 'bg-blue-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
+			>{$t('filter.all')}</button>
+			{#each ALL_CATEGORIES as cat}
 				<button
-					onclick={() => applyFilter('source', src)}
-					class="rounded-full px-3 py-1 text-xs font-medium transition-colors {selectedSourceType === src ? 'bg-green-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
-				>{$t(`filter.source.${src}`)}</button>
+					onclick={() => applyFilter('category', cat)}
+					class="rounded-full px-2.5 py-1 sm:px-3 text-xs font-medium transition-colors {selectedCategory === cat ? 'bg-blue-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
+				>{$t(`filter.category.${cat}`)}</button>
 			{/each}
 		</div>
 
-		<div class="flex gap-2">
-			<button
-				onclick={() => applyFilter('time', null)}
-				class="rounded-full px-2.5 py-1 text-xs font-medium transition-colors {selectedTime === null ? 'bg-gray-800 text-white' : 'border border-gray-200 bg-white text-gray-500 hover:bg-gray-50'}"
-			>{$t('filter.all')}</button>
-			{#each TIME_OPTIONS as opt}
+		<!-- Source type + Time filters -->
+		<div class="flex gap-2 sm:gap-4 flex-wrap">
+			<div class="flex gap-1.5 sm:gap-2 flex-wrap">
 				<button
-					onclick={() => applyFilter('time', opt.value)}
-					class="rounded-full px-2.5 py-1 text-xs font-medium transition-colors {selectedTime === opt.value ? 'bg-gray-800 text-white' : 'border border-gray-200 bg-white text-gray-500 hover:bg-gray-50'}"
-				>{$t(opt.label)}</button>
-			{/each}
+					onclick={() => applyFilter('source', null)}
+					class="rounded-full px-2.5 py-1 sm:px-3 text-xs font-medium transition-colors {selectedSourceType === null ? 'bg-green-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
+				>{$t('filter.all')}</button>
+				{#each SOURCE_TYPES as src}
+					<button
+						onclick={() => applyFilter('source', src)}
+						class="rounded-full px-2.5 py-1 sm:px-3 text-xs font-medium transition-colors {selectedSourceType === src ? 'bg-green-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
+					>{$t(`filter.source.${src}`)}</button>
+				{/each}
+			</div>
+
+			<div class="flex gap-1.5 sm:gap-2 flex-wrap">
+				<button
+					onclick={() => applyFilter('time', null)}
+					class="rounded-full px-2.5 py-1 text-xs font-medium transition-colors {selectedTime === null ? 'bg-gray-800 text-white' : 'border border-gray-200 bg-white text-gray-500 hover:bg-gray-50'}"
+				>{$t('filter.all')}</button>
+				{#each TIME_OPTIONS as opt}
+					<button
+						onclick={() => applyFilter('time', opt.value)}
+						class="rounded-full px-2.5 py-1 text-xs font-medium transition-colors {selectedTime === opt.value ? 'bg-gray-800 text-white' : 'border border-gray-200 bg-white text-gray-500 hover:bg-gray-50'}"
+					>{$t(opt.label)}</button>
+				{/each}
+			</div>
 		</div>
 	</div>
 

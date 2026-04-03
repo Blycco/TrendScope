@@ -87,7 +87,7 @@
 <div>
 	<h2 class="text-2xl font-bold text-gray-900 mb-6">{$t('admin.users.title')}</h2>
 
-	<div class="mb-4 flex gap-2">
+	<div class="mb-4 flex flex-col sm:flex-row gap-2">
 		<input
 			type="text"
 			bind:value={search}
@@ -97,7 +97,7 @@
 		/>
 		<button
 			onclick={handleSearch}
-			class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+			class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 shrink-0"
 		>
 			{$t('admin.users.search')}
 		</button>
@@ -107,24 +107,24 @@
 		<p class="text-gray-500">{$t('status.loading')}</p>
 	{:else}
 		<div class="bg-white rounded-lg shadow overflow-x-auto">
-			<table class="min-w-full divide-y divide-gray-200">
+			<table class="min-w-[640px] w-full divide-y divide-gray-200">
 				<thead class="bg-gray-50">
 					<tr>
-						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.users.col_email')}</th>
-						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.users.col_name')}</th>
-						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.users.col_role')}</th>
-						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.users.col_plan')}</th>
-						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.users.col_status')}</th>
-						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.users.col_actions')}</th>
+						<th class="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.users.col_email')}</th>
+						<th class="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.users.col_name')}</th>
+						<th class="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.users.col_role')}</th>
+						<th class="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.users.col_plan')}</th>
+						<th class="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.users.col_status')}</th>
+						<th class="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.users.col_actions')}</th>
 					</tr>
 				</thead>
 				<tbody class="divide-y divide-gray-200">
 					{#each users as user}
 						<tr>
-							<td class="px-4 py-3 text-sm text-gray-900">{user.email}</td>
-							<td class="px-4 py-3 text-sm text-gray-600">{user.display_name ?? '-'}</td>
-							<td class="px-4 py-3 text-sm text-gray-600">{user.role}</td>
-							<td class="px-4 py-3">
+							<td class="px-3 py-2 sm:px-4 sm:py-3 text-sm text-gray-900 max-w-[200px] truncate">{user.email}</td>
+							<td class="px-3 py-2 sm:px-4 sm:py-3 text-sm text-gray-600">{user.display_name ?? '-'}</td>
+							<td class="px-3 py-2 sm:px-4 sm:py-3 text-sm text-gray-600">{user.role}</td>
+							<td class="px-3 py-2 sm:px-4 sm:py-3">
 								<select
 									class="text-sm border border-gray-300 rounded px-2 py-1"
 									value={user.plan}
@@ -136,7 +136,7 @@
 									<option value="enterprise">Enterprise</option>
 								</select>
 							</td>
-							<td class="px-4 py-3">
+							<td class="px-3 py-2 sm:px-4 sm:py-3">
 								<button
 									class="text-xs px-2 py-1 rounded {user.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}"
 									onclick={() => updateUser(user.id, 'is_active', !user.is_active)}
@@ -144,7 +144,7 @@
 									{user.is_active ? $t('admin.users.active') : $t('admin.users.suspended')}
 								</button>
 							</td>
-							<td class="px-4 py-3">
+							<td class="px-3 py-2 sm:px-4 sm:py-3">
 								<button
 									class="text-xs text-red-600 hover:text-red-800"
 									onclick={() => (deleteConfirmId = user.id)}

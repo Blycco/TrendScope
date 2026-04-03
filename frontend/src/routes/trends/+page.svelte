@@ -200,9 +200,9 @@
 </script>
 
 <div class="space-y-6">
-	<div class="flex flex-wrap items-center justify-between gap-3">
-		<div class="flex items-center gap-3">
-			<h1 class="text-2xl font-bold text-gray-900">{$t('page.trends.title')}</h1>
+	<div class="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
+		<div class="flex items-center gap-2 sm:gap-3">
+			<h1 class="text-xl sm:text-2xl font-bold text-gray-900">{$t('page.trends.title')}</h1>
 			{#if personalization}
 				<span class="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">
 					{$t('trends.personalized_badge')}
@@ -211,27 +211,29 @@
 		</div>
 
 		<!-- Export / Share toolbar -->
-		<div class="flex items-center gap-2">
+		<div class="flex items-center gap-1.5 sm:gap-2">
 			<button
 				onclick={() => exportTrends('csv')}
 				disabled={isExportingCsv}
-				class="flex items-center gap-1.5 rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+				class="flex items-center gap-1 sm:gap-1.5 rounded-md border border-gray-300 px-2 py-1.5 sm:px-3 text-xs sm:text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
 			>
 				<Download size={14} />
-				{$t('trends.export.csv')}
+				<span class="hidden sm:inline">{$t('trends.export.csv')}</span>
+				<span class="sm:hidden">CSV</span>
 			</button>
 			<button
 				onclick={() => exportTrends('pdf')}
 				disabled={isExportingPdf}
-				class="flex items-center gap-1.5 rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+				class="flex items-center gap-1 sm:gap-1.5 rounded-md border border-gray-300 px-2 py-1.5 sm:px-3 text-xs sm:text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
 			>
 				<Download size={14} />
-				{$t('trends.export.pdf')}
+				<span class="hidden sm:inline">{$t('trends.export.pdf')}</span>
+				<span class="sm:hidden">PDF</span>
 			</button>
 			<button
 				onclick={shareTrends}
 				disabled={isSharing}
-				class="flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+				class="flex items-center gap-1 sm:gap-1.5 rounded-md bg-blue-600 px-2 py-1.5 sm:px-3 text-xs sm:text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
 			>
 				<Share2 size={14} />
 				{$t('trends.share.button')}
@@ -239,48 +241,51 @@
 		</div>
 	</div>
 
-	<!-- Locale filter -->
-	<div class="flex gap-2 flex-wrap">
-		<button
-			onclick={() => { selectedLocale = null; trends = []; nextCursor = null; loadTrends(); }}
-			class="rounded-full px-3 py-1 text-xs font-medium transition-colors {selectedLocale === null ? 'bg-indigo-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
-		>{$t('filter.all')}</button>
-		<button
-			onclick={() => { selectedLocale = 'ko'; trends = []; nextCursor = null; loadTrends(); }}
-			class="rounded-full px-3 py-1 text-xs font-medium transition-colors {selectedLocale === 'ko' ? 'bg-indigo-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
-		>{$t('filter.locale.domestic')}</button>
-		<button
-			onclick={() => { selectedLocale = 'en'; trends = []; nextCursor = null; loadTrends(); }}
-			class="rounded-full px-3 py-1 text-xs font-medium transition-colors {selectedLocale === 'en' ? 'bg-indigo-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
-		>{$t('filter.locale.international')}</button>
-	</div>
-
-	<!-- Category filter -->
-	<div class="flex gap-2 flex-wrap">
-		<button
-			onclick={() => { selectedCategory = null; trends = []; nextCursor = null; loadTrends(); }}
-			class="rounded-full px-3 py-1 text-xs font-medium transition-colors {selectedCategory === null ? 'bg-blue-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
-		>{$t('filter.all')}</button>
-		{#each ALL_CATEGORIES as cat}
+	<!-- Filters -->
+	<div class="space-y-2 sm:space-y-3">
+		<!-- Locale filter -->
+		<div class="flex gap-1.5 sm:gap-2 flex-wrap">
 			<button
-				onclick={() => { selectedCategory = cat; trends = []; nextCursor = null; loadTrends(); }}
-				class="rounded-full px-3 py-1 text-xs font-medium transition-colors {selectedCategory === cat ? 'bg-blue-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
-			>{$t(`filter.category.${cat}`)}</button>
-		{/each}
-	</div>
-
-	<!-- Time filter -->
-	<div class="flex gap-2 flex-wrap">
-		<button
-			onclick={() => { selectedTime = null; trends = []; nextCursor = null; loadTrends(); }}
-			class="rounded-full px-2.5 py-1 text-xs font-medium transition-colors {selectedTime === null ? 'bg-gray-800 text-white' : 'border border-gray-200 bg-white text-gray-500 hover:bg-gray-50'}"
-		>{$t('filter.all')}</button>
-		{#each TIME_OPTIONS as opt}
+				onclick={() => { selectedLocale = null; trends = []; nextCursor = null; loadTrends(); }}
+				class="rounded-full px-2.5 py-1 sm:px-3 text-xs font-medium transition-colors {selectedLocale === null ? 'bg-indigo-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
+			>{$t('filter.all')}</button>
 			<button
-				onclick={() => { selectedTime = opt.value; trends = []; nextCursor = null; loadTrends(); }}
-				class="rounded-full px-2.5 py-1 text-xs font-medium transition-colors {selectedTime === opt.value ? 'bg-gray-800 text-white' : 'border border-gray-200 bg-white text-gray-500 hover:bg-gray-50'}"
-			>{$t(opt.label)}</button>
-		{/each}
+				onclick={() => { selectedLocale = 'ko'; trends = []; nextCursor = null; loadTrends(); }}
+				class="rounded-full px-2.5 py-1 sm:px-3 text-xs font-medium transition-colors {selectedLocale === 'ko' ? 'bg-indigo-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
+			>{$t('filter.locale.domestic')}</button>
+			<button
+				onclick={() => { selectedLocale = 'en'; trends = []; nextCursor = null; loadTrends(); }}
+				class="rounded-full px-2.5 py-1 sm:px-3 text-xs font-medium transition-colors {selectedLocale === 'en' ? 'bg-indigo-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
+			>{$t('filter.locale.international')}</button>
+		</div>
+
+		<!-- Category filter -->
+		<div class="flex gap-1.5 sm:gap-2 flex-wrap">
+			<button
+				onclick={() => { selectedCategory = null; trends = []; nextCursor = null; loadTrends(); }}
+				class="rounded-full px-2.5 py-1 sm:px-3 text-xs font-medium transition-colors {selectedCategory === null ? 'bg-blue-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
+			>{$t('filter.all')}</button>
+			{#each ALL_CATEGORIES as cat}
+				<button
+					onclick={() => { selectedCategory = cat; trends = []; nextCursor = null; loadTrends(); }}
+					class="rounded-full px-2.5 py-1 sm:px-3 text-xs font-medium transition-colors {selectedCategory === cat ? 'bg-blue-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
+				>{$t(`filter.category.${cat}`)}</button>
+			{/each}
+		</div>
+
+		<!-- Time filter -->
+		<div class="flex gap-1.5 sm:gap-2 flex-wrap">
+			<button
+				onclick={() => { selectedTime = null; trends = []; nextCursor = null; loadTrends(); }}
+				class="rounded-full px-2.5 py-1 text-xs font-medium transition-colors {selectedTime === null ? 'bg-gray-800 text-white' : 'border border-gray-200 bg-white text-gray-500 hover:bg-gray-50'}"
+			>{$t('filter.all')}</button>
+			{#each TIME_OPTIONS as opt}
+				<button
+					onclick={() => { selectedTime = opt.value; trends = []; nextCursor = null; loadTrends(); }}
+					class="rounded-full px-2.5 py-1 text-xs font-medium transition-colors {selectedTime === opt.value ? 'bg-gray-800 text-white' : 'border border-gray-200 bg-white text-gray-500 hover:bg-gray-50'}"
+				>{$t(opt.label)}</button>
+			{/each}
+		</div>
 	</div>
 
 	{#if isLoading}
