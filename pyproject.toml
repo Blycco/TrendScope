@@ -18,11 +18,13 @@ select = [
 ignore = [
     "S101",    # use of assert (ok in tests)
     "UP017",   # timezone.utc preferred over datetime.UTC (Python 3.9 dev compat)
+    "UP038",   # isinstance(x, int | float) requires Python 3.10+ (dev uses 3.9)
 ]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101", "ANN"]
 "backend/crawler/sources/rss_feeds.py" = ["E501"]  # URL constants cannot be line-wrapped
+"migrations/**" = ["E501", "ANN"]  # SQL DDL strings cannot be line-wrapped
 
 [tool.mypy]
 python_version = "3.11"

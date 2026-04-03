@@ -95,7 +95,7 @@ async def _fetch_alert_threshold(pool: asyncpg.Pool) -> float:
             )
         if row is not None:
             raw = row["value"]
-            if isinstance(raw, int | float):  # noqa: UP038
+            if isinstance(raw, (int, float)):
                 return float(raw)
             if isinstance(raw, dict) and "threshold" in raw:
                 return float(raw["threshold"])

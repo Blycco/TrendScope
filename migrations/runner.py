@@ -5,14 +5,13 @@ from __future__ import annotations
 import asyncio
 import importlib
 import os
-from typing import List
 
 import asyncpg
 import structlog
 
 logger = structlog.get_logger(__name__)
 
-MIGRATIONS: List[str] = [
+MIGRATIONS: list[str] = [
     "migrations.001_initial",
     "migrations.002_email_verified",
     "migrations.003_notifications",
