@@ -17,9 +17,9 @@
 
 <div class="rounded-lg border border-gray-200 bg-white p-4 hover:shadow-md transition-shadow">
 	<div class="flex items-start justify-between">
-		<div class="flex-1">
+		<div class="flex-1 min-w-0">
 			<div class="flex items-center gap-2">
-				<a href="/trends/{trend.id}" class="text-base font-semibold text-gray-900 hover:text-blue-600">
+				<a href="/trends/{trend.id}" class="text-base font-semibold text-gray-900 hover:text-blue-600 line-clamp-2">
 					{trend.title}
 				</a>
 				<EarlyBadge score={trend.early_trend_score} />
@@ -40,7 +40,7 @@
 		</div>
 	</div>
 
-	<div class="mt-3 flex items-center gap-4 text-xs text-gray-500">
+	<div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
 		<span>{$t('trend.category')}: {trend.category}</span>
 		<span>{$t('trend.first_seen')}: {formattedDate}</span>
 	</div>

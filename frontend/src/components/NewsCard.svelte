@@ -39,7 +39,7 @@
 		</div>
 	</div>
 
-	<div class="mt-3 flex items-center gap-4 text-xs text-gray-500">
+	<div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
 		{#if news.source}
 			<span>{news.source}</span>
 		{/if}
