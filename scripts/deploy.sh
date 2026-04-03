@@ -35,6 +35,12 @@ echo "=== TrendScope Blue-Green Deploy: ${API_IMAGE_TAG} ==="
 echo "    Active  : ${ACTIVE_SLOT}"
 echo "    Standby : ${STANDBY_SLOT}"
 
+# --- [0/7] Nginx 설정 렌더링 ---
+echo ""
+echo "[0/7] Nginx 설정 렌더링 (envsubst)..."
+envsubst '$DOMAIN' < infra/nginx/nginx.prod.conf.template > infra/nginx/nginx.prod.conf
+echo "       nginx.prod.conf 생성 완료 (DOMAIN=${DOMAIN})"
+
 # --- [1/7] DB 백업 ---
 echo ""
 echo "[1/7] DB 백업..."
