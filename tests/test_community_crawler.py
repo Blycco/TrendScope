@@ -6,8 +6,10 @@ import time
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from backend.crawler.sources.community_crawler import (
     _content_fp,
+    _fetch_article_body,
     _parse_time,
     _url_hash,
     crawl_all,
@@ -66,6 +68,80 @@ class TestParseTime:
         entry.updated_parsed = time.localtime()
         result = _parse_time(entry)
         assert isinstance(result, datetime)
+
+
+class TestFetchArticleBody:
+    @pytest.mark.asyncio
+    async def test_extracts_body_from_html(self) -> None:
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.text = "<html><body><p>본문 텍스트입니다. 충분히 긴 본문.</p></body></html>"
+
+        mock_client = MagicMock()
+        mock_client.get = AsyncMock(return_value=mock_resp)
+
+        with (
+            patch(
+                "backend.crawler.sources.community_crawler.asyncio.sleep",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "backend.crawler.sources.community_crawler.extract_body",
+                AsyncMock(return_value="본문 텍스트입니다. 충분히 긴 본문."),
+            ) as mock_extract,
+        ):
+            result = await _fetch_article_body(mock_client, "https://example.com/article")
+            assert result == "본문 텍스트입니다. 충분히 긴 본문."
+            mock_extract.assert_called_once_with("https://example.com/article", html=mock_resp.text)
+
+    @pytest.mark.asyncio
+    async def test_returns_empty_on_http_error(self) -> None:
+        mock_resp = MagicMock()
+        mock_resp.status_code = 403
+
+        mock_client = MagicMock()
+        mock_client.get = AsyncMock(return_value=mock_resp)
+
+        with patch(
+            "backend.crawler.sources.community_crawler.asyncio.sleep",
+            new_callable=AsyncMock,
+        ):
+            result = await _fetch_article_body(mock_client, "https://example.com/blocked")
+            assert result == ""
+
+    @pytest.mark.asyncio
+    async def test_returns_empty_on_exception(self) -> None:
+        mock_client = MagicMock()
+        mock_client.get = AsyncMock(side_effect=RuntimeError("timeout"))
+
+        with patch(
+            "backend.crawler.sources.community_crawler.asyncio.sleep",
+            new_callable=AsyncMock,
+        ):
+            result = await _fetch_article_body(mock_client, "https://example.com/timeout")
+            assert result == ""
+
+    @pytest.mark.asyncio
+    async def test_respects_delay(self) -> None:
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.text = "<html><body>text</body></html>"
+
+        mock_client = MagicMock()
+        mock_client.get = AsyncMock(return_value=mock_resp)
+
+        with (
+            patch(
+                "backend.crawler.sources.community_crawler.asyncio.sleep",
+                new_callable=AsyncMock,
+            ) as mock_sleep,
+            patch(
+                "backend.crawler.sources.community_crawler.extract_body",
+                AsyncMock(return_value=""),
+            ),
+        ):
+            await _fetch_article_body(mock_client, "https://example.com")
+            mock_sleep.assert_called_once_with(0.5)
 
 
 class TestCrawlDcInside:
