@@ -54,12 +54,21 @@
 		category_weights: { tech: number; finance: number; entertainment: number; lifestyle: number };
 		locale_ratio: number;
 	}
+	interface BehaviorStats {
+		category_counts: Record<string, number>;
+		total_events: number;
+		action_counts: Record<string, number>;
+		suggested_weights: Record<string, number>;
+	}
 	let personalization = $state<PersonalizationSettings>({
 		category_weights: { tech: 1.0, finance: 1.0, entertainment: 1.0, lifestyle: 1.0 },
 		locale_ratio: 0.5,
 	});
+	let behaviorStats = $state<BehaviorStats | null>(null);
 	let isLoadingPersonalization = $state(false);
+	let isLoadingBehavior = $state(false);
 	let isSavingPersonalization = $state(false);
+	let isApplyingBehavior = $state(false);
 
 	// Shared error state
 	let errorOpen = $state(false);
@@ -77,6 +86,7 @@
 		loadNotificationSettings();
 		loadKeywordAlerts();
 		loadPersonalization();
+		loadBehaviorStats();
 	});
 
 	async function saveAccount(): Promise<void> {
@@ -251,6 +261,47 @@
 			isSavingPersonalization = false;
 		}
 	}
+
+	async function loadBehaviorStats(): Promise<void> {
+		isLoadingBehavior = true;
+		try {
+			behaviorStats = await apiRequest<BehaviorStats>('/personalization/behavior');
+		} catch {
+			// Non-critical
+		} finally {
+			isLoadingBehavior = false;
+		}
+	}
+
+	async function applyBehaviorWeights(): Promise<void> {
+		isApplyingBehavior = true;
+		try {
+			const result = await apiRequest<PersonalizationSettings>('/personalization/behavior/apply', { method: 'POST' });
+			personalization = {
+				category_weights: result.category_weights as PersonalizationSettings['category_weights'],
+				locale_ratio: result.locale_ratio,
+			};
+		} catch (error) {
+			if (error instanceof ApiRequestError) {
+				showError(error.errorCode, 'settings.behavior.apply_error');
+			} else {
+				showError('ERR_NETWORK', 'error.network');
+			}
+		} finally {
+			isApplyingBehavior = false;
+		}
+	}
+
+	const behaviorCategories = $derived(
+		behaviorStats
+			? Object.entries(behaviorStats.category_counts)
+					.sort(([, a], [, b]) => b - a)
+					.slice(0, 8)
+			: []
+	);
+	const behaviorMaxCount = $derived(
+		behaviorCategories.length > 0 ? behaviorCategories[0][1] : 0
+	);
 
 	const tabs: { key: Tab; labelKey: string }[] = [
 		{ key: 'account', labelKey: 'settings.tab.account' },
@@ -479,6 +530,71 @@
 					{/if}
 				</button>
 			{/if}
+
+			<!-- Behavior-based insights -->
+			<div class="border-t border-gray-200 pt-6 space-y-4">
+				<h2 class="text-base font-semibold text-gray-900">{$t('settings.behavior.title')}</h2>
+				<p class="text-sm text-gray-500">{$t('settings.behavior.description')}</p>
+
+				{#if isLoadingBehavior}
+					<p class="text-sm text-gray-500">{$t('status.loading')}</p>
+				{:else if behaviorStats && behaviorStats.total_events > 0}
+					<div class="space-y-3">
+						<div class="flex items-baseline justify-between">
+							<span class="text-sm text-gray-600">{$t('settings.behavior.total_events')}</span>
+							<span class="text-lg font-semibold text-gray-900">{behaviorStats.total_events}</span>
+						</div>
+
+						<!-- Category interest bars -->
+						<div class="space-y-2">
+							<h3 class="text-sm font-medium text-gray-700">{$t('settings.behavior.interests')}</h3>
+							{#each behaviorCategories as [cat, count]}
+								<div class="space-y-0.5">
+									<div class="flex justify-between text-xs">
+										<span class="text-gray-600">{cat}</span>
+										<span class="text-gray-400">{count}</span>
+									</div>
+									<div class="h-2 rounded-full bg-gray-100">
+										<div
+											class="h-2 rounded-full bg-blue-500 transition-all"
+											style="width: {behaviorMaxCount > 0 ? (count / behaviorMaxCount) * 100 : 0}%"
+										></div>
+									</div>
+								</div>
+							{/each}
+						</div>
+
+						<!-- Suggested weights preview -->
+						{#if Object.keys(behaviorStats.suggested_weights).length > 0}
+							<div class="rounded-md bg-blue-50 p-3 space-y-2">
+								<h3 class="text-sm font-medium text-blue-800">{$t('settings.behavior.suggested')}</h3>
+								<div class="flex flex-wrap gap-2">
+									{#each Object.entries(behaviorStats.suggested_weights) as [cat, weight]}
+										<span class="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-700">
+											{cat}: {weight}
+										</span>
+									{/each}
+								</div>
+								<button
+									onclick={applyBehaviorWeights}
+									disabled={isApplyingBehavior}
+									class="mt-2 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+								>
+									{#if isApplyingBehavior}
+										{$t('status.loading')}
+									{:else}
+										{$t('settings.behavior.apply')}
+									{/if}
+								</button>
+							</div>
+						{/if}
+					</div>
+				{:else}
+					<div class="rounded-md bg-gray-50 p-4 text-center">
+						<p class="text-sm text-gray-500">{$t('settings.behavior.no_data')}</p>
+					</div>
+				{/if}
+			</div>
 		</div>
 	{/if}
 

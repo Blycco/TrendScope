@@ -189,3 +189,135 @@ class TestPutPersonalization:
         assert call_kwargs.kwargs["user_id"] == "user-456"
         assert call_kwargs.kwargs["category_weights"] == {"sports": 0.5}
         assert call_kwargs.kwargs["locale_ratio"] == 0.3
+
+
+# ---------------------------------------------------------------------------
+# GET /api/v1/personalization/behavior
+# ---------------------------------------------------------------------------
+
+
+class TestGetBehaviorAnalysis:
+    def test_returns_stats_with_suggested_weights(self) -> None:
+        app = _make_app()
+        mock_stats = {
+            "category_counts": {"tech": 50, "sports": 20},
+            "total_events": 100,
+            "action_counts": {"click": 60, "page_view": 40},
+        }
+
+        with patch(
+            "backend.api.routers.personalization.get_behavior_stats",
+            new=AsyncMock(return_value=mock_stats),
+        ):
+            from backend.auth.dependencies import require_auth
+
+            app.dependency_overrides[require_auth] = _patch_require_auth()
+            client = TestClient(app)
+            response = client.get("/api/v1/personalization/behavior")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["category_counts"] == {"tech": 50, "sports": 20}
+        assert data["total_events"] == 100
+        assert data["suggested_weights"]["tech"] == 2.0
+        assert data["suggested_weights"]["sports"] == 1.1
+
+    def test_returns_empty_when_no_data(self) -> None:
+        app = _make_app()
+        mock_stats = {
+            "category_counts": {},
+            "total_events": 0,
+            "action_counts": {},
+        }
+
+        with patch(
+            "backend.api.routers.personalization.get_behavior_stats",
+            new=AsyncMock(return_value=mock_stats),
+        ):
+            from backend.auth.dependencies import require_auth
+
+            app.dependency_overrides[require_auth] = _patch_require_auth()
+            client = TestClient(app)
+            response = client.get("/api/v1/personalization/behavior")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["category_counts"] == {}
+        assert data["suggested_weights"] == {}
+
+    def test_db_error_returns_500(self) -> None:
+        app = _make_app()
+
+        with patch(
+            "backend.api.routers.personalization.get_behavior_stats",
+            new=AsyncMock(side_effect=Exception("DB down")),
+        ):
+            from backend.auth.dependencies import require_auth
+
+            app.dependency_overrides[require_auth] = _patch_require_auth()
+            client = TestClient(app)
+            response = client.get("/api/v1/personalization/behavior")
+
+        assert response.status_code == 500
+
+
+# ---------------------------------------------------------------------------
+# POST /api/v1/personalization/behavior/apply
+# ---------------------------------------------------------------------------
+
+
+class TestApplyBehaviorWeights:
+    def test_applies_suggested_weights(self) -> None:
+        app = _make_app()
+        mock_stats = {
+            "category_counts": {"tech": 100, "finance": 50},
+            "total_events": 200,
+            "action_counts": {"click": 150, "page_view": 50},
+        }
+        mock_current = {"category_weights": {"tech": 1.0}, "locale_ratio": 0.7}
+
+        with (
+            patch(
+                "backend.api.routers.personalization.get_behavior_stats",
+                new=AsyncMock(return_value=mock_stats),
+            ),
+            patch(
+                "backend.api.routers.personalization.get_personalization",
+                new=AsyncMock(return_value=mock_current),
+            ),
+            patch(
+                "backend.api.routers.personalization.upsert_personalization",
+                new=AsyncMock(return_value=None),
+            ),
+        ):
+            from backend.auth.dependencies import require_auth
+
+            app.dependency_overrides[require_auth] = _patch_require_auth()
+            client = TestClient(app)
+            response = client.post("/api/v1/personalization/behavior/apply")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["category_weights"]["tech"] == 2.0
+        assert data["category_weights"]["finance"] == 1.25
+        assert data["locale_ratio"] == 0.7
+
+    def test_no_data_returns_400(self) -> None:
+        app = _make_app()
+        mock_stats = {
+            "category_counts": {},
+            "total_events": 0,
+            "action_counts": {},
+        }
+
+        with patch(
+            "backend.api.routers.personalization.get_behavior_stats",
+            new=AsyncMock(return_value=mock_stats),
+        ):
+            from backend.auth.dependencies import require_auth
+
+            app.dependency_overrides[require_auth] = _patch_require_auth()
+            client = TestClient(app)
+            response = client.post("/api/v1/personalization/behavior/apply")
+
+        assert response.status_code == 400
