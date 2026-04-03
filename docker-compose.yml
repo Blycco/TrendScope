@@ -11,6 +11,8 @@ services:
       - APP_ENV=development
     ports:
       - "8000:8000"
+    volumes:
+      - ./logs:/app/logs
     depends_on:
       postgres:
         condition: service_healthy
@@ -35,6 +37,8 @@ services:
     env_file: .env
     environment:
       - APP_ENV=development
+    volumes:
+      - ./logs:/app/logs
     depends_on:
       postgres:
         condition: service_healthy
@@ -55,6 +59,8 @@ services:
     env_file: .env
     environment:
       - APP_ENV=development
+    volumes:
+      - ./logs:/app/logs
     depends_on:
       postgres:
         condition: service_healthy

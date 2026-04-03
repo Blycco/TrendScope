@@ -8,7 +8,6 @@ from contextlib import asynccontextmanager
 
 import asyncpg
 import structlog
-import structlog.stdlib
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -46,23 +45,12 @@ from backend.api.routers.admin import subscriptions as admin_subscriptions
 from backend.api.routers.admin import users as admin_users
 from backend.api.routers.webhooks import payment as webhooks_payment
 from backend.common.errors import set_error_log_pool
+from backend.common.logging_config import setup_logging
 from backend.jobs.audit_archive import register_archive_job
 from backend.processor.shared.cache_manager import close_redis, init_redis
 
 # --- Logging setup ---
-structlog.configure(
-    processors=[
-        structlog.stdlib.add_log_level,
-        structlog.stdlib.add_logger_name,
-        structlog.processors.TimeStamper(fmt="iso"),
-        structlog.processors.StackInfoRenderer(),
-        structlog.processors.format_exc_info,
-        structlog.processors.JSONRenderer(),
-    ],
-    wrapper_class=structlog.stdlib.BoundLogger,
-    context_class=dict,
-    logger_factory=structlog.stdlib.LoggerFactory(),
-)
+setup_logging("api")
 
 logger = structlog.get_logger(__name__)
 
