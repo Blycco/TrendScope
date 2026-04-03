@@ -9,3 +9,9 @@ email-validator==2.2.0
 pyotp>=2.9.0
 prometheus-fastapi-instrumentator>=6.0.0
 reportlab>=4.0.0
+# burst_job imports burst_crawler → news_crawler chain
+feedparser>=6.0.11
+newspaper3k>=0.2.8
+readability-lxml>=0.8.1
+beautifulsoup4>=4.12.0
+lxml>=5.0.0
