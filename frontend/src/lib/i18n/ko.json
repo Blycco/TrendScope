@@ -426,5 +426,22 @@
 	"settings.behavior.suggested": "AI 추천 가중치",
 	"settings.behavior.apply": "추천 가중치 적용",
 	"settings.behavior.apply_error": "추천 가중치 적용에 실패했습니다.",
-	"settings.behavior.no_data": "아직 활동 데이터가 충분하지 않습니다. 트렌드를 더 탐색해 보세요."
+	"settings.behavior.no_data": "아직 활동 데이터가 충분하지 않습니다. 트렌드를 더 탐색해 보세요.",
+
+	"tour.skip": "건너뛰기",
+	"tour.next": "다음",
+	"tour.prev": "이전",
+	"tour.finish": "확인!",
+	"tour.step.stats.title": "대시보드 한눈에 보기",
+	"tour.step.stats.desc": "오늘의 핵심 지표 — 트렌드 수, 뉴스 수, 평균 스코어, 떠오르는 신호를 확인하세요.",
+	"tour.step.categories.title": "카테고리 분포",
+	"tour.step.categories.desc": "트렌드가 카테고리별로 어떻게 분포되어 있는지 확인하세요.",
+	"tour.step.early.title": "떠오르는 신호",
+	"tour.step.early.desc": "주류가 되기 전에 신흥 트렌드를 포착하세요. 높은 바는 빠른 성장을 의미합니다.",
+	"tour.step.keywords.title": "인기 키워드",
+	"tour.step.keywords.desc": "키워드를 클릭하면 관련 트렌드로 이동합니다.",
+	"tour.step.hot_trends.title": "핫 트렌드",
+	"tour.step.hot_trends.desc": "지금 가장 인기 있는 트렌드입니다. 카드를 클릭하면 상세 정보를 볼 수 있습니다.",
+	"tour.step.nav.title": "더 탐색하기",
+	"tour.step.nav.desc": "트렌드 피드, 뉴스, 콘텐츠 아이디어를 확인해보세요."
 }

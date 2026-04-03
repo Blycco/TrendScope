@@ -7,9 +7,20 @@
 	import { afterNavigate } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { Menu, X } from 'lucide-svelte';
+	import OnboardingTour from '$lib/ui/OnboardingTour.svelte';
 
 	initI18n();
 	onMount(() => authStore.initialize());
+
+	const TOUR_STEPS = [
+		{ target: 'stat-cards', titleKey: 'tour.step.stats.title', descriptionKey: 'tour.step.stats.desc', position: 'bottom' as const },
+		{ target: 'category-chart', titleKey: 'tour.step.categories.title', descriptionKey: 'tour.step.categories.desc', position: 'bottom' as const },
+		{ target: 'top-keywords', titleKey: 'tour.step.keywords.title', descriptionKey: 'tour.step.keywords.desc', position: 'bottom' as const },
+		{ target: 'early-trends', titleKey: 'tour.step.early.title', descriptionKey: 'tour.step.early.desc', position: 'bottom' as const },
+		{ target: 'hot-trends', titleKey: 'tour.step.hot_trends.title', descriptionKey: 'tour.step.hot_trends.desc', position: 'top' as const },
+		{ target: 'nav-links', titleKey: 'tour.step.nav.title', descriptionKey: 'tour.step.nav.desc', position: 'bottom' as const },
+	];
+	const showTour = $derived($page.url.pathname === '/' && authStore.isAuthenticated && !!authStore.user?.role);
 
 	let { children } = $props();
 
@@ -34,7 +45,7 @@
 				<div class="flex h-16 items-center justify-between">
 					<div class="flex items-center gap-8">
 						<a href="/" class="text-xl font-bold text-gray-900">TrendScope</a>
-						<div class="hidden sm:flex items-center gap-4">
+						<div class="hidden sm:flex items-center gap-4" data-tour="nav-links">
 							<a href="/trends" class="text-sm text-gray-600 hover:text-gray-900">{$t('nav.sidebar.trends')}</a>
 							<a href="/news" class="text-sm text-gray-600 hover:text-gray-900">{$t('nav.sidebar.news')}</a>
 							<a href="/content" class="text-sm text-gray-600 hover:text-gray-900">{$t('nav.content')}</a>
@@ -96,5 +107,9 @@
 		<main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
 			{@render children()}
 		</main>
+
+		{#if showTour}
+			<OnboardingTour steps={TOUR_STEPS} />
+		{/if}
 	</div>
 {/if}

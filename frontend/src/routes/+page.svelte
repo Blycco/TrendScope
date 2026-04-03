@@ -114,7 +114,7 @@
 	{:else}
 		<!-- Summary Stats -->
 		{#if summary}
-			<div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+			<div data-tour="stat-cards" class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
 				<StatCard
 					icon={TrendingUp}
 					iconColor="text-red-500"
@@ -148,7 +148,7 @@
 		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
 			<!-- Category Distribution Donut -->
 			{#if summary && Object.keys(summary.category_counts).length > 0}
-				<div class="rounded-lg border border-gray-200 bg-white p-4 sm:p-5">
+				<div data-tour="category-chart" class="rounded-lg border border-gray-200 bg-white p-4 sm:p-5">
 					<div class="flex items-center gap-2 mb-4">
 						<BarChart3 size={18} class="text-indigo-500" />
 						<h3 class="text-sm font-semibold text-gray-900">
@@ -245,7 +245,7 @@
 
 			<!-- Top Keywords Tag Cloud -->
 			{#if keywordCounts.length > 0}
-				<div class="rounded-lg border border-gray-200 bg-white p-4 sm:p-5">
+				<div data-tour="top-keywords" class="rounded-lg border border-gray-200 bg-white p-4 sm:p-5">
 					<div class="flex items-center gap-2 mb-4">
 						<Hash size={18} class="text-violet-500" />
 						<h3 class="text-sm font-semibold text-gray-900">
@@ -271,7 +271,7 @@
 
 			<!-- Early Trends -->
 			{#if earlyTrends.length > 0}
-				<div class="rounded-lg border border-gray-200 bg-white p-4 sm:p-5">
+				<div data-tour="early-trends" class="rounded-lg border border-gray-200 bg-white p-4 sm:p-5">
 					<div class="flex items-center gap-2 mb-2">
 						<Zap size={18} class="text-amber-500" />
 						<h3 class="text-sm font-semibold text-gray-900">
@@ -317,7 +317,7 @@
 		</div>
 
 		<!-- Hot Trends -->
-		<section>
+		<section data-tour="hot-trends">
 			<div class="flex items-center justify-between mb-3">
 				<div class="flex items-center gap-2">
 					<TrendingUp size={20} class="text-red-500" />
