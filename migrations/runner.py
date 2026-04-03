@@ -29,6 +29,7 @@ MIGRATIONS: list[str] = [
     "migrations.015_article_category",
     "migrations.016_clean_titles",
     "migrations.017_error_log",
+    "migrations.018_burst_job_log",
 ]
 
 

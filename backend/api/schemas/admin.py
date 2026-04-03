@@ -239,3 +239,31 @@ class FeedHealthSummaryItem(BaseModel):
 class FeedHealthDashboardResponse(BaseModel):
     summary: list[FeedHealthSummaryItem]
     last_updated: datetime
+
+
+# --- Burst Jobs ---
+class BurstJobItem(BaseModel):
+    id: int
+    triggered_at: str | None = None
+    trigger_source: str
+    group_id: str | None = None
+    keywords: list[str]
+    threshold: float
+    early_trend_score: float
+    articles_found: int
+    duration_ms: float | None = None
+    status: str
+    error_detail: str | None = None
+    completed_at: str | None = None
+
+
+class BurstJobListResponse(BaseModel):
+    items: list[BurstJobItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class BurstTriggerRequest(BaseModel):
+    keywords: list[str] = Field(..., min_length=1, max_length=3)
+    locale: str = Field("ko", pattern=r"^[a-z]{2}$")

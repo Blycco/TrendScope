@@ -12,6 +12,7 @@ from fastapi import FastAPI
 from backend.api.routers.admin import ai_config as admin_ai_config
 from backend.api.routers.admin import analytics as admin_analytics
 from backend.api.routers.admin import audit as admin_audit
+from backend.api.routers.admin import burst_jobs as admin_burst_jobs
 from backend.api.routers.admin import feed_sources as admin_feed_sources
 from backend.api.routers.admin import quota_alerts as admin_quota_alerts
 from backend.api.routers.admin import settings as admin_settings
@@ -47,6 +48,7 @@ def create_admin_app() -> FastAPI:
     admin.include_router(admin_audit.router, prefix="/v1")
     admin.include_router(admin_analytics.router, prefix="/v1")
     admin.include_router(admin_quota_alerts.router, prefix="/v1")
+    admin.include_router(admin_burst_jobs.router, prefix="/v1")
 
     try:
         from backend.api.routers.admin import error_logs as admin_error_logs
