@@ -130,7 +130,7 @@
 		</div>
 
 		<!-- Source type + Time filters -->
-		<div class="flex gap-2 sm:gap-4 flex-wrap">
+		<div class="flex flex-col sm:flex-row gap-2 sm:gap-4">
 			<div class="flex gap-1.5 sm:gap-2 flex-wrap">
 				<button
 					onclick={() => applyFilter('source', null)}

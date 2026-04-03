@@ -211,7 +211,7 @@
 		</div>
 
 		<!-- Export / Share toolbar -->
-		<div class="flex items-center gap-1.5 sm:gap-2">
+		<div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
 			<button
 				onclick={() => exportTrends('csv')}
 				disabled={isExportingCsv}
