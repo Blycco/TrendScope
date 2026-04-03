@@ -87,6 +87,8 @@
 	"trend.source_count": "Source Count",
 	"trend.first_seen": "First Seen",
 	"trend.category": "Category",
+	"trend.detail.insights": "View Insights",
+	"trend.detail.articles": "Related Articles",
 	"trend.sentiment": "Sentiment",
 
 	"insight.action_points": "Action Points",
@@ -171,6 +173,8 @@
 	"filter.time.24h": "24h",
 	"filter.time.7d": "7d",
 	"filter.time.30d": "30d",
+	"filter.locale.domestic": "Domestic",
+	"filter.locale.international": "International",
 	"news.article_count": "+{count} more",
 
 	"admin.layout.title": "Admin Panel",

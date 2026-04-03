@@ -10,13 +10,19 @@ import structlog
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import Response, StreamingResponse
 
-from backend.api.schemas.trends import TrendItem, TrendListResponse
+from backend.api.schemas.trends import (
+    TrendArticleItem,
+    TrendDetailResponse,
+    TrendItem,
+    TrendListResponse,
+)
 from backend.auth.dependencies import PLAN_LEVEL, CurrentUser, require_plan
 from backend.common.errors import ErrorCode, error_response
 from backend.db.queries.trends import (
     encode_cursor,
     fetch_early_trends,
     fetch_related_trends,
+    fetch_trend_detail,
     fetch_trends,
 )
 from backend.processor.shared.cache_manager import get_cached, set_cached
@@ -257,3 +263,46 @@ async def list_early_trends(
 
     response_body = TrendListResponse(items=items, next_cursor=next_cursor, total=len(items))
     return Response(content=response_body.model_dump_json().encode(), media_type="application/json")
+
+
+# NOTE: This route must be AFTER /trends/export and /trends/early to avoid
+# "export" and "early" being captured as {group_id}.
+@router.get("/trends/{group_id}", response_model=TrendDetailResponse)
+async def get_trend_detail(
+    group_id: str,
+    request: Request,
+) -> TrendDetailResponse:
+    """Get trend group detail with associated articles."""
+    try:
+        pool = request.app.state.db_pool
+        data = await fetch_trend_detail(pool, group_id=group_id)
+    except Exception as exc:
+        logger.error("trend_detail_fetch_failed", error=str(exc))
+        return error_response(ErrorCode.DB_ERROR, "Failed to fetch trend detail", status_code=500)
+
+    if not data:
+        return error_response(ErrorCode.NOT_FOUND, "Trend not found", status_code=404)
+
+    group = data["group"]
+    articles = [
+        TrendArticleItem(
+            id=str(a["id"]),
+            title=a["title"],
+            url=a["url"],
+            source=a["source"],
+            publish_time=a["publish_time"],
+            body_snippet=(a["body"] or "")[:200] or None,
+        )
+        for a in data["articles"]
+    ]
+    return TrendDetailResponse(
+        id=str(group["id"]),
+        title=group["title"],
+        category=group["category"],
+        summary=group["summary"],
+        score=group["score"],
+        early_trend_score=group["early_trend_score"],
+        keywords=list(group["keywords"] or []),
+        created_at=group["created_at"],
+        articles=articles,
+    )

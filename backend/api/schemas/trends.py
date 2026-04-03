@@ -23,6 +23,27 @@ class TrendListResponse(BaseModel):
     total: int
 
 
+class TrendArticleItem(BaseModel):
+    id: str
+    title: str
+    url: str
+    source: str | None
+    publish_time: datetime | None
+    body_snippet: str | None
+
+
+class TrendDetailResponse(BaseModel):
+    id: str
+    title: str
+    category: str
+    summary: str | None
+    score: float
+    early_trend_score: float
+    keywords: list[str]
+    created_at: datetime
+    articles: list[TrendArticleItem]
+
+
 class NewsItem(BaseModel):
     id: str
     title: str
