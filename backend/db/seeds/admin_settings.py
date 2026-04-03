@@ -22,6 +22,8 @@ SEEDS: list[tuple[str, str, str, str]] = [
     ("early_trend_w_velocity", "0.3", "0.3", "EarlyTrend 속도 가중치"),
     ("early_trend_w_diversity", "0.2", "0.2", "EarlyTrend 다양성 가중치"),
     ("ai.config", _AI_CONFIG_JSON, _AI_CONFIG_JSON, "AI summarization provider config"),
+    ("burst_threshold", "0.75", "0.75", "Burst 트리거 early_trend_score 임계값"),
+    ("burst_cooldown_hours", "2", "2", "같은 트렌드 Burst 재트리거 쿨다운(시간)"),
 ]
 
 
