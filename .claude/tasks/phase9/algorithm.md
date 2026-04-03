@@ -1,9 +1,9 @@
 # Phase 9 / Algorithm Tasks (Weeks 17-18)
-> Agent: Algorithm | Only after sufficient click data collected (MAU 300+)
+> Agent: Algorithm | 선구현 완료 — 데이터 축적 시 즉시 활성화 가능
 
-- [ ] backend/processor/algorithms/ranking.py — LambdaMART LTR (LightGBM)
-- [ ] backend/processor/algorithms/cf.py — ALS collaborative filtering
-- [ ] backend/processor/algorithms/prediction.py — Prophet trend prediction prototype
-- [ ] A/B test setup for LTR ranking vs rule-based ranking
+- [x] backend/processor/algorithms/ranking.py — LambdaMART LTR (LightGBM)
+- [x] backend/processor/algorithms/cf.py — ALS collaborative filtering
+- [x] backend/processor/algorithms/prediction.py — Prophet trend prediction prototype
+- [x] A/B test setup for LTR ranking vs rule-based ranking
 
-Done: 전체 미구현 — MAU 300+ 달성 후 진행 예정
+Done: Phase 9 Algorithm 전체 완료 (2026-04-03)
