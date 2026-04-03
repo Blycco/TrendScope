@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from backend.crawler.sources.news_crawler import (
     _content_fp,
     _parse_published,
+    _sanitize_summary,
     _url_hash,
     crawl_all,
     crawl_feed,
@@ -77,6 +78,28 @@ class TestParsePublished:
         entry.updated_parsed = time.localtime()
         result = _parse_published(entry)
         assert isinstance(result, datetime)
+
+
+class TestSanitizeSummary:
+    def test_strips_html_tags(self) -> None:
+        raw = "<p>Hello <b>world</b></p><a href='#'>link</a>"
+        result = _sanitize_summary(raw)
+        assert "<" not in result
+        assert "Hello" in result
+        assert "world" in result
+
+    def test_empty_string(self) -> None:
+        assert _sanitize_summary("") == ""
+
+    def test_plain_text_unchanged(self) -> None:
+        result = _sanitize_summary("plain text summary")
+        assert result == "plain text summary"
+
+    def test_strips_img_tags(self) -> None:
+        raw = '<p>Text</p><img src="photo.jpg" alt="photo">'
+        result = _sanitize_summary(raw)
+        assert "img" not in result
+        assert "Text" in result
 
 
 class TestCrawlFeed:

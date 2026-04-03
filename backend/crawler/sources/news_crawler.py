@@ -11,10 +11,11 @@ import asyncpg
 import feedparser
 import httpx
 import structlog
+from bs4 import BeautifulSoup
 
 from backend.common.metrics import CRAWLER_REQUESTS
 from backend.crawler.quota_guard import check_quota, increment_quota
-from backend.crawler.sources.extractor import extract_body
+from backend.crawler.sources.extractor import _MIN_BODY_LENGTH, extract_body
 from backend.crawler.sources.rss_feeds import FeedSource
 from backend.db.queries.feed_sources import get_feed_sources_for_crawl, update_feed_health
 from backend.processor.shared.cache_manager import get_cached, set_cached
@@ -72,31 +73,36 @@ async def crawl_feed(
                 else cached_modified
             )
 
-        async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT, follow_redirects=True) as client:
+        async with httpx.AsyncClient(
+            timeout=_HTTP_TIMEOUT,
+            follow_redirects=True,
+            headers={"User-Agent": "TrendScopeBot/1.0"},
+        ) as client:
             resp = await client.get(feed_url, headers=headers)
 
-        if resp.status_code == 304:
-            logger.debug("feed_not_modified", feed=feed["name"])
-            return []
+            if resp.status_code == 304:
+                logger.debug("feed_not_modified", feed=feed["name"])
+                return []
 
-        if resp.status_code != 200:
-            logger.warning("feed_fetch_failed", feed=feed["name"], status=resp.status_code)
-            return []
+            if resp.status_code != 200:
+                logger.warning("feed_fetch_failed", feed=feed["name"], status=resp.status_code)
+                return []
 
-        if etag := resp.headers.get("ETag"):
-            await set_cached(cache_key_etag, etag.encode("utf-8"), _ETAG_CACHE_TTL)
-        if modified := resp.headers.get("Last-Modified"):
-            await set_cached(cache_key_modified, modified.encode("utf-8"), _ETAG_CACHE_TTL)
+            if etag := resp.headers.get("ETag"):
+                await set_cached(cache_key_etag, etag.encode("utf-8"), _ETAG_CACHE_TTL)
+            if modified := resp.headers.get("Last-Modified"):
+                await set_cached(cache_key_modified, modified.encode("utf-8"), _ETAG_CACHE_TTL)
 
-        await increment_quota(source_name, db_pool)
+            await increment_quota(source_name, db_pool)
 
-        parsed = feedparser.parse(resp.text)
-        articles = await _process_entries(
-            parsed.entries,
-            feed,
-            db_pool,
-            extract_bodies=extract_bodies,
-        )
+            parsed = feedparser.parse(resp.text)
+            articles = await _process_entries(
+                parsed.entries,
+                feed,
+                db_pool,
+                client=client,
+                extract_bodies=extract_bodies,
+            )
         CRAWLER_REQUESTS.labels(source=feed["name"], result="success").inc()
         logger.info(
             "feed_crawled",
@@ -117,6 +123,7 @@ async def _process_entries(
     feed: FeedSource,
     db_pool: asyncpg.Pool,
     *,
+    client: httpx.AsyncClient,
     extract_bodies: bool,
 ) -> list[dict[str, Any]]:
     """Process feed entries: dedup, extract body, insert into DB."""
@@ -143,8 +150,10 @@ async def _process_entries(
 
             body = ""
             if extract_bodies:
-                summary = entry.get("summary", "")
-                body = await extract_body(url, html=None) if not summary else summary
+                summary_raw = entry.get("summary", "")
+                body = _sanitize_summary(summary_raw)
+                if len(body) < _MIN_BODY_LENGTH:
+                    body = await extract_body(url, client=client)
 
             cfp = _content_fp(title, body)
 
@@ -194,6 +203,14 @@ async def _process_entries(
             continue
 
     return articles
+
+
+def _sanitize_summary(raw: str) -> str:
+    """Strip HTML tags from RSS summary, return plain text."""
+    if not raw:
+        return ""
+    soup = BeautifulSoup(raw, "lxml")
+    return soup.get_text(separator="\n", strip=True)
 
 
 def _parse_published(entry: Any) -> datetime:  # noqa: ANN401

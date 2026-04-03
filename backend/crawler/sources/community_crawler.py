@@ -28,7 +28,7 @@ _TRAILING_NUM_RE = re.compile(r"\s+\d+\s*$")
 logger = structlog.get_logger(__name__)
 
 _HTTP_TIMEOUT = 15.0
-_MIN_BODY_LENGTH = 30
+_MIN_BODY_LENGTH = 50
 _BODY_FETCH_DELAY = 0.5
 
 
