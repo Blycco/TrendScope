@@ -8,8 +8,11 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from backend.db.queries.insights import (
+    fetch_group_info,
     fetch_news_for_keyword,
+    fetch_news_for_keywords,
     fetch_sns_for_keyword,
+    fetch_sns_for_keywords,
     get_insight_usage,
     increment_insight_usage,
     insert_action_insight,
@@ -88,6 +91,94 @@ def _usage_row() -> dict:
         "quota_limit": 3,
         "reset_at": datetime.now(tz=timezone.utc),
     }
+
+
+class TestFetchGroupInfo:
+    @pytest.mark.asyncio
+    async def test_fetch_group_info_returns_record(self) -> None:
+        row = {"title": "AI 트렌드", "keywords": ["AI", "인공지능"]}
+        pool = _make_pool(fetchrow_return=row)
+
+        result = await fetch_group_info(pool, str(uuid.uuid4()))
+
+        assert result is not None
+        assert result["title"] == "AI 트렌드"
+        assert result["keywords"] == ["AI", "인공지능"]
+
+    @pytest.mark.asyncio
+    async def test_fetch_group_info_returns_none_for_missing(self) -> None:
+        pool = _make_pool(fetchrow_return=None)
+
+        result = await fetch_group_info(pool, str(uuid.uuid4()))
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_fetch_group_info_db_error_raises(self) -> None:
+        pool = MagicMock()
+        conn = AsyncMock()
+        conn.fetchrow = AsyncMock(side_effect=Exception("DB error"))
+        pool.acquire = MagicMock(
+            return_value=MagicMock(
+                __aenter__=AsyncMock(return_value=conn),
+                __aexit__=AsyncMock(return_value=None),
+            )
+        )
+
+        with pytest.raises(Exception, match="DB error"):
+            await fetch_group_info(pool, str(uuid.uuid4()))
+
+
+class TestFetchNewsForKeywords:
+    @pytest.mark.asyncio
+    async def test_fetch_news_for_keywords_returns_rows(self) -> None:
+        rows = _news_rows()
+        pool = _make_pool(fetch_return=rows)
+
+        result = await fetch_news_for_keywords(pool, ["AI", "인공지능"])
+
+        assert result == rows
+
+    @pytest.mark.asyncio
+    async def test_fetch_news_for_keywords_builds_or_query(self) -> None:
+        pool = _make_pool(fetch_return=[])
+        conn = pool.acquire.return_value.__aenter__.return_value
+
+        await fetch_news_for_keywords(pool, ["AI", "트렌드"], limit=5)
+
+        call_args = conn.fetch.call_args
+        sql: str = call_args[0][0]
+        assert "ILIKE $1" in sql
+        assert "ILIKE $2" in sql
+        assert call_args[0][1] == "%AI%"
+        assert call_args[0][2] == "%트렌드%"
+        assert call_args[0][3] == 5
+
+
+class TestFetchSnsForKeywords:
+    @pytest.mark.asyncio
+    async def test_fetch_sns_for_keywords_returns_rows(self) -> None:
+        rows = _sns_rows()
+        pool = _make_pool(fetch_return=rows)
+
+        result = await fetch_sns_for_keywords(pool, ["AI", "트렌드"])
+
+        assert result == rows
+
+    @pytest.mark.asyncio
+    async def test_fetch_sns_for_keywords_builds_or_query(self) -> None:
+        pool = _make_pool(fetch_return=[])
+        conn = pool.acquire.return_value.__aenter__.return_value
+
+        await fetch_sns_for_keywords(pool, ["AI", "머신러닝"], limit=10)
+
+        call_args = conn.fetch.call_args
+        sql: str = call_args[0][0]
+        assert "ILIKE $1" in sql
+        assert "ILIKE $2" in sql
+        assert call_args[0][1] == "%AI%"
+        assert call_args[0][2] == "%머신러닝%"
+        assert call_args[0][3] == 10
 
 
 class TestFetchNewsForKeyword:

@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from backend.processor.pipeline import (
+    _compute_early_trend_score,
     _stage_dedupe,
     _stage_extract_keywords,
     _stage_normalize,
@@ -101,6 +102,38 @@ class TestStageExtractKeywords:
         assert result[0]["keyword_importance"] == 0.0
 
 
+class TestComputeEarlyTrendScore:
+    def test_empty_articles_returns_zero(self) -> None:
+        assert _compute_early_trend_score([]) == 0.0
+
+    def test_single_recent_article(self) -> None:
+        articles = [_make_article()]
+        score = _compute_early_trend_score(articles)
+        assert 0.0 < score <= 1.0
+
+    def test_more_articles_higher_velocity(self) -> None:
+        one = [_make_article()]
+        many = [_make_article(url=f"https://example.com/{i}", url_hash=f"h{i}") for i in range(10)]
+        assert _compute_early_trend_score(many) > _compute_early_trend_score(one)
+
+    def test_diverse_sources_higher_score(self) -> None:
+        same_source = [
+            _make_article(url=f"https://example.com/{i}", url_hash=f"h{i}") for i in range(3)
+        ]
+        diverse = [
+            {**_make_article(url=f"https://example.com/{i}", url_hash=f"h{i}"), "source": f"src{i}"}
+            for i in range(3)
+        ]
+        assert _compute_early_trend_score(diverse) > _compute_early_trend_score(same_source)
+
+    def test_score_bounded_zero_to_one(self) -> None:
+        articles = [
+            _make_article(url=f"https://example.com/{i}", url_hash=f"h{i}") for i in range(20)
+        ]
+        score = _compute_early_trend_score(articles)
+        assert 0.0 <= score <= 1.0
+
+
 class TestStageScore:
     def test_returns_scored_clusters(self) -> None:
         article = _make_article()
@@ -121,6 +154,8 @@ class TestStageScore:
         assert len(result) == 1
         assert "score" in result[0]
         assert result[0]["score"] >= 0
+        assert "early_trend_score" in result[0]
+        assert 0.0 <= result[0]["early_trend_score"] <= 1.0
 
 
 class TestStageWarmCache:

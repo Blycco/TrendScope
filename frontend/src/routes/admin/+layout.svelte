@@ -53,7 +53,7 @@
 	<div class="flex h-screen bg-gray-100">
 		<aside class="w-64 bg-gray-900 text-white flex-shrink-0">
 			<div class="p-6">
-				<a href="/admin" class="text-xl font-bold">TrendScope Admin</a>
+				<a href="/admin" class="text-xl font-bold">{$t('admin.layout.brand')}</a>
 			</div>
 			<nav class="mt-2">
 				{#each menuItems as item}

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { t } from 'svelte-i18n';
-	import { onMount, onDestroy } from 'svelte';
+	import { onMount, onDestroy, untrack } from 'svelte';
 	import { adminRequest } from '$lib/api/admin';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
 
@@ -97,6 +97,7 @@
 	// Error
 	let errorOpen = $state(false);
 	let errorCode = $state('');
+	let hasError = $state(false);
 
 	// Polling
 	let pollInterval: ReturnType<typeof setInterval> | null = null;
@@ -160,10 +161,12 @@
 			const data = await adminRequest<FeedListResponse>(`/feed-sources?${params}`);
 			feeds = data.feeds;
 			feedsTotal = data.total;
+			hasError = false;
 		} catch (err: unknown) {
 			const e = err as { code?: string };
 			errorCode = e?.code ?? '';
 			errorOpen = true;
+			hasError = true;
 		} finally {
 			feedsLoading = false;
 		}
@@ -316,7 +319,7 @@
 
 	function startPolling(): void {
 		pollInterval = setInterval(() => {
-			if (document.visibilityState === 'visible' && activeTab === 'feeds') {
+			if (document.visibilityState === 'visible' && activeTab === 'feeds' && !hasError) {
 				refreshFeeds();
 			}
 		}, 10000);
@@ -333,9 +336,14 @@
 	});
 
 	$effect(() => {
-		// re-fetch when filters change
-		filterType; filterHealth; filterLocale; filterSearch; feedsPage;
-		if (!feedsLoading) fetchFeeds();
+		// Track only filter/pagination dependencies — never loading state
+		const _type = filterType;
+		const _health = filterHealth;
+		const _locale = filterLocale;
+		const _search = filterSearch;
+		const _page = feedsPage;
+		// Use untrack so fetchFeeds() does not register reactive dependencies
+		untrack(() => { fetchFeeds(); });
 	});
 </script>
 
@@ -643,4 +651,4 @@
 	</div>
 {/if}
 
-<ErrorModal open={errorOpen} errorCode={errorCode} messageKey="error.server" onClose={() => (errorOpen = false)} onRetry={refreshFeeds} />
+<ErrorModal open={errorOpen} errorCode={errorCode} messageKey="error.server" onClose={() => (errorOpen = false)} onRetry={() => { hasError = false; fetchFeeds(); }} />
