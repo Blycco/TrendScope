@@ -7,6 +7,8 @@
 	"nav.sidebar.login": "Login",
 	"nav.sidebar.logout": "Logout",
 	"nav.sidebar.register": "Sign Up",
+	"nav.mobile.menu": "Open menu",
+	"nav.mobile.close": "Close menu",
 
 	"page.home.title": "TrendScope",
 	"page.home.description": "Trend Intelligence Dashboard",
