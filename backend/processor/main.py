@@ -10,6 +10,7 @@ from typing import Any
 import asyncpg
 import structlog
 
+from backend.common.logging_config import setup_logging
 from backend.processor.pipeline import process_articles
 from backend.processor.shared.cache_manager import close_redis, init_redis
 
@@ -56,6 +57,8 @@ async def _poll_loop(db_pool: asyncpg.Pool, stop_event: asyncio.Event) -> None:
 
 async def main() -> None:
     """Boot processor: connect DB, start polling loop."""
+    setup_logging("processor")
+
     database_url = os.environ.get("DATABASE_URL")
     if not database_url:
         raise RuntimeError("DATABASE_URL not set")
