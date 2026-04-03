@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { NewsItem } from '$lib/api';
 	import { ExternalLink } from 'lucide-svelte';
+	import { formatDate } from '$lib/utils/locale';
 
 	interface Props {
 		news: NewsItem;
@@ -9,7 +10,7 @@
 	let { news }: Props = $props();
 
 	const formattedDate = $derived(
-		new Date(news.publish_time).toLocaleDateString(undefined, {
+		formatDate(news.publish_time, {
 			year: 'numeric',
 			month: 'short',
 			day: 'numeric',

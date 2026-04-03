@@ -437,7 +437,7 @@
 							<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-500 inline-block"></span>{item.error}</span>
 							<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-gray-400 inline-block"></span>{item.unknown}</span>
 						</div>
-						<div class="text-xs text-gray-400 mt-1">{item.total} total</div>
+						<div class="text-xs text-gray-400 mt-1">{$t('admin.feeds.health_total', { values: { count: item.total } })}</div>
 					</div>
 				{/each}
 			</div>
@@ -520,7 +520,7 @@
 								<td class="px-3 py-2 text-sm font-medium text-gray-900">
 									{feed.name}
 									{#if !feed.is_active}
-										<span class="ml-1 text-xs text-red-500">(off)</span>
+										<span class="ml-1 text-xs text-red-500">({$t('admin.feeds.feed_off')})</span>
 									{/if}
 								</td>
 								<td class="px-3 py-2 text-xs text-gray-500 max-w-[200px] truncate" title={feed.url}>{feed.url}</td>
@@ -548,19 +548,19 @@
 			<!-- Pagination -->
 			{#if feedsTotal > feedsPageSize}
 				<div class="flex items-center justify-between mt-4">
-					<span class="text-sm text-gray-600">{feedsTotal} total</span>
+					<span class="text-sm text-gray-600">{$t('admin.users.total')}: {feedsTotal}</span>
 					<div class="flex gap-2">
 						<button
 							class="text-sm px-3 py-1 border rounded disabled:opacity-50"
 							disabled={feedsPage <= 1}
 							onclick={() => (feedsPage = feedsPage - 1)}
-						>Prev</button>
+						>{$t('admin.users.prev')}</button>
 						<span class="text-sm py-1">{feedsPage} / {Math.ceil(feedsTotal / feedsPageSize)}</span>
 						<button
 							class="text-sm px-3 py-1 border rounded disabled:opacity-50"
 							disabled={feedsPage >= Math.ceil(feedsTotal / feedsPageSize)}
 							onclick={() => (feedsPage = feedsPage + 1)}
-						>Next</button>
+						>{$t('admin.users.next')}</button>
 					</div>
 				</div>
 			{/if}
@@ -616,7 +616,7 @@
 						{$t('admin.users.active')}
 					</label>
 					<label class="flex items-center gap-2 text-sm">
-						Priority:
+						{$t('admin.feeds.priority')}:
 						<input type="number" class="w-16 text-sm border border-gray-300 rounded px-2 py-1" bind:value={editFeed.priority} />
 					</label>
 				</div>

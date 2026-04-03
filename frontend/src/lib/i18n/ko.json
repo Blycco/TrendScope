@@ -269,6 +269,9 @@
 	"admin.feeds.cancel": "취소",
 	"admin.feeds.save": "저장",
 	"admin.feeds.confirm_delete": "삭제",
+	"admin.feeds.priority": "우선순위",
+	"admin.feeds.feed_off": "비활성",
+	"admin.feeds.health_total": "{count}개",
 
 	"admin.ai_config.title": "AI 모델 설정",
 	"admin.ai_config.primary_model": "기본 모델",

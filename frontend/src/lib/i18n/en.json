@@ -269,6 +269,9 @@
 	"admin.feeds.cancel": "Cancel",
 	"admin.feeds.save": "Save",
 	"admin.feeds.confirm_delete": "Delete",
+	"admin.feeds.priority": "Priority",
+	"admin.feeds.feed_off": "off",
+	"admin.feeds.health_total": "{count} total",
 
 	"admin.ai_config.title": "AI Model Configuration",
 	"admin.ai_config.primary_model": "Primary Model",
