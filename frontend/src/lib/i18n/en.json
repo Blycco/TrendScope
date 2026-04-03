@@ -417,5 +417,14 @@
 	"shared.expired_desc": "This link has expired after 24 hours.",
 	"shared.error": "Something went wrong",
 	"shared.error_desc": "Failed to load the shared link. Please try again later.",
-	"shared.powered_by": "Trend snapshot shared via TrendScope"
+	"shared.powered_by": "Trend snapshot shared via TrendScope",
+
+	"settings.behavior.title": "Behavior-Based Interests",
+	"settings.behavior.description": "We analyze your usage patterns to suggest category weights automatically.",
+	"settings.behavior.total_events": "Activity (last 30 days)",
+	"settings.behavior.interests": "Category Interests",
+	"settings.behavior.suggested": "AI-Suggested Weights",
+	"settings.behavior.apply": "Apply Suggested Weights",
+	"settings.behavior.apply_error": "Failed to apply suggested weights.",
+	"settings.behavior.no_data": "Not enough activity data yet. Explore more trends to get personalized suggestions."
 }

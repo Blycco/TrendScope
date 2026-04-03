@@ -417,5 +417,14 @@
 	"shared.expired_desc": "이 링크는 생성 후 24시간이 지나 만료되었습니다.",
 	"shared.error": "오류가 발생했습니다",
 	"shared.error_desc": "공유 링크를 불러오는 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.",
-	"shared.powered_by": "TrendScope로 생성된 트렌드 공유"
+	"shared.powered_by": "TrendScope로 생성된 트렌드 공유",
+
+	"settings.behavior.title": "행동 기반 관심사",
+	"settings.behavior.description": "사용 패턴을 분석하여 카테고리 가중치를 자동으로 추천합니다.",
+	"settings.behavior.total_events": "최근 30일 활동 수",
+	"settings.behavior.interests": "카테고리별 관심도",
+	"settings.behavior.suggested": "AI 추천 가중치",
+	"settings.behavior.apply": "추천 가중치 적용",
+	"settings.behavior.apply_error": "추천 가중치 적용에 실패했습니다.",
+	"settings.behavior.no_data": "아직 활동 데이터가 충분하지 않습니다. 트렌드를 더 탐색해 보세요."
 }
