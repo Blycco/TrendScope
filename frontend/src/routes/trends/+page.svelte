@@ -157,8 +157,22 @@
 		if (isSharing) return;
 		isSharing = true;
 		try {
-			const data = await apiRequest<{ share_url: string }>('/trends/share', { method: 'POST' });
-			await navigator.clipboard.writeText(data.share_url);
+			const snapshot = trends.slice(0, 20).map((t) => ({
+				id: t.id,
+				title: t.title,
+				category: t.category,
+				summary: t.summary,
+				score: t.score,
+				early_trend_score: t.early_trend_score,
+				keywords: t.keywords,
+				created_at: t.created_at,
+			}));
+			const data = await apiRequest<{ share_url: string }>('/trends/share', {
+				method: 'POST',
+				body: JSON.stringify({ payload: { trends: snapshot } }),
+			});
+			const fullUrl = `${window.location.origin}${data.share_url}`;
+			await navigator.clipboard.writeText(fullUrl);
 			// Brief success indicator via error modal (re-using with success message would need a toast,
 			// but UX spec says use modals for all user messages — show inline instead)
 			errorCode = '';
