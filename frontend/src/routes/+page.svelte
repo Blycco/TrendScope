@@ -15,6 +15,7 @@
 	import StatCard from '../components/StatCard.svelte';
 	import EarlyBadge from '../components/EarlyBadge.svelte';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
+	import TrendMap from '../components/TrendMap.svelte';
 	import {
 		TrendingUp,
 		Newspaper,
@@ -23,6 +24,7 @@
 		Zap,
 		Activity,
 		Hash,
+		Globe,
 	} from 'lucide-svelte';
 
 	let topTrends = $state<TrendItem[]>([]);
@@ -44,6 +46,28 @@
 		sports: '#f97316',
 		society: '#14b8a6',
 	};
+
+	const SOURCE_COLORS: Record<string, string> = {
+		rss: '#3b82f6',
+		reddit: '#f97316',
+		community: '#22c55e',
+		nitter: '#06b6d4',
+		google_trends: '#a855f7',
+		burst_gnews: '#ef4444',
+		burst_reddit: '#f59e0b',
+	};
+
+	let keywordCounts = $derived.by(() => {
+		const counts = new Map<string, number>();
+		for (const trend of topTrends) {
+			for (const kw of trend.keywords) {
+				counts.set(kw, (counts.get(kw) || 0) + 1);
+			}
+		}
+		return [...counts.entries()]
+			.sort((a, b) => b[1] - a[1])
+			.slice(0, 20);
+	});
 
 	async function loadDashboard(): Promise<void> {
 		try {
@@ -120,8 +144,8 @@
 			</div>
 		{/if}
 
-		<!-- Category Donut + Early Trends -->
-		<div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+		<!-- Widget Grid -->
+		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
 			<!-- Category Distribution Donut -->
 			{#if summary && Object.keys(summary.category_counts).length > 0}
 				<div class="rounded-lg border border-gray-200 bg-white p-4 sm:p-5">
@@ -134,7 +158,6 @@
 					{@const entries = Object.entries(summary.category_counts).sort((a, b) => b[1] - a[1])}
 					{@const total = entries.reduce((s, [, c]) => s + c, 0)}
 					<div class="flex items-center gap-6">
-						<!-- SVG Donut -->
 						<svg viewBox="0 0 120 120" class="w-28 h-28 flex-shrink-0">
 							{#each entries as [cat, cnt], i}
 								{@const pct = cnt / total}
@@ -156,7 +179,6 @@
 								trends
 							</text>
 						</svg>
-						<!-- Legend -->
 						<div class="flex-1 space-y-1.5">
 							{#each entries as [cat, cnt]}
 								{@const pct = Math.round((cnt / total) * 100)}
@@ -172,6 +194,77 @@
 								</div>
 							{/each}
 						</div>
+					</div>
+				</div>
+			{/if}
+
+			<!-- Source Distribution Bar -->
+			{#if summary && Object.keys(summary.source_counts).length > 0}
+				<div class="rounded-lg border border-gray-200 bg-white p-4 sm:p-5">
+					<div class="flex items-center gap-2 mb-4">
+						<Globe size={18} class="text-cyan-500" />
+						<h3 class="text-sm font-semibold text-gray-900">
+							{$t('dashboard.source_distribution')}
+						</h3>
+					</div>
+					{@const srcEntries = Object.entries(summary.source_counts).sort((a, b) => b[1] - a[1])}
+					{@const srcTotal = srcEntries.reduce((s, [, c]) => s + c, 0)}
+					<div class="space-y-3">
+						<svg viewBox="0 0 300 24" class="w-full" aria-label={$t('dashboard.source_distribution')}>
+							{#each srcEntries as [src, cnt], i}
+								{@const pct = cnt / srcTotal}
+								{@const xOffset = srcEntries.slice(0, i).reduce((s, [, c]) => s + (c / srcTotal) * 300, 0)}
+								<rect
+									x={xOffset}
+									y="0"
+									width={pct * 300}
+									height="24"
+									rx={i === 0 ? 4 : 0}
+									fill={SOURCE_COLORS[src] ?? '#9ca3af'}
+								/>
+							{/each}
+						</svg>
+						<div class="flex flex-wrap gap-x-4 gap-y-1.5">
+							{#each srcEntries as [src, cnt]}
+								{@const pct = Math.round((cnt / srcTotal) * 100)}
+								<div class="flex items-center gap-1.5">
+									<span
+										class="w-2.5 h-2.5 rounded-full flex-shrink-0"
+										style="background-color: {SOURCE_COLORS[src] ?? '#9ca3af'}"
+									></span>
+									<span class="text-xs text-gray-600">
+										{$t(`dashboard.source.${src}`)}
+									</span>
+									<span class="text-xs font-medium text-gray-700">{pct}%</span>
+								</div>
+							{/each}
+						</div>
+					</div>
+				</div>
+			{/if}
+
+			<!-- Top Keywords Tag Cloud -->
+			{#if keywordCounts.length > 0}
+				<div class="rounded-lg border border-gray-200 bg-white p-4 sm:p-5">
+					<div class="flex items-center gap-2 mb-4">
+						<Hash size={18} class="text-violet-500" />
+						<h3 class="text-sm font-semibold text-gray-900">
+							{$t('dashboard.top_keywords')}
+						</h3>
+					</div>
+					{@const maxCount = keywordCounts[0][1]}
+					<div class="flex flex-wrap gap-2">
+						{#each keywordCounts as [kw, count]}
+							{@const scale = 0.75 + (count / maxCount) * 0.5}
+							<a
+								href="/trends?keyword={encodeURIComponent(kw)}"
+								class="inline-block rounded-full border border-gray-200 bg-gray-50 px-3 py-1 hover:bg-violet-50 hover:border-violet-300 transition-colors"
+								style="font-size: {scale}rem"
+							>
+								<span class="text-gray-700">{kw}</span>
+								<span class="text-gray-400 ml-1 text-xs">{count}</span>
+							</a>
+						{/each}
 					</div>
 				</div>
 			{/if}
@@ -212,6 +305,13 @@
 							</a>
 						{/each}
 					</div>
+				</div>
+			{/if}
+
+			<!-- Trend Map -->
+			{#if topTrends.length > 0}
+				<div class="rounded-lg border border-gray-200 bg-white p-4 sm:p-5">
+					<TrendMap trendId={topTrends[0].id} />
 				</div>
 			{/if}
 		</div>

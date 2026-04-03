@@ -82,6 +82,7 @@ export interface DashboardSummaryResponse {
 	top_category: string | null;
 	early_signal_count: number;
 	category_counts: Record<string, number>;
+	source_counts: Record<string, number>;
 }
 
 // ---------------------------------------------------------------------------
