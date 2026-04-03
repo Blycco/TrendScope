@@ -426,5 +426,22 @@
 	"settings.behavior.suggested": "AI-Suggested Weights",
 	"settings.behavior.apply": "Apply Suggested Weights",
 	"settings.behavior.apply_error": "Failed to apply suggested weights.",
-	"settings.behavior.no_data": "Not enough activity data yet. Explore more trends to get personalized suggestions."
+	"settings.behavior.no_data": "Not enough activity data yet. Explore more trends to get personalized suggestions.",
+
+	"tour.skip": "Skip",
+	"tour.next": "Next",
+	"tour.prev": "Back",
+	"tour.finish": "Got it!",
+	"tour.step.stats.title": "Your Dashboard at a Glance",
+	"tour.step.stats.desc": "Today's key metrics — total trends, news count, average score, and early signals.",
+	"tour.step.categories.title": "Category Breakdown",
+	"tour.step.categories.desc": "See how trends are distributed across categories.",
+	"tour.step.early.title": "Early Signals",
+	"tour.step.early.desc": "Catch emerging trends before they go mainstream. Higher bars mean faster growth.",
+	"tour.step.keywords.title": "Trending Keywords",
+	"tour.step.keywords.desc": "Click any keyword to jump to related trends.",
+	"tour.step.hot_trends.title": "Hot Trends",
+	"tour.step.hot_trends.desc": "The top-ranked trends right now. Click any card to see full details.",
+	"tour.step.nav.title": "Explore More",
+	"tour.step.nav.desc": "Visit Trends for the full feed, News for articles, or Content Ideas for AI-powered suggestions."
 }
