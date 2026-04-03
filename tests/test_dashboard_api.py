@@ -22,6 +22,7 @@ class TestGetDashboardSummary:
             "top_category": "tech",
             "early_signal_count": 7,
             "category_counts": {"tech": 15, "economy": 10, "society": 8},
+            "source_counts": {"news": 80, "community": 30, "sns": 20},
         }
         pool = MagicMock()
         req = _mock_request(pool)
@@ -51,12 +52,14 @@ class TestGetDashboardSummary:
             assert body["top_category"] == "tech"
             assert body["early_signal_count"] == 7
             assert body["category_counts"]["tech"] == 15
+            assert body["source_counts"]["news"] == 80
 
     async def test_returns_cached_response(self) -> None:
         cached_body = (
             b'{"total_trends":10,"total_news":50,"avg_score":12.0,'
             b'"top_category":"economy","early_signal_count":3,'
-            b'"category_counts":{"economy":10}}'
+            b'"category_counts":{"economy":10},'
+            b'"source_counts":{"news":50}}'
         )
         pool = MagicMock()
         req = _mock_request(pool)

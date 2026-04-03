@@ -47,6 +47,18 @@ async def fetch_dashboard_summary(
             category_counts = {r["category"]: r["cnt"] for r in cat_rows}
             top_category = cat_rows[0]["category"] if cat_rows else None
 
+            source_rows = await conn.fetch(
+                """
+                SELECT source, count(*)::int AS cnt
+                FROM news_article
+                WHERE publish_time > now() - interval '24 hours'
+                  AND source IS NOT NULL
+                GROUP BY source
+                ORDER BY cnt DESC
+                """,
+            )
+            source_counts = {r["source"]: r["cnt"] for r in source_rows}
+
             return {
                 "total_trends": row["total_trends"],
                 "total_news": news_count or 0,
@@ -54,6 +66,7 @@ async def fetch_dashboard_summary(
                 "top_category": top_category,
                 "early_signal_count": row["early_signal_count"],
                 "category_counts": category_counts,
+                "source_counts": source_counts,
             }
     except Exception as exc:
         logger.error("fetch_dashboard_summary_failed", error=str(exc))

@@ -12,3 +12,4 @@ class DashboardSummaryResponse(BaseModel):
     top_category: str | None
     early_signal_count: int
     category_counts: dict[str, int]
+    source_counts: dict[str, int]
