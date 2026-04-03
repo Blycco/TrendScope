@@ -2,16 +2,23 @@
 	import { initI18n } from '$lib/i18n';
 	import { isLoading, t } from 'svelte-i18n';
 	import { authStore } from '$lib/stores/auth.svelte';
+	import { afterNavigate } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { adminRequest } from '$lib/api/admin';
+	import { Menu, X } from 'lucide-svelte';
 
 	initI18n();
 
 	let alertCount = $state(0);
+	let sidebarOpen = $state(false);
 
 	onMount(() => {
 		authStore.initialize();
 		loadAlertCount();
+	});
+
+	afterNavigate(() => {
+		sidebarOpen = false;
 	});
 
 	async function loadAlertCount() {
@@ -51,9 +58,31 @@
 	</div>
 {:else}
 	<div class="flex h-screen bg-gray-100">
-		<aside class="w-64 bg-gray-900 text-white flex-shrink-0">
-			<div class="p-6">
+		<!-- Mobile sidebar overlay -->
+		{#if sidebarOpen}
+			<div
+				class="fixed inset-0 z-40 bg-black/50 md:hidden"
+				onclick={() => (sidebarOpen = false)}
+				onkeydown={(e) => e.key === 'Escape' && (sidebarOpen = false)}
+				role="button"
+				tabindex="-1"
+				aria-label={$t('nav.mobile.close')}
+			></div>
+		{/if}
+
+		<!-- Sidebar -->
+		<aside
+			class="fixed inset-y-0 left-0 z-50 w-64 bg-gray-900 text-white flex-shrink-0 transform transition-transform duration-200 ease-in-out md:relative md:translate-x-0 {sidebarOpen ? 'translate-x-0' : '-translate-x-full'}"
+		>
+			<div class="flex items-center justify-between p-6">
 				<a href="/admin" class="text-xl font-bold">{$t('admin.layout.brand')}</a>
+				<button
+					onclick={() => (sidebarOpen = false)}
+					class="md:hidden p-1 text-gray-400 hover:text-white"
+					aria-label={$t('nav.mobile.close')}
+				>
+					<X size={20} />
+				</button>
 			</div>
 			<nav class="mt-2">
 				{#each menuItems as item}
@@ -75,20 +104,29 @@
 		</aside>
 
 		<div class="flex-1 flex flex-col overflow-hidden">
-			<header class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-				<h1 class="text-lg font-semibold text-gray-900">{$t('admin.layout.title')}</h1>
+			<header class="bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between">
+				<div class="flex items-center gap-3">
+					<button
+						onclick={() => (sidebarOpen = true)}
+						class="md:hidden p-1.5 text-gray-600 hover:text-gray-900"
+						aria-label={$t('nav.mobile.menu')}
+					>
+						<Menu size={22} />
+					</button>
+					<h1 class="text-lg font-semibold text-gray-900">{$t('admin.layout.title')}</h1>
+				</div>
 				<div class="flex items-center gap-4">
 					<a href="/" class="text-sm text-gray-600 hover:text-gray-900">{$t('admin.layout.back_to_app')}</a>
 					<button
 						onclick={() => authStore.logout()}
-						class="text-sm text-gray-600 hover:text-gray-900"
+						class="hidden sm:inline text-sm text-gray-600 hover:text-gray-900"
 					>
 						{$t('nav.sidebar.logout')}
 					</button>
 				</div>
 			</header>
 
-			<main class="flex-1 overflow-y-auto p-6">
+			<main class="flex-1 overflow-y-auto p-4 sm:p-6">
 				{@render children()}
 			</main>
 		</div>

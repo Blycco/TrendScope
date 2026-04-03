@@ -7,6 +7,8 @@
 	"nav.sidebar.login": "로그인",
 	"nav.sidebar.logout": "로그아웃",
 	"nav.sidebar.register": "회원가입",
+	"nav.mobile.menu": "메뉴 열기",
+	"nav.mobile.close": "메뉴 닫기",
 
 	"page.home.title": "TrendScope",
 	"page.home.description": "트렌드 인텔리전스 대시보드",
