@@ -72,6 +72,19 @@ export interface TrendListResponse {
 }
 
 // ---------------------------------------------------------------------------
+// Dashboard types
+// ---------------------------------------------------------------------------
+
+export interface DashboardSummaryResponse {
+	total_trends: number;
+	total_news: number;
+	avg_score: number;
+	top_category: string | null;
+	early_signal_count: number;
+	category_counts: Record<string, number>;
+}
+
+// ---------------------------------------------------------------------------
 // News types
 // ---------------------------------------------------------------------------
 

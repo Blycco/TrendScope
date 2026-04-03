@@ -18,6 +18,7 @@ export type {
 	TwoFARequiredResponse,
 	TrendItem,
 	TrendListResponse,
+	DashboardSummaryResponse,
 	NewsItem,
 	NewsListResponse,
 	MarketerInsight,
