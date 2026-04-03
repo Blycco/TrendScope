@@ -405,5 +405,17 @@
 	"content.guide_desc": "Enter a keyword and AI will suggest content ideas tailored to your role.",
 	"content.example_marketer": "e.g., AI Marketing, Instagram Reels",
 	"content.example_creator": "e.g., YouTube Shorts, Blog Topics",
-	"content.example_owner": "e.g., Cafe Startup, Small Business Trends"
+	"content.example_owner": "e.g., Cafe Startup, Small Business Trends",
+
+	"shared.page_title": "Shared Trends",
+	"shared.title": "Shared Trend Snapshot",
+	"shared.shared_at": "Shared at",
+	"shared.expires_at": "Expires at",
+	"shared.not_found": "Shared link not found",
+	"shared.not_found_desc": "This link has expired or does not exist.",
+	"shared.expired": "Shared link expired",
+	"shared.expired_desc": "This link has expired after 24 hours.",
+	"shared.error": "Something went wrong",
+	"shared.error_desc": "Failed to load the shared link. Please try again later.",
+	"shared.powered_by": "Trend snapshot shared via TrendScope"
 }
