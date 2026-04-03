@@ -79,6 +79,11 @@ class TestAdminErrorLogsEndpoint:
         app = create_app()
         app.state.db_pool = mock_db_pool
 
+        # Propagate db_pool to mounted admin sub-app
+        for route in app.routes:
+            if hasattr(route, "app") and hasattr(route.app, "state"):
+                route.app.state.db_pool = mock_db_pool
+
         admin_user = MagicMock()
         admin_user.user_id = "admin-001"
         admin_user.plan = "business"

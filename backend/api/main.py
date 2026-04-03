@@ -12,6 +12,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 
+from backend.api.admin_app import create_admin_app
 from backend.api.middleware.plan_gate import PlanGateMiddleware
 from backend.api.middleware.quota import QuotaMiddleware
 from backend.api.middleware.rate_limit import RateLimitMiddleware
@@ -33,16 +34,6 @@ from backend.api.routers import (
     subscriptions,
     trends,
 )
-from backend.api.routers.admin import ai_config as admin_ai_config
-from backend.api.routers.admin import analytics as admin_analytics
-from backend.api.routers.admin import audit as admin_audit
-from backend.api.routers.admin import error_logs as admin_error_logs
-from backend.api.routers.admin import feed_sources as admin_feed_sources
-from backend.api.routers.admin import quota_alerts as admin_quota_alerts
-from backend.api.routers.admin import settings as admin_settings
-from backend.api.routers.admin import sources as admin_sources
-from backend.api.routers.admin import subscriptions as admin_subscriptions
-from backend.api.routers.admin import users as admin_users
 from backend.api.routers.webhooks import payment as webhooks_payment
 from backend.common.errors import set_error_log_pool
 from backend.common.logging_config import setup_logging
@@ -64,7 +55,11 @@ def _get_required_env(key: str) -> str:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """Manage DB pool and Redis pool lifecycle."""
+    """Manage DB pool and Redis pool lifecycle.
+
+    After creating the DB pool, the same pool is propagated to the mounted
+    admin sub-application so both apps share a single connection pool.
+    """
     database_url = _get_required_env("DATABASE_URL")
     redis_url = _get_required_env("REDIS_URL")
 
@@ -80,6 +75,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as exc:
         logger.error("db_pool_creation_failed", error=str(exc))
         raise
+
+    # Propagate shared resources to the admin sub-application.
+    admin_app.state.db_pool = app.state.db_pool
+    logger.info("admin_app_db_pool_propagated")
 
     try:
         await init_redis(redis_url)
@@ -143,21 +142,15 @@ def create_app() -> FastAPI:
     app.include_router(shares.router, prefix="/api/v1")
     app.include_router(webhooks_payment.router, prefix="/api/v1")
 
-    # Admin panel routers
-    app.include_router(admin_users.router, prefix="/admin/v1")
-    app.include_router(admin_subscriptions.router, prefix="/admin/v1")
-    app.include_router(admin_sources.router, prefix="/admin/v1")
-    app.include_router(admin_feed_sources.router, prefix="/admin/v1")
-    app.include_router(admin_ai_config.router, prefix="/admin/v1")
-    app.include_router(admin_settings.router, prefix="/admin/v1")
-    app.include_router(admin_audit.router, prefix="/admin/v1")
-    app.include_router(admin_analytics.router, prefix="/admin/v1")
-    app.include_router(admin_quota_alerts.router, prefix="/admin/v1")
-    app.include_router(admin_error_logs.router, prefix="/admin/v1")
+    # Mount admin sub-application at /admin.
+    # All admin router prefixes are /v1, so final paths are /admin/v1/...
+    app.mount("/admin", admin_app)
 
     Instrumentator().instrument(app).expose(app)
 
     return app
 
 
+# Module-level admin sub-app so the lifespan can propagate DB pool to it.
+admin_app = create_admin_app()
 app = create_app()
