@@ -204,7 +204,11 @@ async def refresh_token(body: RefreshRequest, request: Request) -> TokenResponse
 @router.post("/logout", status_code=204, response_class=Response)
 async def logout(_current_user: CurrentUser = Depends(require_auth)) -> Response:  # noqa: B008
     """Logout -- client should discard tokens. Server-side deny-list TBD."""
-    return Response(status_code=204)
+    try:
+        return Response(status_code=204)
+    except Exception as exc:
+        logger.error("logout_failed", error=str(exc))
+        raise
 
 
 # ---------------------------------------------------------------------------
@@ -218,20 +222,24 @@ _KAKAO_AUTH_URL = "https://kauth.kakao.com/oauth/authorize"
 @router.get("/oauth/google/start")
 async def oauth_google_start(request: Request) -> RedirectResponse:
     """Redirect user to Google consent screen."""
-    client_id = os.environ.get("OAUTH_GOOGLE_CLIENT_ID", "")
-    base_url = os.environ.get("BASE_URL", "http://localhost:3000")
-    redirect_uri = f"{base_url}/api/v1/auth/oauth/google/callback"
-    params = urlencode(
-        {
-            "client_id": client_id,
-            "redirect_uri": redirect_uri,
-            "response_type": "code",
-            "scope": "openid email profile",
-            "access_type": "offline",
-            "prompt": "consent",
-        }
-    )
-    return RedirectResponse(url=f"{_GOOGLE_AUTH_URL}?{params}")
+    try:
+        client_id = os.environ.get("OAUTH_GOOGLE_CLIENT_ID", "")
+        base_url = os.environ.get("BASE_URL", "http://localhost:3000")
+        redirect_uri = f"{base_url}/api/v1/auth/oauth/google/callback"
+        params = urlencode(
+            {
+                "client_id": client_id,
+                "redirect_uri": redirect_uri,
+                "response_type": "code",
+                "scope": "openid email profile",
+                "access_type": "offline",
+                "prompt": "consent",
+            }
+        )
+        return RedirectResponse(url=f"{_GOOGLE_AUTH_URL}?{params}")
+    except Exception as exc:
+        logger.error("oauth_google_start_failed", error=str(exc))
+        raise
 
 
 @router.get("/oauth/google/callback")
@@ -344,17 +352,21 @@ async def oauth_google(body: OAuthCallbackRequest, request: Request) -> TokenRes
 @router.get("/oauth/kakao/start")
 async def oauth_kakao_start(request: Request) -> RedirectResponse:
     """Redirect user to Kakao consent screen."""
-    client_id = os.environ.get("KAKAO_CLIENT_ID", "")
-    base_url = os.environ.get("BASE_URL", "http://localhost:3000")
-    redirect_uri = f"{base_url}/api/v1/auth/oauth/kakao/callback"
-    params = urlencode(
-        {
-            "client_id": client_id,
-            "redirect_uri": redirect_uri,
-            "response_type": "code",
-        }
-    )
-    return RedirectResponse(url=f"{_KAKAO_AUTH_URL}?{params}")
+    try:
+        client_id = os.environ.get("KAKAO_CLIENT_ID", "")
+        base_url = os.environ.get("BASE_URL", "http://localhost:3000")
+        redirect_uri = f"{base_url}/api/v1/auth/oauth/kakao/callback"
+        params = urlencode(
+            {
+                "client_id": client_id,
+                "redirect_uri": redirect_uri,
+                "response_type": "code",
+            }
+        )
+        return RedirectResponse(url=f"{_KAKAO_AUTH_URL}?{params}")
+    except Exception as exc:
+        logger.error("oauth_kakao_start_failed", error=str(exc))
+        raise
 
 
 @router.get("/oauth/kakao/callback")
