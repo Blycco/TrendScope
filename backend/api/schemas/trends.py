@@ -11,6 +11,7 @@ class TrendItem(BaseModel):
     id: str
     title: str
     category: str
+    summary: str | None = None
     score: float
     early_trend_score: float
     keywords: list[str]
