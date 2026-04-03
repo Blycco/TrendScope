@@ -6,4 +6,4 @@
 - [ ] backend/processor/algorithms/prediction.py — Prophet trend prediction prototype
 - [ ] A/B test setup for LTR ranking vs rule-based ranking
 
-Done: LTR ranking in A/B test · ALS batch job running
+Done: 전체 미구현 — MAU 300+ 달성 후 진행 예정
