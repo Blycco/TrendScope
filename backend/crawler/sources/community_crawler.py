@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import re
 import time
@@ -16,6 +17,7 @@ from bs4 import BeautifulSoup
 
 from backend.common.metrics import CRAWLER_REQUESTS
 from backend.crawler.quota_guard import check_quota, increment_quota
+from backend.crawler.sources.extractor import extract_body
 from backend.crawler.sources.robots import is_allowed
 from backend.crawler.sources.rss_feeds import FeedSource
 from backend.db.queries.feed_sources import get_feed_sources_for_crawl, update_feed_health
@@ -26,6 +28,8 @@ _TRAILING_NUM_RE = re.compile(r"\s+\d+\s*$")
 logger = structlog.get_logger(__name__)
 
 _HTTP_TIMEOUT = 15.0
+_MIN_BODY_LENGTH = 30
+_BODY_FETCH_DELAY = 0.5
 
 
 def _url_hash(url: str) -> str:
@@ -170,6 +174,10 @@ async def _crawl_rss_feed(
                 continue
 
             body = entry.get("summary", "").strip()
+
+            if len(body) < _MIN_BODY_LENGTH and await is_allowed(url):
+                body = await _fetch_article_body(client, url)
+
             cfp = _content_fp(title, body)
             published = _parse_time(entry)
 
@@ -252,7 +260,11 @@ async def _crawl_fm_html(
                 if existing:
                     continue
 
-                cfp = _content_fp(title, "")
+                body = ""
+                if await is_allowed(href):
+                    body = await _fetch_article_body(client, href)
+
+                cfp = _content_fp(title, body)
 
                 await db_pool.execute(
                     "INSERT INTO news_article "
@@ -264,7 +276,7 @@ async def _crawl_fm_html(
                     uhash,
                     cfp,
                     title,
-                    "",
+                    body,
                     feed["name"],
                     "",
                     datetime.now(tz=timezone.utc),
@@ -278,7 +290,7 @@ async def _crawl_fm_html(
                         "url_hash": uhash,
                         "content_fp": cfp,
                         "title": title,
-                        "body": "",
+                        "body": body,
                         "source": feed["name"],
                         "publish_time": datetime.now(tz=timezone.utc),
                         "locale": feed["locale"],
@@ -293,6 +305,22 @@ async def _crawl_fm_html(
     except Exception as exc:
         logger.warning("fm_html_crawl_failed", error=str(exc))
         return []
+
+
+async def _fetch_article_body(client: httpx.AsyncClient, url: str) -> str:
+    """Fetch original article HTML and extract body text via extractor."""
+    try:
+        await asyncio.sleep(_BODY_FETCH_DELAY)
+        resp = await client.get(url)
+        if resp.status_code != 200:
+            logger.debug("body_fetch_http_error", url=url, status=resp.status_code)
+            return ""
+        body = await extract_body(url, html=resp.text)
+        logger.debug("body_extracted", url=url, length=len(body))
+        return body
+    except Exception as exc:
+        logger.warning("body_fetch_failed", url=url, error=str(exc))
+        return ""
 
 
 def _parse_time(entry: Any) -> datetime:  # noqa: ANN401
