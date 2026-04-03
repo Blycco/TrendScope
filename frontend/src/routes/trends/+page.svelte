@@ -33,6 +33,7 @@
 	let personalization = $state<PersonalizationSettings | null>(null);
 	let selectedCategory = $state<string | null>(null);
 	let selectedTime = $state<number | null>(null);
+	let selectedLocale = $state<string | null>(null);
 
 	let errorOpen = $state(false);
 	let errorCode = $state('');
@@ -54,6 +55,7 @@
 	const topTrendId = $derived(trends.length > 0 ? trends[0].id : null);
 
 	function getLocaleParam(): string | null {
+		if (selectedLocale) return selectedLocale;
 		if (!personalization) return null;
 		if (personalization.locale_ratio < 0.3) return 'en';
 		if (personalization.locale_ratio > 0.7) return 'ko';
@@ -234,6 +236,22 @@
 				{$t('trends.share.button')}
 			</button>
 		</div>
+	</div>
+
+	<!-- Locale filter -->
+	<div class="flex gap-2 flex-wrap">
+		<button
+			onclick={() => { selectedLocale = null; trends = []; nextCursor = null; loadTrends(); }}
+			class="rounded-full px-3 py-1 text-xs font-medium transition-colors {selectedLocale === null ? 'bg-indigo-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
+		>{$t('filter.all')}</button>
+		<button
+			onclick={() => { selectedLocale = 'ko'; trends = []; nextCursor = null; loadTrends(); }}
+			class="rounded-full px-3 py-1 text-xs font-medium transition-colors {selectedLocale === 'ko' ? 'bg-indigo-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
+		>{$t('filter.locale.domestic')}</button>
+		<button
+			onclick={() => { selectedLocale = 'en'; trends = []; nextCursor = null; loadTrends(); }}
+			class="rounded-full px-3 py-1 text-xs font-medium transition-colors {selectedLocale === 'en' ? 'bg-indigo-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
+		>{$t('filter.locale.international')}</button>
 	</div>
 
 	<!-- Category filter -->

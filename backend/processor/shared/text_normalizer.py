@@ -90,4 +90,7 @@ def normalize_title(title: str) -> str:
     cleaned = normalize_text(title, strip_urls=True, strip_emails=True, strip_html=True)
     # Remove leading markers like [속보], [단독], (종합) etc.
     cleaned = re.sub(r"^[\[(【].*?[】\])][\s]*", "", cleaned)
+    # Remove trailing comment/view counts: [1162], (384), 숫자만
+    cleaned = re.sub(r"[\s]*[\[(]\d+[\])]\s*$", "", cleaned)
+    cleaned = re.sub(r"\s+\d+\s*$", "", cleaned)
     return cleaned.strip()
