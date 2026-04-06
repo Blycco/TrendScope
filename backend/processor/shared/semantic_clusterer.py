@@ -28,7 +28,7 @@ _TEMPORAL_DECAY_HOURS: float = 24.0  # Time window for temporal similarity
 
 # Sentence transformer model (loaded lazily)
 _embedding_model: object | None = None
-_MODEL_NAME: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L6-v2"
+_MODEL_NAME: str = "snunlp/KR-SBERT-V40K-klueNLI-augSTS"
 
 
 @dataclass
@@ -124,8 +124,8 @@ def compute_cosine_similarity(vec_a: list[float], vec_b: list[float]) -> float:
     return dot / (norm_a * norm_b)
 
 
-def _encode_text(text: str) -> list[float] | None:
-    """Encode text into embedding vector using MiniLM-L6."""
+def encode_text(text: str) -> list[float] | None:
+    """Encode text into embedding vector using KR-SBERT."""
     model = _get_embedding_model()
     if model is None:
         return None
@@ -158,9 +158,9 @@ def compute_similarity(a: ClusterItem, b: ClusterItem) -> float:
     else:
         # Try to compute embeddings
         if a.embedding is None:
-            a.embedding = _encode_text(a.text)
+            a.embedding = encode_text(a.text)
         if b.embedding is None:
-            b.embedding = _encode_text(b.text)
+            b.embedding = encode_text(b.text)
         if a.embedding is not None and b.embedding is not None:
             cosine = compute_cosine_similarity(a.embedding, b.embedding)
 

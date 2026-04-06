@@ -16,7 +16,13 @@ from backend.processor.shared.cache_manager import set_cached
 from backend.processor.shared.dedupe_filter import is_duplicate
 from backend.processor.shared.keyword_extractor import Keyword, extract_keywords
 from backend.processor.shared.score_calculator import ScoreInput, ScoreResult, calculate_score
-from backend.processor.shared.semantic_clusterer import Cluster, ClusterItem, cluster_items
+from backend.processor.shared.semantic_clusterer import (
+    Cluster,
+    ClusterItem,
+    cluster_items,
+    compute_cosine_similarity,
+    encode_text,
+)
 from backend.processor.shared.spam_filter import classify_spam
 from backend.processor.shared.text_normalizer import normalize_text
 
@@ -204,10 +210,10 @@ async def _stage_match_existing_groups(
     if not group_rows:
         return articles
 
-    # Pre-build keyword sets for each existing group (title words + keywords array)
+    # Pre-build keyword sets and embeddings for each existing group
     import uuid as _uuid  # noqa: PLC0415
 
-    group_kw_sets: list[tuple[_uuid.UUID, set[str], float]] = []
+    group_data: list[tuple[_uuid.UUID, set[str], float, str]] = []
     for row in group_rows:
         group_id: _uuid.UUID = row["id"]
         raw_kw: list[str] = list(row["keywords"] or [])
@@ -217,7 +223,8 @@ async def _stage_match_existing_groups(
             if len(w) >= 2 and not w.isdigit()
         }
         combined: set[str] = set(raw_kw) | title_words
-        group_kw_sets.append((group_id, combined, float(row["score"])))
+        group_title: str = row["title"] or ""
+        group_data.append((group_id, combined, float(row["score"]), group_title))
 
     unmatched: list[dict[str, Any]] = []
 
@@ -238,8 +245,22 @@ async def _stage_match_existing_groups(
             best_score: float = 0.0
             best_current_score: float = 0.0
 
-            for group_id, group_kws, current_score in group_kw_sets:
-                sim = _jaccard(article_kw_set, group_kws)
+            article_text = f"{article.get('title', '')} {article.get('body', '')[:500]}"
+            article_embedding = encode_text(article_text)
+
+            for group_id, group_kws, current_score, group_title in group_data:
+                jaccard = _jaccard(article_kw_set, group_kws)
+
+                # Compute cosine similarity if embeddings available
+                cosine = 0.0
+                if article_embedding is not None:
+                    group_embedding = encode_text(group_title)
+                    if group_embedding is not None:
+                        cosine = compute_cosine_similarity(article_embedding, group_embedding)
+
+                # Composite: same weights as semantic_clusterer
+                sim = 0.50 * cosine + 0.50 * jaccard
+
                 if sim > best_score:
                     best_score = sim
                     best_group_id = group_id
