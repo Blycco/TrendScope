@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import uuid
+from collections import Counter
 from datetime import datetime, timezone
 from typing import Any
 
@@ -433,12 +434,15 @@ def _stage_score(clusters: list[Cluster]) -> list[dict[str, Any]]:
             )
             result: ScoreResult = calculate_score(score_input)
 
-            all_keywords: list[str] = []
+            keyword_counter: Counter[str] = Counter()
             for a in articles:
-                all_keywords.extend(a.get("keywords", []))
-            unique_keywords = [
-                kw for kw in dict.fromkeys(all_keywords) if not kw.isdigit() and len(kw) >= 2
-            ][:20]
+                for kw in a.get("keywords", []):
+                    if not kw.isdigit() and len(kw) >= 2:
+                        keyword_counter[kw] += 1
+            unique_keywords = [kw for kw, _ in keyword_counter.most_common(20)]
+
+            top_keywords = unique_keywords[:3]
+            group_title = " · ".join(top_keywords) if top_keywords else rep_article.get("title", "")
 
             early_score = _compute_early_trend_score(articles)
 
@@ -448,7 +452,7 @@ def _stage_score(clusters: list[Cluster]) -> list[dict[str, Any]]:
                     "articles": articles,
                     "score": result.total,
                     "early_trend_score": early_score,
-                    "title": rep_article.get("title", ""),
+                    "title": group_title,
                     "category": rep_article.get("category", "general"),
                     "locale": rep_article.get("locale", "ko"),
                     "keywords": unique_keywords,
