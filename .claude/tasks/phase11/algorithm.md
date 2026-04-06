@@ -14,14 +14,13 @@ Stage 4.5(기존 그룹 매칭)는 Jaccard only + 낮은 threshold로 무관한 
 
 ## Tasks
 
-### 1. 임베딩 기반 클러스터링 활성화
-- [ ] `requirements.txt`에 `sentence-transformers`, `torch` 추가
-- [ ] `semantic_clusterer.py` `_MODEL_NAME`을 `snunlp/KR-SBERT`로 변경 (한국어 최적화)
-- [ ] cosine 50% 가중치 정상 작동 검증 테스트 작성
-- [ ] Stage 4.5(`pipeline.py` `_stage_match_existing_groups`)에도 cosine similarity 적용
+### 1. 임베딩 기반 클러스터링 활성화 ✅
+- [x] `requirements/processor.txt`에 `sentence-transformers` 이미 존재 확인
+- [x] `semantic_clusterer.py` `_MODEL_NAME` → `snunlp/KR-SBERT-V40K-klueNLI-augSTS` 전환
+- [x] Stage 4.5에 cosine similarity 적용 (cosine 50% + jaccard 50%)
+- [x] `_encode_text` → `encode_text` public 함수 변경
 
-**현황**: 코드 구현 완료(`semantic_clusterer.py:93-138`), 의존성만 추가하면 즉시 활성화
-**영향 파일**: `requirements.txt`, `backend/processor/shared/semantic_clusterer.py`, `backend/processor/pipeline.py`
+**완료**: Ref #130
 
 ### 2. HDBSCAN 클러스터링 도입
 - [ ] `requirements.txt`에 `hdbscan` 추가
