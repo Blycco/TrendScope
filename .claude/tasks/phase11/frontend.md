@@ -21,16 +21,35 @@
 **현황**: `TrendCard.svelte`에서 `trend.title` (기사 헤드라인) 표시 중
 **영향 파일**: `frontend/src/components/TrendCard.svelte`
 
-### 2. 트렌드 상세 페이지 개선
-- [ ] 관련 소스(기사) 링크 목록 — 출처 + 발행일 표시 (현재 구조 유지하되 body_snippet 제거)
-- [ ] 시간/일자별 언급량 그래프 추가 (SVG 라인차트)
-  - 백엔드: 일자별 기사 수 집계 API 필요 (또는 기존 articles의 publish_time 활용)
-  - 프론트: SVG path로 라인차트 렌더링 (외부 의존성 없이)
-- [ ] 현재 쓸모없는 정보(body_snippet 200자) 제거
-- [ ] 소스 링크 + 그래프 + 키워드 중심 구성
+### 2. 트렌드 상세 페이지 개선 — 주식/코인 차트 스타일 시계열 그래프
+- [ ] 현재 body_snippet 나열 제거 → 소스 링크 + 차트 + 키워드 중심 구성
 
-**현황**: `trends/[id]/+page.svelte`에서 articles 목록 + body_snippet 표시 중
-**영향 파일**: `frontend/src/routes/trends/[id]/+page.svelte`, 백엔드 API 추가 가능성
+#### 2-1. 백엔드: 시계열 데이터 기반 구축
+- [ ] `trend_score_history` 테이블 신규 생성
+  - `group_id (FK)`, `score`, `article_count`, `recorded_at` (시간별 스냅샷)
+- [ ] `early_trend_update.py` (15분 주기) 또는 별도 job에서 `news_group` score를 주기적으로 기록
+- [ ] API 엔드포인트 추가: `GET /api/v1/trends/{id}/history?range=24h|7d|30d`
+  - 응답: `{ points: [{ time: ISO8601, score: float, article_count: int }] }`
+- [ ] 기존 `news_article.publish_time` 기반 시간별 기사 수 집계 쿼리도 추가
+
+#### 2-2. 프론트: 주식/코인 차트 스타일 인터랙티브 차트
+- [ ] 차트 라이브러리 선택: `lightweight-charts` (TradingView 오픈소스) 또는 SVG 자체 구현
+- [ ] 기능 요구사항:
+  - 라인 차트 (score 추이) + 하단 바 차트 (기사 수/언급량)
+  - 기간 선택 탭: 1일 / 7일 / 30일
+  - 마우스 호버 시 툴팁: 시간, score, 기사 수
+  - 상승 구간 = 초록, 하락 구간 = 빨강 (코인 차트처럼)
+  - 현재 score vs 24시간 전 대비 변동률(%) 표시
+- [ ] 반응형: 모바일에서도 터치 스크롤 가능
+
+#### 2-3. 소스 링크 목록
+- [ ] 기사 제목 + 출처 + 발행일 (현재 구조 유지, body_snippet 제거)
+- [ ] 시간순 정렬
+
+**현황**: 그래프 없음. 차트 라이브러리 미설치. 시계열 DB/API 미구현. 전부 신규 구현 필요.
+**영향 파일**: 
+  - 백엔드: migration, `backend/db/queries/trends.py`, `backend/api/routers/trends.py`, job
+  - 프론트: `frontend/src/routes/trends/[id]/+page.svelte`, 차트 컴포넌트 신규
 
 ### 3. 트렌드 방향 표시 수정
 - [ ] "하락 중" 전부 표시 버그 원인 조사
