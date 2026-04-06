@@ -28,7 +28,7 @@
 - [ ] `trend_score_history` 테이블 신규 생성
   - `group_id (FK)`, `score`, `article_count`, `recorded_at` (시간별 스냅샷)
 - [ ] `early_trend_update.py` (15분 주기) 또는 별도 job에서 `news_group` score를 주기적으로 기록
-- [ ] API 엔드포인트 추가: `GET /api/v1/trends/{id}/history?range=1h|6h|24h|7d`
+- [ ] API 엔드포인트 추가: `GET /api/v1/trends/{id}/history?range=15m|30m|1h|6h|24h|7d`
   - 응답: `{ points: [{ time: ISO8601, score: float, article_count: int }] }`
 - [ ] 기존 `news_article.publish_time` 기반 시간별 기사 수 집계 쿼리도 추가
 
@@ -36,7 +36,7 @@
 - [ ] 차트 라이브러리 선택: `lightweight-charts` (TradingView 오픈소스) 또는 SVG 자체 구현
 - [ ] 기능 요구사항:
   - 라인 차트 (score 추이) + 하단 바 차트 (기사 수/언급량)
-  - 기간 선택 탭: 1시간 / 6시간 / 24시간 / 7일
+  - 기간 선택 탭: 15분 / 30분 / 1시간 / 6시간 / 24시간 / 7일
   - 마우스 호버 시 툴팁: 시간, score, 기사 수
   - 상승 구간 = 초록, 하락 구간 = 빨강 (코인 차트처럼)
   - 현재 score vs 24시간 전 대비 변동률(%) 표시
