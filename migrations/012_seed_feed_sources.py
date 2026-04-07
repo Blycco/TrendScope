@@ -84,8 +84,8 @@ async def up(conn: asyncpg.Connection) -> None:
     total += await _insert_feeds(conn, GLOBAL_NEWS_FEEDS, "rss", rss_en_id)
     logger.info("seed_global_news", count=len(GLOBAL_NEWS_FEEDS))
 
-    # Google Trends RSS
-    total += await _insert_feeds(conn, GOOGLE_TRENDS_FEEDS, "google_trends", rss_ko_id)
+    # Google Trends RSS (standard RSS feeds — use "rss" source_type)
+    total += await _insert_feeds(conn, GOOGLE_TRENDS_FEEDS, "rss", rss_ko_id)
     logger.info("seed_google_trends", count=len(GOOGLE_TRENDS_FEEDS))
 
     # Community — DC Inside

@@ -19,6 +19,46 @@ from backend.db.queries.feed_sources import get_feed_sources_for_crawl, update_f
 logger = structlog.get_logger(__name__)
 
 _HTTP_TIMEOUT = 15.0
+_REDDIT_TOKEN_URL = "https://www.reddit.com/api/v1/access_token"  # noqa: S105
+_REDDIT_OAUTH_BASE = "https://oauth.reddit.com"
+
+# Module-level cache for Reddit OAuth token
+_reddit_access_token: str | None = None
+_reddit_token_expires: float = 0.0
+
+
+async def _get_reddit_token(client: httpx.AsyncClient) -> str | None:
+    """Obtain Reddit OAuth2 app-only (client_credentials) token.
+
+    Requires REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET env vars.
+    Returns None if credentials are not configured.
+    """
+    global _reddit_access_token, _reddit_token_expires  # noqa: PLW0603
+
+    if _reddit_access_token and time.monotonic() < _reddit_token_expires:
+        return _reddit_access_token
+
+    client_id = os.environ.get("REDDIT_CLIENT_ID", "")
+    client_secret = os.environ.get("REDDIT_CLIENT_SECRET", "")
+    if not client_id or not client_secret:
+        return None
+
+    try:
+        resp = await client.post(
+            _REDDIT_TOKEN_URL,
+            auth=(client_id, client_secret),
+            data={"grant_type": "client_credentials"},
+            headers={"User-Agent": "TrendScopeBot/1.0 (by /u/TrendScope)"},
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        _reddit_access_token = data["access_token"]
+        # Expire 60s early to avoid edge cases
+        _reddit_token_expires = time.monotonic() + data.get("expires_in", 3600) - 60
+        return _reddit_access_token
+    except Exception as exc:
+        logger.warning("reddit_oauth_failed", error=str(exc))
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -30,7 +70,11 @@ async def crawl_reddit(
     db_pool: asyncpg.Pool,
     subreddits: list[str] | None = None,
 ) -> list[dict[str, Any]]:
-    """Fetch hot posts from Reddit JSON API for each subreddit (DB-driven)."""
+    """Fetch hot posts from Reddit API for each subreddit (DB-driven).
+
+    Uses OAuth2 (oauth.reddit.com) if credentials are set, otherwise
+    falls back to public JSON API (www.reddit.com).
+    """
     try:
         if not await check_quota("reddit", db_pool):
             return []
@@ -40,14 +84,15 @@ async def crawl_reddit(
 
         async with httpx.AsyncClient(
             timeout=_HTTP_TIMEOUT,
-            headers={"User-Agent": "TrendScopeBot/1.0 (trend aggregation)"},
+            headers={"User-Agent": "TrendScopeBot/1.0 (by /u/TrendScope)"},
         ) as client:
+            token = await _get_reddit_token(client)
             for row in feed_rows:
                 config = row["config"] if isinstance(row["config"], dict) else {}
                 sub = config.get("subreddit", row["name"].removeprefix("r/"))
                 t0 = time.monotonic()
                 try:
-                    posts = await _fetch_subreddit(client, sub, db_pool)
+                    posts = await _fetch_subreddit(client, sub, db_pool, token=token)
                     elapsed_ms = (time.monotonic() - t0) * 1000
                     await update_feed_health(
                         db_pool, row["id"], success=True, latency_ms=elapsed_ms
@@ -73,10 +118,21 @@ async def _fetch_subreddit(
     client: httpx.AsyncClient,
     subreddit: str,
     db_pool: asyncpg.Pool,
+    *,
+    token: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Fetch hot posts from a single subreddit."""
-    url = f"https://www.reddit.com/r/{subreddit}/hot.json"
-    resp = await client.get(url, params={"limit": 25})
+    """Fetch hot posts from a single subreddit.
+
+    Uses oauth.reddit.com with Bearer token if available,
+    otherwise falls back to public www.reddit.com JSON API.
+    """
+    if token:
+        url = f"{_REDDIT_OAUTH_BASE}/r/{subreddit}/hot"
+        headers = {"Authorization": f"Bearer {token}"}
+        resp = await client.get(url, params={"limit": 25}, headers=headers)
+    else:
+        url = f"https://www.reddit.com/r/{subreddit}/hot.json"
+        resp = await client.get(url, params={"limit": 25})
     resp.raise_for_status()
     await increment_quota("reddit", db_pool)
 
