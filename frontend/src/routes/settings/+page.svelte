@@ -5,6 +5,7 @@
 	import { apiRequest, ApiRequestError } from '$lib/api';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
 	import PlanGate from '$lib/ui/PlanGate.svelte';
+	import PageStateWrapper from '$lib/ui/PageStateWrapper.svelte';
 	import { X } from 'lucide-svelte';
 
 	type Tab = 'account' | 'plan' | 'notifications' | 'security' | 'personalization';
@@ -392,31 +393,31 @@
 	{#if activeTab === 'notifications'}
 		<div class="max-w-md space-y-6">
 			<!-- Channel toggles -->
-			<div class="space-y-3">
-				{#if isLoadingNotif}
-					<p class="text-sm text-gray-500">{$t('status.loading')}</p>
-				{:else}
-					{#each (['trend_alert', 'quota_warning', 'plan_expiry'] as const) as channel}
-						<div class="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4">
-							<span class="text-sm font-medium text-gray-900">{$t(`settings.notifications.${channel}`)}</span>
-							<button
-								role="switch"
-								aria-checked={notifSettings[channel]}
-								onclick={() => saveNotificationChannel(channel, !notifSettings[channel])}
-								class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
-								class:bg-blue-600={notifSettings[channel]}
-								class:bg-gray-200={!notifSettings[channel]}
-							>
-								<span
-									class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform"
-									class:translate-x-6={notifSettings[channel]}
-									class:translate-x-1={!notifSettings[channel]}
-								></span>
-							</button>
-						</div>
-					{/each}
-				{/if}
-			</div>
+			<PageStateWrapper isLoading={isLoadingNotif} isEmpty={false}>
+				{#snippet children()}
+					<div class="space-y-3">
+						{#each (['trend_alert', 'quota_warning', 'plan_expiry'] as const) as channel}
+							<div class="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4">
+								<span class="text-sm font-medium text-gray-900">{$t(`settings.notifications.${channel}`)}</span>
+								<button
+									role="switch"
+									aria-checked={notifSettings[channel]}
+									onclick={() => saveNotificationChannel(channel, !notifSettings[channel])}
+									class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
+									class:bg-blue-600={notifSettings[channel]}
+									class:bg-gray-200={!notifSettings[channel]}
+								>
+									<span
+										class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform"
+										class:translate-x-6={notifSettings[channel]}
+										class:translate-x-1={!notifSettings[channel]}
+									></span>
+								</button>
+							</div>
+						{/each}
+					</div>
+				{/snippet}
+			</PageStateWrapper>
 
 			<!-- Keyword alerts -->
 			<div class="space-y-3">
@@ -447,27 +448,28 @@
 				</div>
 
 				<!-- Keyword list -->
-				{#if isLoadingKeywords}
-					<p class="text-sm text-gray-500">{$t('status.loading')}</p>
-				{:else if keywordAlerts.length === 0}
-					<p class="text-sm text-gray-400">{$t('notification.keywords.empty')}</p>
-				{:else}
-					<ul class="space-y-2">
-						{#each keywordAlerts as kw}
-							<li class="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-2.5">
-								<span class="text-sm text-gray-800">{kw.keyword}</span>
-								<button
-									onclick={() => deleteKeywordAlert(kw.id)}
-									disabled={deletingKeywordId === kw.id}
-									class="text-gray-400 hover:text-red-500 disabled:opacity-50"
-									aria-label={$t('button.delete')}
-								>
-									<X size={16} />
-								</button>
-							</li>
-						{/each}
-					</ul>
-				{/if}
+				<PageStateWrapper isLoading={isLoadingKeywords} isEmpty={!isLoadingKeywords && keywordAlerts.length === 0}>
+					{#snippet empty()}
+						<p class="text-sm text-gray-400">{$t('notification.keywords.empty')}</p>
+					{/snippet}
+					{#snippet children()}
+						<ul class="space-y-2">
+							{#each keywordAlerts as kw}
+								<li class="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-2.5">
+									<span class="text-sm text-gray-800">{kw.keyword}</span>
+									<button
+										onclick={() => deleteKeywordAlert(kw.id)}
+										disabled={deletingKeywordId === kw.id}
+										class="text-gray-400 hover:text-red-500 disabled:opacity-50"
+										aria-label={$t('button.delete')}
+									>
+										<X size={16} />
+									</button>
+								</li>
+							{/each}
+						</ul>
+					{/snippet}
+				</PageStateWrapper>
 			</div>
 		</div>
 	{/if}
@@ -477,9 +479,8 @@
 		<div class="max-w-md space-y-6">
 			<h2 class="text-base font-semibold text-gray-900">{$t('settings.personalization.title')}</h2>
 
-			{#if isLoadingPersonalization}
-				<p class="text-sm text-gray-500">{$t('status.loading')}</p>
-			{:else}
+			<PageStateWrapper isLoading={isLoadingPersonalization} isEmpty={false}>
+			{#snippet children()}
 				<div class="space-y-4">
 					<h3 class="text-sm font-medium text-gray-700">{$t('settings.personalization.category_weights')}</h3>
 					{#each (['tech', 'finance', 'entertainment', 'lifestyle'] as const) as cat}
@@ -529,7 +530,8 @@
 						{$t('button.save')}
 					{/if}
 				</button>
-			{/if}
+			{/snippet}
+		</PageStateWrapper>
 
 			<!-- Behavior-based insights -->
 			<div class="border-t border-gray-200 pt-6 space-y-4">

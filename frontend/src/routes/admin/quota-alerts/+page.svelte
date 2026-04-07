@@ -3,6 +3,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { adminRequest } from '$lib/api/admin';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
+	import PageStateWrapper from '$lib/ui/PageStateWrapper.svelte';
 
 	interface QuotaAlert {
 		id: string;
@@ -128,11 +129,11 @@
 	</div>
 
 	<!-- Table -->
-	{#if loading}
-		<p class="text-gray-500">{$t('status.loading')}</p>
-	{:else if alerts.length === 0}
-		<p class="text-gray-500">{$t('admin.quota_alerts.no_alerts')}</p>
-	{:else}
+	<PageStateWrapper isLoading={loading} isEmpty={!loading && alerts.length === 0}>
+		{#snippet empty()}
+			<p class="text-gray-500">{$t('admin.quota_alerts.no_alerts')}</p>
+		{/snippet}
+		{#snippet children()}
 		<div class="overflow-x-auto">
 			<table class="min-w-[640px] w-full bg-white border border-gray-200 rounded-lg">
 				<thead class="bg-gray-50">
@@ -197,7 +198,8 @@
 				</button>
 			</div>
 		{/if}
-	{/if}
+		{/snippet}
+	</PageStateWrapper>
 </div>
 
 <ErrorModal open={errorOpen} errorCode={errorCode} messageKey="error.server" onClose={() => (errorOpen = false)} onRetry={() => { errorOpen = false; fetchAlerts(); }} />

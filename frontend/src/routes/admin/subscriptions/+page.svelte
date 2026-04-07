@@ -3,6 +3,7 @@
 	import { onMount } from 'svelte';
 	import { adminRequest } from '$lib/api/admin';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
+	import PageStateWrapper from '$lib/ui/PageStateWrapper.svelte';
 
 	interface Subscription {
 		id: string;
@@ -73,59 +74,59 @@
 <div>
 	<h2 class="text-2xl font-bold text-gray-900 mb-6">{$t('admin.subscriptions.title')}</h2>
 
-	{#if loading}
-		<p class="text-gray-500">{$t('status.loading')}</p>
-	{:else}
-		<div class="bg-white rounded-lg shadow overflow-x-auto">
-			<table class="min-w-[640px] w-full divide-y divide-gray-200">
-				<thead class="bg-gray-50">
-					<tr>
-						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.subscriptions.col_user')}</th>
-						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.subscriptions.col_plan')}</th>
-						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.subscriptions.col_status')}</th>
-						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.subscriptions.col_provider')}</th>
-						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.subscriptions.col_expires')}</th>
-						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.subscriptions.col_actions')}</th>
-					</tr>
-				</thead>
-				<tbody class="divide-y divide-gray-200">
-					{#each subscriptions as sub}
+	<PageStateWrapper isLoading={loading} isEmpty={!loading && subscriptions.length === 0}>
+		{#snippet children()}
+			<div class="bg-white rounded-lg shadow overflow-x-auto">
+				<table class="min-w-[640px] w-full divide-y divide-gray-200">
+					<thead class="bg-gray-50">
 						<tr>
-							<td class="px-4 py-3 text-sm text-gray-900">{sub.user_id}</td>
-							<td class="px-4 py-3 text-sm text-gray-600">{sub.plan}</td>
-							<td class="px-4 py-3">
-								<span class="text-xs px-2 py-1 rounded {sub.status === 'active' ? 'bg-green-100 text-green-800' : sub.status === 'refunded' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}">
-									{sub.status}
-								</span>
-							</td>
-							<td class="px-4 py-3 text-sm text-gray-600">{sub.provider ?? '-'}</td>
-							<td class="px-4 py-3 text-sm text-gray-600">{sub.expires_at ?? '-'}</td>
-							<td class="px-4 py-3">
-								{#if sub.status === 'active' || sub.status === 'cancelled'}
-									<button
-										class="text-xs text-orange-600 hover:text-orange-800"
-										onclick={() => (refundConfirmId = sub.id)}
-									>
-										{$t('admin.subscriptions.refund')}
-									</button>
-								{/if}
-							</td>
+							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.subscriptions.col_user')}</th>
+							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.subscriptions.col_plan')}</th>
+							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.subscriptions.col_status')}</th>
+							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.subscriptions.col_provider')}</th>
+							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.subscriptions.col_expires')}</th>
+							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.subscriptions.col_actions')}</th>
 						</tr>
-					{/each}
-				</tbody>
-			</table>
-		</div>
-
-		<div class="mt-4 flex items-center justify-between">
-			<p class="text-sm text-gray-600">{$t('admin.users.total')}: {total}</p>
-			<div class="flex gap-2">
-				<button disabled={page <= 1} onclick={() => { page--; fetchSubscriptions(); }}
-					class="rounded border px-3 py-1 text-sm disabled:opacity-50">{$t('admin.users.prev')}</button>
-				<button disabled={page * 20 >= total} onclick={() => { page++; fetchSubscriptions(); }}
-					class="rounded border px-3 py-1 text-sm disabled:opacity-50">{$t('admin.users.next')}</button>
+					</thead>
+					<tbody class="divide-y divide-gray-200">
+						{#each subscriptions as sub}
+							<tr>
+								<td class="px-4 py-3 text-sm text-gray-900">{sub.user_id}</td>
+								<td class="px-4 py-3 text-sm text-gray-600">{sub.plan}</td>
+								<td class="px-4 py-3">
+									<span class="text-xs px-2 py-1 rounded {sub.status === 'active' ? 'bg-green-100 text-green-800' : sub.status === 'refunded' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}">
+										{sub.status}
+									</span>
+								</td>
+								<td class="px-4 py-3 text-sm text-gray-600">{sub.provider ?? '-'}</td>
+								<td class="px-4 py-3 text-sm text-gray-600">{sub.expires_at ?? '-'}</td>
+								<td class="px-4 py-3">
+									{#if sub.status === 'active' || sub.status === 'cancelled'}
+										<button
+											class="text-xs text-orange-600 hover:text-orange-800"
+											onclick={() => (refundConfirmId = sub.id)}
+										>
+											{$t('admin.subscriptions.refund')}
+										</button>
+									{/if}
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
 			</div>
-		</div>
-	{/if}
+
+			<div class="mt-4 flex items-center justify-between">
+				<p class="text-sm text-gray-600">{$t('admin.users.total')}: {total}</p>
+				<div class="flex gap-2">
+					<button disabled={page <= 1} onclick={() => { page--; fetchSubscriptions(); }}
+						class="rounded border px-3 py-1 text-sm disabled:opacity-50">{$t('admin.users.prev')}</button>
+					<button disabled={page * 20 >= total} onclick={() => { page++; fetchSubscriptions(); }}
+						class="rounded border px-3 py-1 text-sm disabled:opacity-50">{$t('admin.users.next')}</button>
+				</div>
+			</div>
+		{/snippet}
+	</PageStateWrapper>
 </div>
 
 {#if refundConfirmId}

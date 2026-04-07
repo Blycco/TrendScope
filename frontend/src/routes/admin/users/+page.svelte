@@ -3,6 +3,7 @@
 	import { onMount } from 'svelte';
 	import { adminRequest } from '$lib/api/admin';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
+	import PageStateWrapper from '$lib/ui/PageStateWrapper.svelte';
 
 	interface User {
 		id: string;
@@ -103,83 +104,83 @@
 		</button>
 	</div>
 
-	{#if loading}
-		<p class="text-gray-500">{$t('status.loading')}</p>
-	{:else}
-		<div class="bg-white rounded-lg shadow overflow-x-auto">
-			<table class="min-w-[640px] w-full divide-y divide-gray-200">
-				<thead class="bg-gray-50">
-					<tr>
-						<th class="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.users.col_email')}</th>
-						<th class="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.users.col_name')}</th>
-						<th class="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.users.col_role')}</th>
-						<th class="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.users.col_plan')}</th>
-						<th class="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.users.col_status')}</th>
-						<th class="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.users.col_actions')}</th>
-					</tr>
-				</thead>
-				<tbody class="divide-y divide-gray-200">
-					{#each users as user}
+	<PageStateWrapper isLoading={loading} isEmpty={!loading && users.length === 0}>
+		{#snippet children()}
+			<div class="bg-white rounded-lg shadow overflow-x-auto">
+				<table class="min-w-[640px] w-full divide-y divide-gray-200">
+					<thead class="bg-gray-50">
 						<tr>
-							<td class="px-3 py-2 sm:px-4 sm:py-3 text-sm text-gray-900 max-w-[200px] truncate">{user.email}</td>
-							<td class="px-3 py-2 sm:px-4 sm:py-3 text-sm text-gray-600">{user.display_name ?? '-'}</td>
-							<td class="px-3 py-2 sm:px-4 sm:py-3 text-sm text-gray-600">{user.role}</td>
-							<td class="px-3 py-2 sm:px-4 sm:py-3">
-								<select
-									class="text-sm border border-gray-300 rounded px-2 py-1"
-									value={user.plan}
-									onchange={(e) => updateUser(user.id, 'plan', e.currentTarget.value)}
-								>
-									<option value="free">Free</option>
-									<option value="pro">Pro</option>
-									<option value="business">Business</option>
-									<option value="enterprise">Enterprise</option>
-								</select>
-							</td>
-							<td class="px-3 py-2 sm:px-4 sm:py-3">
-								<button
-									class="text-xs px-2 py-1 rounded {user.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}"
-									onclick={() => updateUser(user.id, 'is_active', !user.is_active)}
-								>
-									{user.is_active ? $t('admin.users.active') : $t('admin.users.suspended')}
-								</button>
-							</td>
-							<td class="px-3 py-2 sm:px-4 sm:py-3">
-								<button
-									class="text-xs text-red-600 hover:text-red-800"
-									onclick={() => (deleteConfirmId = user.id)}
-								>
-									{$t('button.delete')}
-								</button>
-							</td>
+							<th class="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.users.col_email')}</th>
+							<th class="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.users.col_name')}</th>
+							<th class="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.users.col_role')}</th>
+							<th class="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.users.col_plan')}</th>
+							<th class="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.users.col_status')}</th>
+							<th class="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.users.col_actions')}</th>
 						</tr>
-					{/each}
-				</tbody>
-			</table>
-		</div>
-
-		<div class="mt-4 flex items-center justify-between">
-			<p class="text-sm text-gray-600">
-				{$t('admin.users.total')}: {total}
-			</p>
-			<div class="flex gap-2">
-				<button
-					disabled={page <= 1}
-					onclick={() => { page--; fetchUsers(); }}
-					class="rounded border px-3 py-1 text-sm disabled:opacity-50"
-				>
-					{$t('admin.users.prev')}
-				</button>
-				<button
-					disabled={page * 20 >= total}
-					onclick={() => { page++; fetchUsers(); }}
-					class="rounded border px-3 py-1 text-sm disabled:opacity-50"
-				>
-					{$t('admin.users.next')}
-				</button>
+					</thead>
+					<tbody class="divide-y divide-gray-200">
+						{#each users as user}
+							<tr>
+								<td class="px-3 py-2 sm:px-4 sm:py-3 text-sm text-gray-900 max-w-[200px] truncate">{user.email}</td>
+								<td class="px-3 py-2 sm:px-4 sm:py-3 text-sm text-gray-600">{user.display_name ?? '-'}</td>
+								<td class="px-3 py-2 sm:px-4 sm:py-3 text-sm text-gray-600">{user.role}</td>
+								<td class="px-3 py-2 sm:px-4 sm:py-3">
+									<select
+										class="text-sm border border-gray-300 rounded px-2 py-1"
+										value={user.plan}
+										onchange={(e) => updateUser(user.id, 'plan', e.currentTarget.value)}
+									>
+										<option value="free">Free</option>
+										<option value="pro">Pro</option>
+										<option value="business">Business</option>
+										<option value="enterprise">Enterprise</option>
+									</select>
+								</td>
+								<td class="px-3 py-2 sm:px-4 sm:py-3">
+									<button
+										class="text-xs px-2 py-1 rounded {user.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}"
+										onclick={() => updateUser(user.id, 'is_active', !user.is_active)}
+									>
+										{user.is_active ? $t('admin.users.active') : $t('admin.users.suspended')}
+									</button>
+								</td>
+								<td class="px-3 py-2 sm:px-4 sm:py-3">
+									<button
+										class="text-xs text-red-600 hover:text-red-800"
+										onclick={() => (deleteConfirmId = user.id)}
+									>
+										{$t('button.delete')}
+									</button>
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
 			</div>
-		</div>
-	{/if}
+
+			<div class="mt-4 flex items-center justify-between">
+				<p class="text-sm text-gray-600">
+					{$t('admin.users.total')}: {total}
+				</p>
+				<div class="flex gap-2">
+					<button
+						disabled={page <= 1}
+						onclick={() => { page--; fetchUsers(); }}
+						class="rounded border px-3 py-1 text-sm disabled:opacity-50"
+					>
+						{$t('admin.users.prev')}
+					</button>
+					<button
+						disabled={page * 20 >= total}
+						onclick={() => { page++; fetchUsers(); }}
+						class="rounded border px-3 py-1 text-sm disabled:opacity-50"
+					>
+						{$t('admin.users.next')}
+					</button>
+				</div>
+			</div>
+		{/snippet}
+	</PageStateWrapper>
 </div>
 
 {#if deleteConfirmId}

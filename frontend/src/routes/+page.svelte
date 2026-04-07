@@ -15,6 +15,7 @@
 	import StatCard from '../components/StatCard.svelte';
 	import EarlyBadge from '../components/EarlyBadge.svelte';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
+	import PageStateWrapper from '$lib/ui/PageStateWrapper.svelte';
 	import TrendMap from '../components/TrendMap.svelte';
 	import CategoryChart from '$lib/components/dashboard/CategoryChart.svelte';
 	import SourceChart from '$lib/components/dashboard/SourceChart.svelte';
@@ -37,6 +38,10 @@
 	let errorOpen = $state(false);
 	let errorCode = $state('');
 	let errorMessageKey = $state('');
+
+	let isDashboardEmpty = $derived(
+		!isLoading && topTrends.length === 0 && latestNews.length === 0 && earlyTrends.length === 0 && summary === null
+	);
 
 	let keywordCounts = $derived.by(() => {
 		const counts = new Map<string, number>();
@@ -86,13 +91,16 @@
 		<p class="mt-1 text-sm sm:text-base text-gray-600">{$t('page.home.description')}</p>
 	</div>
 
-	{#if isLoading}
-		<div class="space-y-3">
-			{#each Array(3) as _}
-				<SkeletonCard />
-			{/each}
-		</div>
-	{:else}
+	<PageStateWrapper {isLoading} isEmpty={isDashboardEmpty}>
+		{#snippet loading()}
+			<div class="space-y-3">
+				{#each Array(3) as _}
+					<SkeletonCard />
+				{/each}
+			</div>
+		{/snippet}
+
+		{#snippet children()}
 		<!-- Summary Stats -->
 		{#if summary}
 			<div data-tour="stat-cards" class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
@@ -251,7 +259,8 @@
 				</div>
 			{/if}
 		</section>
-	{/if}
+		{/snippet}
+	</PageStateWrapper>
 </div>
 
 <ErrorModal open={errorOpen} errorCode={errorCode} messageKey={errorMessageKey} onClose={() => (errorOpen = false)} onRetry={() => { errorOpen = false; loadDashboard(); }} />
