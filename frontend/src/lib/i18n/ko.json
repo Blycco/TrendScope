@@ -122,6 +122,10 @@
 	"trend.detail.insights": "인사이트 보기",
 	"trend.detail.articles": "관련 기사",
 	"trend.sentiment": "감성 분석",
+	"trend.sentiment.positive": "긍정",
+	"trend.sentiment.neutral": "중립",
+	"trend.sentiment.negative": "부정",
+	"trend.sentiment.no_data": "감성 분석 데이터가 없습니다.",
 	"trend.detail.forecast": "트렌드 예측",
 
 	"forecast.title": "트렌드 예측 (12개월)",

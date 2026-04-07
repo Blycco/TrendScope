@@ -7,6 +7,7 @@
 	import EarlyBadge from '../../../components/EarlyBadge.svelte';
 	import DirectionBadge from '../../../components/DirectionBadge.svelte';
 	import TrendChart from '../../../components/TrendChart.svelte';
+	import SentimentChart from '$lib/components/SentimentChart.svelte';
 	import ForecastChart from '$lib/components/ForecastChart.svelte';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
 	import PlanGate from '$lib/ui/PlanGate.svelte';
@@ -140,6 +141,8 @@
 		</div>
 
 		<TrendChart groupId={detail.id} />
+
+		<SentimentChart groupId={detail.id} />
 
 		{#if isForecastLoading}
 			<div class="rounded-lg border border-gray-200 bg-white p-4">

@@ -86,6 +86,13 @@ export interface TrendTimelineResponse {
 	points: TimelinePoint[];
 }
 
+export interface SentimentDistribution {
+	positive: number;
+	neutral: number;
+	negative: number;
+	total: number;
+}
+
 // ---------------------------------------------------------------------------
 // Forecast types
 // ---------------------------------------------------------------------------
