@@ -3,6 +3,10 @@
 	import { onMount } from 'svelte';
 	import { apiRequest, ApiRequestError, QuotaExceededRequestError } from '$lib/api';
 	import type { NewsListResponse, NewsItem } from '$lib/api';
+	import { createPaginationStore } from '$lib/stores/pagination.svelte';
+	import { createFilterStore } from '$lib/stores/filters.svelte';
+	import { createCacheStore } from '$lib/stores/cache.svelte';
+	import type { FetchFn } from '$lib/stores/pagination.svelte';
 	import NewsCard from '../../components/NewsCard.svelte';
 	import SkeletonCard from '../../components/SkeletonCard.svelte';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
@@ -21,15 +25,14 @@
 		{ label: 'filter.time.30d', value: 720 },
 	] as const;
 
-	let news = $state<NewsItem[]>([]);
-	let nextCursor = $state<string | null>(null);
-	let isLoading = $state(true);
-	let isLoadingMore = $state(false);
-
-	let selectedCategory = $state<string | null>(null);
-	let selectedSourceType = $state<string | null>(null);
-	let selectedTime = $state<number | null>(null);
-	let selectedLocale = $state<string | null>(null);
+	const pagination = createPaginationStore<NewsItem>();
+	const filters = createFilterStore({
+		category: null as string | null,
+		source_type: null as string | null,
+		since: null as number | null,
+		locale: null as string | null,
+	});
+	const cache = createCacheStore<NewsListResponse>(5 * 60 * 1000);
 
 	let errorOpen = $state(false);
 	let errorCode = $state('');
@@ -40,60 +43,75 @@
 	let quotaLimit = $state(0);
 	let quotaResetTime = $state('');
 
-	async function loadNews(cursor?: string): Promise<void> {
-		try {
-			const params = new URLSearchParams({ limit: '20' });
-			if (cursor) params.set('cursor', cursor);
-			if (selectedCategory) params.set('category', selectedCategory);
-			if (selectedSourceType) params.set('source_type', selectedSourceType);
-			if (selectedTime) params.set('since', String(selectedTime));
-			if (selectedLocale) params.set('locale', selectedLocale);
+	function buildCacheKey(cursor?: string): string {
+		return JSON.stringify({
+			cursor,
+			category: filters.values.category,
+			source_type: filters.values.source_type,
+			since: filters.values.since,
+			locale: filters.values.locale,
+		});
+	}
 
-			const data = await apiRequest<NewsListResponse>(`/news?${params.toString()}`);
-			if (cursor) {
-				news = [...news, ...data.items];
-			} else {
-				news = data.items;
-			}
-			nextCursor = data.next_cursor;
-		} catch (error) {
-			if (error instanceof QuotaExceededRequestError) {
-				quotaFeature = error.quotaType;
-				quotaLimit = error.limit;
-				quotaResetTime = error.resetAt;
-				quotaOpen = true;
-			} else if (error instanceof ApiRequestError) {
-				errorCode = error.errorCode;
-				errorMessageKey = 'error.server';
-				errorOpen = true;
-			} else {
-				errorCode = 'ERR_NETWORK';
-				errorMessageKey = 'error.network';
-				errorOpen = true;
-			}
+	const fetchNews: FetchFn<NewsItem> = async (cursor?: string) => {
+		const cacheKey = buildCacheKey(cursor);
+		const cached = cache.get(cacheKey);
+		if (cached) return cached;
+
+		const params = new URLSearchParams({ limit: '20' });
+		if (cursor) params.set('cursor', cursor);
+		if (filters.values.category) params.set('category', filters.values.category);
+		if (filters.values.source_type) params.set('source_type', filters.values.source_type);
+		if (filters.values.since) params.set('since', String(filters.values.since));
+		if (filters.values.locale) params.set('locale', filters.values.locale);
+
+		const data = await apiRequest<NewsListResponse>(`/news?${params.toString()}`);
+		cache.set(cacheKey, data);
+		return data;
+	};
+
+	function handleError(error: unknown): void {
+		if (error instanceof QuotaExceededRequestError) {
+			quotaFeature = error.quotaType;
+			quotaLimit = error.limit;
+			quotaResetTime = error.resetAt;
+			quotaOpen = true;
+		} else if (error instanceof ApiRequestError) {
+			errorCode = error.errorCode;
+			errorMessageKey = 'error.server';
+			errorOpen = true;
+		} else {
+			errorCode = 'ERR_NETWORK';
+			errorMessageKey = 'error.network';
+			errorOpen = true;
 		}
 	}
 
-	function applyFilter(type: 'category' | 'source' | 'time' | 'locale', value: string | number | null): void {
-		if (type === 'category') selectedCategory = value as string | null;
-		else if (type === 'source') selectedSourceType = value as string | null;
-		else if (type === 'time') selectedTime = value as number | null;
-		else if (type === 'locale') selectedLocale = value as string | null;
-		news = [];
-		nextCursor = null;
+	async function loadNews(): Promise<void> {
+		try {
+			await pagination.load(fetchNews);
+		} catch (error) {
+			handleError(error);
+		}
+	}
+
+	function applyFilter(type: 'category' | 'source_type' | 'since' | 'locale', value: string | number | null): void {
+		filters.set(type, value);
+		pagination.reset();
+		cache.clear();
 		loadNews();
 	}
 
 	async function loadMore(): Promise<void> {
-		if (!nextCursor || isLoadingMore) return;
-		isLoadingMore = true;
-		await loadNews(nextCursor);
-		isLoadingMore = false;
+		try {
+			await pagination.loadMore(fetchNews);
+		} catch (error) {
+			handleError(error);
+		}
 	}
 
 	onMount(async () => {
 		await loadNews();
-		isLoading = false;
 	});
 </script>
 
@@ -106,17 +124,17 @@
 		<div class="flex gap-1.5 sm:gap-2 flex-wrap">
 			<FilterButton
 				label={$t('filter.all')}
-				active={selectedLocale === null}
+				active={filters.values.locale === null}
 				onclick={() => applyFilter('locale', null)}
 			/>
 			<FilterButton
 				label={$t('filter.locale.domestic')}
-				active={selectedLocale === 'ko'}
+				active={filters.values.locale === 'ko'}
 				onclick={() => applyFilter('locale', 'ko')}
 			/>
 			<FilterButton
 				label={$t('filter.locale.international')}
-				active={selectedLocale === 'en'}
+				active={filters.values.locale === 'en'}
 				onclick={() => applyFilter('locale', 'en')}
 			/>
 		</div>
@@ -125,14 +143,14 @@
 		<div class="flex gap-1.5 sm:gap-2 flex-wrap">
 			<FilterButton
 				label={$t('filter.all')}
-				active={selectedCategory === null}
+				active={filters.values.category === null}
 				activeClass="bg-blue-600 text-white"
 				onclick={() => applyFilter('category', null)}
 			/>
 			{#each ALL_CATEGORIES as cat}
 				<FilterButton
 					label={$t(`filter.category.${cat}`)}
-					active={selectedCategory === cat}
+					active={filters.values.category === cat}
 					activeClass="bg-blue-600 text-white"
 					onclick={() => applyFilter('category', cat)}
 				/>
@@ -144,16 +162,16 @@
 			<div class="flex gap-1.5 sm:gap-2 flex-wrap">
 				<FilterButton
 					label={$t('filter.all')}
-					active={selectedSourceType === null}
+					active={filters.values.source_type === null}
 					activeClass="bg-green-600 text-white"
-					onclick={() => applyFilter('source', null)}
+					onclick={() => applyFilter('source_type', null)}
 				/>
 				{#each SOURCE_TYPES as src}
 					<FilterButton
 						label={$t(`filter.source.${src}`)}
-						active={selectedSourceType === src}
+						active={filters.values.source_type === src}
 						activeClass="bg-green-600 text-white"
-						onclick={() => applyFilter('source', src)}
+						onclick={() => applyFilter('source_type', src)}
 					/>
 				{/each}
 			</div>
@@ -161,23 +179,23 @@
 			<div class="flex gap-1.5 sm:gap-2 flex-wrap">
 				<FilterButton
 					label={$t('filter.all')}
-					active={selectedTime === null}
+					active={filters.values.since === null}
 					activeClass="bg-gray-800 text-white"
-					onclick={() => applyFilter('time', null)}
+					onclick={() => applyFilter('since', null)}
 				/>
 				{#each TIME_OPTIONS as opt}
 					<FilterButton
 						label={$t(opt.label)}
-						active={selectedTime === opt.value}
+						active={filters.values.since === opt.value}
 						activeClass="bg-gray-800 text-white"
-						onclick={() => applyFilter('time', opt.value)}
+						onclick={() => applyFilter('since', opt.value)}
 					/>
 				{/each}
 			</div>
 		</div>
 	</div>
 
-	<PageStateWrapper {isLoading} isEmpty={news.length === 0 && !isLoading}>
+	<PageStateWrapper isLoading={pagination.isLoading} isEmpty={pagination.items.length === 0 && !pagination.isLoading}>
 		{#snippet loading()}
 			<div class="space-y-3">
 				{#each Array(5) as _}
@@ -188,12 +206,12 @@
 
 		{#snippet children()}
 			<div class="space-y-3">
-				{#each news as item (item.id)}
+				{#each pagination.items as item (item.id)}
 					<NewsCard news={item} />
 				{/each}
 			</div>
 
-			<LoadMoreButton hasMore={nextCursor !== null} isLoading={isLoadingMore} onclick={loadMore} />
+			<LoadMoreButton hasMore={pagination.hasMore} isLoading={pagination.isLoadingMore} onclick={loadMore} />
 		{/snippet}
 	</PageStateWrapper>
 </div>
