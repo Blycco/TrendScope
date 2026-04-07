@@ -29,6 +29,7 @@
 	"dashboard.top_keywords": "인기 키워드",
 	"dashboard.source_distribution": "소스 분포",
 	"dashboard.trend_map": "트렌드 관계 맵",
+	"dashboard.chart_total_label": "트렌드",
 	"dashboard.source.rss": "RSS",
 	"dashboard.source.reddit": "Reddit",
 	"dashboard.source.community": "커뮤니티",
