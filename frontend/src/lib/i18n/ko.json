@@ -107,6 +107,7 @@
 	"role.general": "일반 사용자",
 
 	"trend.score": "트렌드 점수",
+	"trend.article_count": "기사 {count}건",
 	"trend.source_count": "소스 수",
 	"trend.first_seen": "최초 발견",
 	"trend.category": "카테고리",

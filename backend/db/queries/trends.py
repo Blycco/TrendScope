@@ -71,7 +71,11 @@ async def fetch_trends(
 
         query = f"""
             SELECT id::text, category, locale, title, summary,
-                   score, early_trend_score, keywords, created_at
+                   score, early_trend_score, keywords, created_at,
+                   (SELECT COUNT(*)
+                    FROM news_article
+                    WHERE group_id = news_group.id
+                   )::int AS article_count
             FROM news_group
             {where}
             ORDER BY score DESC, id ASC
@@ -115,7 +119,11 @@ async def fetch_early_trends(
 
         query = f"""
             SELECT id::text, category, locale, title, summary,
-                   score, early_trend_score, keywords, created_at
+                   score, early_trend_score, keywords, created_at,
+                   (SELECT COUNT(*)
+                    FROM news_article
+                    WHERE group_id = news_group.id
+                   )::int AS article_count
             FROM news_group
             {where}
             ORDER BY early_trend_score DESC, id ASC
@@ -187,7 +195,11 @@ async def fetch_related_trends(
             return await conn.fetch(
                 """
                 SELECT id::text, category, locale, title, summary,
-                       score, early_trend_score, keywords, created_at
+                       score, early_trend_score, keywords, created_at,
+                       (SELECT COUNT(*)
+                    FROM news_article
+                    WHERE group_id = news_group.id
+                   )::int AS article_count
                 FROM news_group
                 WHERE category = (
                     SELECT category FROM news_group WHERE id = $1::uuid

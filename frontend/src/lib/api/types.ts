@@ -63,6 +63,7 @@ export interface TrendItem {
 	early_trend_score: number;
 	keywords: string[];
 	created_at: string;
+	article_count: number;
 }
 
 export interface TrendListResponse {
