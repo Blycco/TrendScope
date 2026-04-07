@@ -10,7 +10,10 @@ import asyncpg
 import structlog
 
 from backend.processor.shared.score_calculator import ScoreInput, ScoreResult, calculate_score
-from backend.processor.shared.semantic_clusterer import compute_cosine_similarity, encode_text
+from backend.processor.shared.semantic_clusterer import (
+    compute_cosine_similarity,
+    encode_texts,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -56,10 +59,10 @@ async def stage_match_existing_groups(
     if not group_rows:
         return articles
 
-    # Pre-build keyword sets and embeddings for each existing group
-    group_data: list[tuple[uuid.UUID, set[str], float, str]] = []
+    # Pre-build keyword sets and batch-encode group title embeddings
+    group_data: list[tuple[uuid.UUID, set[str], float, list[float]]] = []
+    group_titles: list[str] = []
     for row in group_rows:
-        group_id: uuid.UUID = row["id"]
         raw_kw: list[str] = list(row["keywords"] or [])
         title_words = {
             w
@@ -67,12 +70,29 @@ async def stage_match_existing_groups(
             if len(w) >= 2 and not w.isdigit()
         }
         combined: set[str] = set(raw_kw) | title_words
-        group_title: str = row["title"] or ""
-        group_data.append((group_id, combined, float(row["score"]), group_title))
+        group_titles.append(row["title"] or "")
+
+    # Batch encode all group titles at once (5-10x faster than per-group)
+    group_embeddings = encode_texts(group_titles)
+
+    for idx, row in enumerate(group_rows):
+        group_id: uuid.UUID = row["id"]
+        raw_kw = list(row["keywords"] or [])
+        title_words = {
+            w
+            for w in (row["title"].split() if row["title"] else [])
+            if len(w) >= 2 and not w.isdigit()
+        }
+        combined = set(raw_kw) | title_words
+        group_data.append((group_id, combined, float(row["score"]), group_embeddings[idx]))
+
+    # Batch encode all article texts
+    article_texts = [f"{a.get('title', '')} {a.get('body', '')[:500]}" for a in articles]
+    article_embeddings = encode_texts(article_texts)
 
     unmatched: list[dict[str, Any]] = []
 
-    for article in articles:
+    for idx, article in enumerate(articles):
         try:
             article_kw_set: set[str] = set(article.get("keywords", []))
             title_words = {
@@ -89,18 +109,15 @@ async def stage_match_existing_groups(
             best_score: float = 0.0
             best_current_score: float = 0.0
 
-            article_text = f"{article.get('title', '')} {article.get('body', '')[:500]}"
-            article_embedding = encode_text(article_text)
+            article_embedding = article_embeddings[idx]
 
-            for group_id, group_kws, current_score, group_title in group_data:
+            for group_id, group_kws, current_score, group_embedding in group_data:
                 j = jaccard(article_kw_set, group_kws)
 
-                # Compute cosine similarity if embeddings available
+                # Compute cosine similarity using pre-computed embeddings
                 cosine = 0.0
-                if article_embedding is not None:
-                    group_embedding = encode_text(group_title)
-                    if group_embedding is not None:
-                        cosine = compute_cosine_similarity(article_embedding, group_embedding)
+                if article_embedding and group_embedding:
+                    cosine = compute_cosine_similarity(article_embedding, group_embedding)
 
                 # Composite: same weights as semantic_clusterer
                 sim = 0.50 * cosine + 0.50 * j

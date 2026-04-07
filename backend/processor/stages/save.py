@@ -14,7 +14,64 @@ async def stage_save(
     scored_clusters: list[dict[str, Any]],
     db_pool: asyncpg.Pool,
 ) -> int:
-    """Stage 7: Save scored clusters to news_group and update news_article."""
+    """Stage 7: Save scored clusters to news_group and update news_article.
+
+    Uses batch INSERT for groups and batch UPDATE for article assignments
+    to reduce DB round-trips.
+    """
+    if not scored_clusters:
+        return 0
+
+    saved = 0
+    try:
+        async with db_pool.acquire() as conn:
+            async with conn.transaction():
+                # Batch INSERT all groups
+                group_rows = await conn.fetch(
+                    "INSERT INTO news_group "
+                    "(category, locale, title, summary, score, early_trend_score, keywords) "
+                    "SELECT * FROM unnest($1::text[], $2::text[], $3::text[], $4::text[], "
+                    "$5::float8[], $6::float8[], $7::text[][]) "
+                    "RETURNING id",
+                    [c["category"] for c in scored_clusters],
+                    [c["locale"] for c in scored_clusters],
+                    [c["title"] for c in scored_clusters],
+                    [c.get("summary") for c in scored_clusters],
+                    [c["score"] for c in scored_clusters],
+                    [c.get("early_trend_score", 0.0) for c in scored_clusters],
+                    [c["keywords"] for c in scored_clusters],
+                )
+
+                # Collect all article UPDATE pairs
+                update_pairs: list[tuple[Any, str]] = []
+                for group_row, cluster in zip(group_rows, scored_clusters, strict=True):
+                    group_id = group_row["id"]
+                    for article in cluster.get("articles", []):
+                        url_hash = article.get("url_hash", "")
+                        if url_hash:
+                            update_pairs.append((group_id, url_hash))
+
+                # Batch UPDATE articles with executemany
+                if update_pairs:
+                    await conn.executemany(
+                        "UPDATE news_article SET group_id = $1 WHERE url_hash = $2",
+                        update_pairs,
+                    )
+
+                saved = len(group_rows)
+    except Exception as exc:
+        logger.warning("pipeline_batch_save_error", error=str(exc))
+        # Fallback to individual saves
+        saved = await _save_individually(scored_clusters, db_pool)
+
+    return saved
+
+
+async def _save_individually(
+    scored_clusters: list[dict[str, Any]],
+    db_pool: asyncpg.Pool,
+) -> int:
+    """Fallback: save clusters one-by-one if batch save fails."""
     saved = 0
     for item in scored_clusters:
         try:
