@@ -1,6 +1,7 @@
 # Processor service dependencies (ML packages — all lazy-imported with fallbacks)
 -r base.txt
 soynlp>=0.0.493
+kiwipiepy>=0.18.0
 scikit-learn>=1.5.0
 xgboost>=2.0.0
 prophet>=1.1.5

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import uuid
+from collections import Counter
 from datetime import datetime, timezone
 from typing import Any
 
@@ -16,7 +17,14 @@ from backend.processor.shared.cache_manager import set_cached
 from backend.processor.shared.dedupe_filter import is_duplicate
 from backend.processor.shared.keyword_extractor import Keyword, extract_keywords
 from backend.processor.shared.score_calculator import ScoreInput, ScoreResult, calculate_score
-from backend.processor.shared.semantic_clusterer import Cluster, ClusterItem, cluster_items
+from backend.processor.shared.semantic_clusterer import (
+    Cluster,
+    ClusterItem,
+    cluster_items,
+    compute_cosine_similarity,
+    encode_text,
+    refine_clusters,
+)
 from backend.processor.shared.spam_filter import classify_spam
 from backend.processor.shared.text_normalizer import normalize_text
 
@@ -166,6 +174,7 @@ def _stage_extract_keywords(articles: list[dict[str, Any]]) -> list[dict[str, An
 
 _EXISTING_GROUP_MATCH_THRESHOLD = 0.50
 _EXISTING_GROUP_LIMIT = 500
+_EXISTING_GROUP_WINDOW_HOURS = 6
 
 
 def _jaccard(set_a: set[str], set_b: set[str]) -> float:
@@ -191,10 +200,11 @@ async def _stage_match_existing_groups(
             """
             SELECT id, title, keywords, score, category
             FROM news_group
-            WHERE created_at > now() - interval '48 hours'
+            WHERE created_at > now() - make_interval(hours => $1)
             ORDER BY score DESC
-            LIMIT $1
+            LIMIT $2
             """,
+            _EXISTING_GROUP_WINDOW_HOURS,
             _EXISTING_GROUP_LIMIT,
         )
     except Exception as exc:
@@ -204,10 +214,10 @@ async def _stage_match_existing_groups(
     if not group_rows:
         return articles
 
-    # Pre-build keyword sets for each existing group (title words + keywords array)
+    # Pre-build keyword sets and embeddings for each existing group
     import uuid as _uuid  # noqa: PLC0415
 
-    group_kw_sets: list[tuple[_uuid.UUID, set[str], float]] = []
+    group_data: list[tuple[_uuid.UUID, set[str], float, str]] = []
     for row in group_rows:
         group_id: _uuid.UUID = row["id"]
         raw_kw: list[str] = list(row["keywords"] or [])
@@ -217,7 +227,8 @@ async def _stage_match_existing_groups(
             if len(w) >= 2 and not w.isdigit()
         }
         combined: set[str] = set(raw_kw) | title_words
-        group_kw_sets.append((group_id, combined, float(row["score"])))
+        group_title: str = row["title"] or ""
+        group_data.append((group_id, combined, float(row["score"]), group_title))
 
     unmatched: list[dict[str, Any]] = []
 
@@ -238,8 +249,22 @@ async def _stage_match_existing_groups(
             best_score: float = 0.0
             best_current_score: float = 0.0
 
-            for group_id, group_kws, current_score in group_kw_sets:
-                sim = _jaccard(article_kw_set, group_kws)
+            article_text = f"{article.get('title', '')} {article.get('body', '')[:500]}"
+            article_embedding = encode_text(article_text)
+
+            for group_id, group_kws, current_score, group_title in group_data:
+                jaccard = _jaccard(article_kw_set, group_kws)
+
+                # Compute cosine similarity if embeddings available
+                cosine = 0.0
+                if article_embedding is not None:
+                    group_embedding = encode_text(group_title)
+                    if group_embedding is not None:
+                        cosine = compute_cosine_similarity(article_embedding, group_embedding)
+
+                # Composite: same weights as semantic_clusterer
+                sim = 0.50 * cosine + 0.50 * jaccard
+
                 if sim > best_score:
                     best_score = sim
                     best_group_id = group_id
@@ -339,6 +364,7 @@ def _stage_cluster(articles: list[dict[str, Any]]) -> list[Cluster]:
             )
 
         clusters = cluster_items(items)
+        clusters = refine_clusters(clusters)
 
         # Attach original article data to clusters
         article_map = {a.get("url_hash", ""): a for a in articles}
@@ -412,12 +438,15 @@ def _stage_score(clusters: list[Cluster]) -> list[dict[str, Any]]:
             )
             result: ScoreResult = calculate_score(score_input)
 
-            all_keywords: list[str] = []
+            keyword_counter: Counter[str] = Counter()
             for a in articles:
-                all_keywords.extend(a.get("keywords", []))
-            unique_keywords = [
-                kw for kw in dict.fromkeys(all_keywords) if not kw.isdigit() and len(kw) >= 2
-            ][:20]
+                for kw in a.get("keywords", []):
+                    if not kw.isdigit() and len(kw) >= 2:
+                        keyword_counter[kw] += 1
+            unique_keywords = [kw for kw, _ in keyword_counter.most_common(20)]
+
+            top_keywords = unique_keywords[:3]
+            group_title = " · ".join(top_keywords) if top_keywords else rep_article.get("title", "")
 
             early_score = _compute_early_trend_score(articles)
 
@@ -427,7 +456,7 @@ def _stage_score(clusters: list[Cluster]) -> list[dict[str, Any]]:
                     "articles": articles,
                     "score": result.total,
                     "early_trend_score": early_score,
-                    "title": rep_article.get("title", ""),
+                    "title": group_title,
                     "category": rep_article.get("category", "general"),
                     "locale": rep_article.get("locale", "ko"),
                     "keywords": unique_keywords,

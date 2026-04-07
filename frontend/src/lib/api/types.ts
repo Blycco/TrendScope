@@ -63,12 +63,26 @@ export interface TrendItem {
 	early_trend_score: number;
 	keywords: string[];
 	created_at: string;
+	article_count: number;
+	direction: 'rising' | 'steady' | 'declining';
 }
 
 export interface TrendListResponse {
 	items: TrendItem[];
 	next_cursor: string | null;
 	total: number;
+}
+
+export interface TimelinePoint {
+	timestamp: string;
+	article_count: number;
+	source_count: number;
+}
+
+export interface TrendTimelineResponse {
+	group_id: string;
+	interval: string;
+	points: TimelinePoint[];
 }
 
 // ---------------------------------------------------------------------------

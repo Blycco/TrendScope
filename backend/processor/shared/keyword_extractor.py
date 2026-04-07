@@ -21,6 +21,8 @@ _MAX_KEYWORD_LEN: int = 30
 _DEFAULT_TOP_K: int = 10
 _BM25_K1: float = 1.5
 _BM25_B: float = 0.75
+_BIGRAM_MIN_FREQ: int = 2
+_BIGRAM_SCORE_WEIGHT: float = 0.5
 
 # Korean noun-like pattern (2+ syllable sequences)
 _KOREAN_NOUN_PATTERN: re.Pattern[str] = re.compile(r"[가-힣]{2,}")
@@ -87,9 +89,10 @@ _STOP_WORDS: frozenset[str] = frozenset(
     }
 )
 
-# Korean stop words (common particles / functional words)
+# Korean stop words (common particles / functional words / news boilerplate)
 _KOREAN_STOP_WORDS: frozenset[str] = frozenset(
     {
+        # 기존 — 조사/어미/접속사
         "것이",
         "하는",
         "있는",
@@ -111,8 +114,68 @@ _KOREAN_STOP_WORDS: frozenset[str] = frozenset(
         "따르면",
         "밝혔다",
         "전했다",
+        # 뉴스 빈출 무의미 단어
+        "것으로",
+        "지난",
+        "올해",
+        "오늘",
+        "내년",
+        "최근",
+        "현재",
+        "이후",
+        "가운데",
+        "사이",
+        "가량",
+        "정도",
+        "이상",
+        "미만",
+        "대비",
+        "전년",
+        "분기",
+        "한편",
+        "이날",
+        # 매체/기자 관련
+        "기자",
+        "특파원",
+        "뉴스",
+        "연합뉴스",
+        "한겨레",
+        "매일경제",
+        "조선일보",
+        "중앙일보",
+        "동아일보",
+        "한국경제",
+        "머니투데이",
+        "아시아경제",
+        "헤럴드경제",
     }
 )
+
+# POS tags to keep from kiwipiepy (nouns + English)
+_NOUN_POS_TAGS: frozenset[str] = frozenset({"NNG", "NNP", "NNB", "SL"})
+
+# --- Kiwi singleton ---
+_kiwi_instance: object | None = None
+_kiwi_loaded: bool = False
+
+
+def _get_kiwi() -> object | None:
+    """Lazy-load kiwipiepy Kiwi instance. Returns None if unavailable."""
+    global _kiwi_instance, _kiwi_loaded
+    if not _kiwi_loaded:
+        try:
+            from kiwipiepy import Kiwi  # type: ignore[import-untyped]
+
+            _kiwi_instance = Kiwi()
+            _kiwi_loaded = True
+            logger.info("kiwi_loaded")
+        except ImportError:
+            _kiwi_loaded = True
+            logger.info("kiwi_unavailable_fallback")
+        except Exception as exc:
+            _kiwi_loaded = True
+            logger.warning("kiwi_load_failed", error=str(exc))
+    return _kiwi_instance
 
 
 @dataclass
@@ -173,6 +236,25 @@ def _tokenize_simple(text: str) -> list[str]:
     ]
 
 
+def _try_kiwi_tokenize(text: str) -> list[str] | None:
+    """Attempt kiwipiepy POS-based tokenization. Returns None if unavailable."""
+    kiwi = _get_kiwi()
+    if kiwi is None:
+        return None
+    try:
+        result = kiwi.tokenize(text)
+        tokens = [
+            token.form
+            for token in result
+            if token.tag in _NOUN_POS_TAGS
+            and _MIN_KEYWORD_LEN <= len(token.form) <= _MAX_KEYWORD_LEN
+        ]
+        return [t for t in tokens if t.lower() not in _STOP_WORDS and t not in _KOREAN_STOP_WORDS]
+    except Exception as exc:
+        logger.warning("kiwi_tokenize_failed", error=str(exc))
+        return None
+
+
 def _try_soynlp_tokenize(text: str) -> list[str] | None:
     """Attempt soynlp-based tokenization. Returns None if unavailable."""
     try:
@@ -224,11 +306,33 @@ def _compute_bm25(
     return idf * numerator / denominator if denominator > 0 else 0.0
 
 
+def _extract_bigrams(
+    tokens: list[str],
+    *,
+    min_freq: int = _BIGRAM_MIN_FREQ,
+) -> Counter[str]:
+    """Extract bigrams (adjacent token pairs) from token list.
+
+    Args:
+        tokens: List of tokens.
+        min_freq: Minimum frequency to include a bigram.
+
+    Returns:
+        Counter of bigram strings with frequency >= min_freq.
+    """
+    bigrams: Counter[str] = Counter()
+    for i in range(len(tokens) - 1):
+        bigram = f"{tokens[i]}_{tokens[i + 1]}"
+        bigrams[bigram] += 1
+    return Counter({b: c for b, c in bigrams.items() if c >= min_freq})
+
+
 def extract_keywords(
     text: str,
     *,
     top_k: int = _DEFAULT_TOP_K,
     use_soynlp: bool = True,
+    use_bigrams: bool = True,
     corpus: CorpusStats | None = None,
 ) -> list[Keyword]:
     """Extract top-k keywords from text using TF-IDF x BM25 scoring.
@@ -237,6 +341,7 @@ def extract_keywords(
         text: Input text (should be pre-normalized).
         top_k: Number of keywords to return.
         use_soynlp: Attempt soynlp tokenization first.
+        use_bigrams: Include co-occurrence bigrams in keywords.
         corpus: Corpus stats for IDF computation. Uses module-level stats if None.
 
     Returns:
@@ -245,9 +350,10 @@ def extract_keywords(
     if not text or not text.strip():
         return []
 
-    # Tokenize
+    # Tokenize: kiwi (POS) → soynlp → simple regex
     tokens: list[str] | None = None
-    if use_soynlp:
+    tokens = _try_kiwi_tokenize(text)
+    if tokens is None and use_soynlp:
         tokens = _try_soynlp_tokenize(text)
     if tokens is None:
         tokens = _tokenize_simple(text)
@@ -264,11 +370,22 @@ def extract_keywords(
 
     # Score each unique term: TF-IDF × BM25
     scored: list[Keyword] = []
+    unigram_scores: dict[str, float] = {}
     for term, freq in term_counts.items():
         tf_idf = _compute_tf(term, term_counts, doc_length) * _compute_idf(term, stats)
         bm25 = _compute_bm25(term, term_counts, doc_length, stats)
         combined = tf_idf * bm25
+        unigram_scores[term] = combined
         scored.append(Keyword(term=term, score=combined, frequency=freq))
+
+    # Add bigrams (co-occurrence patterns)
+    if use_bigrams and len(tokens) > 1:
+        bigram_counts = _extract_bigrams(tokens)
+        for bigram, freq in bigram_counts.items():
+            parts = bigram.split("_", 1)
+            avg_score = sum(unigram_scores.get(p, 0.0) for p in parts) / len(parts)
+            bigram_score = avg_score * _BIGRAM_SCORE_WEIGHT
+            scored.append(Keyword(term=bigram, score=bigram_score, frequency=freq))
 
     scored.sort(key=lambda kw: kw.score, reverse=True)
     return scored[:top_k]

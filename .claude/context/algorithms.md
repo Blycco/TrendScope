@@ -35,7 +35,7 @@ score = freshness + source_weight + article_count_bonus + social_signal + keywor
 ## SemanticClusterer
 ```python
 # Stage 1: Jaccard(keywords) — O(1) early filter
-# Stage 2: cosine(MiniLM-L6) — threshold dynamic per category
+# Stage 2: cosine(KR-SBERT-V40K) — threshold dynamic per category
 sim(A,B) = 0.50*cosine + 0.25*jaccard + 0.15*temporal + 0.10*source
 ```
 

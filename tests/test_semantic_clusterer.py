@@ -3,16 +3,19 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from unittest.mock import patch
 
 from backend.processor.shared.semantic_clusterer import (
     Cluster,
     ClusterItem,
+    _cluster_greedy,
     cluster_items,
     compute_cosine_similarity,
     compute_jaccard,
     compute_similarity,
     compute_source_similarity,
     compute_temporal_similarity,
+    refine_clusters,
 )
 
 
@@ -210,5 +213,294 @@ class TestClusterItems:
         clusters = cluster_items(items)
         cluster = clusters[0]
         assert isinstance(cluster, Cluster)
-        assert cluster.cluster_id == "cluster_0"
         assert cluster.representative.item_id == "1"
+
+
+class TestHdbscanClustering:
+    """Tests for HDBSCAN-based clustering."""
+
+    def test_hdbscan_clusters_similar_items(self) -> None:
+        """Items with identical embeddings should cluster together."""
+        now = datetime.now(timezone.utc)
+        emb_a = [1.0, 0.0, 0.0]
+        emb_b = [0.0, 0.0, 1.0]
+        items = [
+            ClusterItem(
+                item_id="a1",
+                text="economy",
+                keywords={"경제", "성장"},
+                published_at=now,
+                source_type="news",
+                embedding=emb_a,
+            ),
+            ClusterItem(
+                item_id="a2",
+                text="economy",
+                keywords={"경제", "성장"},
+                published_at=now,
+                source_type="news",
+                embedding=emb_a,
+            ),
+            ClusterItem(
+                item_id="a3",
+                text="economy",
+                keywords={"경제", "성장"},
+                published_at=now,
+                source_type="news",
+                embedding=emb_a,
+            ),
+            ClusterItem(
+                item_id="b1",
+                text="sports",
+                keywords={"스포츠", "축구"},
+                published_at=now,
+                source_type="news",
+                embedding=emb_b,
+            ),
+            ClusterItem(
+                item_id="b2",
+                text="sports",
+                keywords={"스포츠", "축구"},
+                published_at=now,
+                source_type="news",
+                embedding=emb_b,
+            ),
+            ClusterItem(
+                item_id="b3",
+                text="sports",
+                keywords={"스포츠", "축구"},
+                published_at=now,
+                source_type="news",
+                embedding=emb_b,
+            ),
+        ]
+        clusters = cluster_items(items)
+        # Should produce at least 2 clusters (economy vs sports)
+        assert len(clusters) >= 2
+        # All items should be accounted for
+        total = sum(c.size for c in clusters)
+        assert total == 6
+
+    def test_hdbscan_separates_dissimilar(self) -> None:
+        """Very different items should not cluster together."""
+        now = datetime.now(timezone.utc)
+        past = now - timedelta(days=30)
+        items = [
+            ClusterItem(
+                item_id="1",
+                text="a",
+                keywords={"경제"},
+                published_at=now,
+                source_type="news",
+                embedding=[1.0, 0.0, 0.0],
+            ),
+            ClusterItem(
+                item_id="2",
+                text="b",
+                keywords={"스포츠"},
+                published_at=past,
+                source_type="blog",
+                embedding=[0.0, 1.0, 0.0],
+            ),
+            ClusterItem(
+                item_id="3",
+                text="c",
+                keywords={"정치"},
+                published_at=past,
+                source_type="sns",
+                embedding=[0.0, 0.0, 1.0],
+            ),
+        ]
+        clusters = cluster_items(items)
+        # All items are dissimilar → likely separate or noise
+        assert len(clusters) >= 2
+
+    def test_hdbscan_all_items_preserved(self) -> None:
+        """No items should be lost during clustering."""
+        now = datetime.now(timezone.utc)
+        items = [
+            ClusterItem(
+                item_id=f"item_{i}",
+                text=f"text {i}",
+                keywords={f"kw{i}"},
+                published_at=now,
+                embedding=[float(i), 0.0, 0.0],
+            )
+            for i in range(5)
+        ]
+        clusters = cluster_items(items)
+        all_ids = set()
+        for c in clusters:
+            all_ids.add(c.representative.item_id)
+            for m in c.members:
+                all_ids.add(m.item_id)
+        assert all_ids == {f"item_{i}" for i in range(5)}
+
+    def test_hdbscan_fallback_few_items(self) -> None:
+        """With < 3 items, falls back to greedy."""
+        now = datetime.now(timezone.utc)
+        emb = [1.0, 0.0, 0.0]
+        items = [
+            ClusterItem(
+                item_id="1",
+                text="a",
+                keywords={"경제"},
+                published_at=now,
+                source_type="news",
+                embedding=emb,
+            ),
+            ClusterItem(
+                item_id="2",
+                text="b",
+                keywords={"경제"},
+                published_at=now,
+                source_type="news",
+                embedding=emb,
+            ),
+        ]
+        clusters = cluster_items(items)
+        assert len(clusters) >= 1
+        total = sum(c.size for c in clusters)
+        assert total == 2
+
+    def test_greedy_fallback_on_import_error(self) -> None:
+        """When HDBSCAN is unavailable, greedy fallback is used."""
+        now = datetime.now(timezone.utc)
+        emb = [1.0, 0.0, 0.0]
+        items = [
+            ClusterItem(
+                item_id=str(i),
+                text="a",
+                keywords={"경제"},
+                published_at=now,
+                source_type="news",
+                embedding=emb,
+            )
+            for i in range(4)
+        ]
+        with patch(
+            "backend.processor.shared.semantic_clusterer._cluster_hdbscan",
+            return_value=None,
+        ):
+            clusters = cluster_items(items)
+            assert len(clusters) >= 1
+            total = sum(c.size for c in clusters)
+            assert total == 4
+
+
+class TestClusterGreedy:
+    """Tests for greedy fallback directly."""
+
+    def test_greedy_similar_items(self) -> None:
+        now = datetime.now(timezone.utc)
+        emb = [1.0, 0.0, 0.0]
+        items = [
+            ClusterItem(
+                item_id="1",
+                text="a",
+                keywords={"경제", "성장"},
+                published_at=now,
+                source_type="news",
+                embedding=emb,
+            ),
+            ClusterItem(
+                item_id="2",
+                text="b",
+                keywords={"경제", "성장", "gdp"},
+                published_at=now,
+                source_type="news",
+                embedding=emb,
+            ),
+        ]
+        clusters = _cluster_greedy(items, threshold=0.3)
+        assert len(clusters) == 1
+        assert clusters[0].size == 2
+
+
+class TestRefineClusters:
+    """Tests for refine_clusters outlier removal."""
+
+    def test_refine_removes_outlier(self) -> None:
+        """Outlier with very different embedding is separated."""
+        good_emb = [1.0, 0.0, 0.0]
+        outlier_emb = [0.0, 0.0, 1.0]  # orthogonal → low cosine
+        cluster = Cluster(
+            cluster_id="c0",
+            representative=ClusterItem(
+                item_id="1",
+                text="a",
+                keywords={"경제"},
+                embedding=good_emb,
+            ),
+            members=[
+                ClusterItem(item_id="2", text="b", keywords={"경제"}, embedding=good_emb),
+                ClusterItem(item_id="3", text="c", keywords={"경제"}, embedding=good_emb),
+                ClusterItem(
+                    item_id="outlier",
+                    text="d",
+                    keywords={"스포츠"},
+                    embedding=outlier_emb,
+                ),
+            ],
+        )
+        result = refine_clusters([cluster])
+        # outlier should be separated
+        all_ids = set()
+        for c in result:
+            all_ids.add(c.representative.item_id)
+            for m in c.members:
+                all_ids.add(m.item_id)
+        assert "outlier" in all_ids  # not lost, just separated
+        assert len(result) >= 2  # at least original + outlier singleton
+
+    def test_refine_keeps_good_members(self) -> None:
+        """All similar members stay together."""
+        emb = [1.0, 0.0, 0.0]
+        cluster = Cluster(
+            cluster_id="c0",
+            representative=ClusterItem(
+                item_id="1",
+                text="a",
+                keywords={"경제"},
+                embedding=emb,
+            ),
+            members=[
+                ClusterItem(item_id="2", text="b", keywords={"경제"}, embedding=emb),
+                ClusterItem(item_id="3", text="c", keywords={"경제"}, embedding=emb),
+            ],
+        )
+        result = refine_clusters([cluster])
+        assert len(result) == 1
+        assert result[0].size == 3
+
+    def test_refine_single_item_cluster(self) -> None:
+        """Singleton clusters are unchanged."""
+        cluster = Cluster(
+            cluster_id="c0",
+            representative=ClusterItem(item_id="1", text="a"),
+        )
+        result = refine_clusters([cluster])
+        assert len(result) == 1
+        assert result[0].size == 1
+
+    def test_refine_no_embeddings_fallback(self) -> None:
+        """Without embeddings, Jaccard is used as fallback."""
+        shared_kw = {"경제", "성장", "투자"}
+        outlier_kw = {"스포츠", "야구", "축구"}
+        cluster = Cluster(
+            cluster_id="c0",
+            representative=ClusterItem(
+                item_id="1",
+                text="a",
+                keywords=shared_kw,
+            ),
+            members=[
+                ClusterItem(item_id="2", text="b", keywords=shared_kw),
+                ClusterItem(item_id="3", text="c", keywords=shared_kw),
+                ClusterItem(item_id="outlier", text="d", keywords=outlier_kw),
+            ],
+        )
+        result = refine_clusters([cluster])
+        # outlier has zero keyword overlap → should be separated
+        singleton_ids = {c.representative.item_id for c in result if c.size == 1}
+        assert "outlier" in singleton_ids

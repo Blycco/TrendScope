@@ -28,7 +28,7 @@ _TEMPORAL_DECAY_HOURS: float = 24.0  # Time window for temporal similarity
 
 # Sentence transformer model (loaded lazily)
 _embedding_model: object | None = None
-_MODEL_NAME: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L6-v2"
+_MODEL_NAME: str = "snunlp/KR-SBERT-V40K-klueNLI-augSTS"
 
 
 @dataclass
@@ -124,8 +124,8 @@ def compute_cosine_similarity(vec_a: list[float], vec_b: list[float]) -> float:
     return dot / (norm_a * norm_b)
 
 
-def _encode_text(text: str) -> list[float] | None:
-    """Encode text into embedding vector using MiniLM-L6."""
+def encode_text(text: str) -> list[float] | None:
+    """Encode text into embedding vector using KR-SBERT."""
     model = _get_embedding_model()
     if model is None:
         return None
@@ -158,9 +158,9 @@ def compute_similarity(a: ClusterItem, b: ClusterItem) -> float:
     else:
         # Try to compute embeddings
         if a.embedding is None:
-            a.embedding = _encode_text(a.text)
+            a.embedding = encode_text(a.text)
         if b.embedding is None:
-            b.embedding = _encode_text(b.text)
+            b.embedding = encode_text(b.text)
         if a.embedding is not None and b.embedding is not None:
             cosine = compute_cosine_similarity(a.embedding, b.embedding)
 
@@ -175,23 +175,39 @@ def compute_similarity(a: ClusterItem, b: ClusterItem) -> float:
     )
 
 
-def cluster_items(
+_HDBSCAN_MIN_CLUSTER_SIZE: int = 2
+_HDBSCAN_MIN_ITEMS: int = 3
+
+
+def _pick_representative(
+    members: list[ClusterItem],
+) -> tuple[ClusterItem, list[ClusterItem]]:
+    """Pick the member closest to centroid as representative."""
+    if len(members) == 1:
+        return members[0], []
+
+    centroid = _compute_centroid(members)
+    if centroid is not None:
+        best_idx = 0
+        best_sim = -1.0
+        for i, m in enumerate(members):
+            if m.embedding is not None:
+                sim = compute_cosine_similarity(m.embedding, centroid)
+                if sim > best_sim:
+                    best_sim = sim
+                    best_idx = i
+        rep = members[best_idx]
+        rest = members[:best_idx] + members[best_idx + 1 :]
+        return rep, rest
+
+    return members[0], members[1:]
+
+
+def _cluster_greedy(
     items: list[ClusterItem],
-    *,
-    threshold: float = _DEFAULT_CLUSTER_THRESHOLD,
+    threshold: float,
 ) -> list[Cluster]:
-    """Cluster items using greedy single-linkage with composite similarity.
-
-    Args:
-        items: Items to cluster.
-        threshold: Minimum similarity to join a cluster.
-
-    Returns:
-        List of Cluster objects.
-    """
-    if not items:
-        return []
-
+    """Original greedy single-linkage clustering (fallback)."""
     clusters: list[Cluster] = []
 
     for item in items:
@@ -219,10 +235,224 @@ def cluster_items(
             )
             clusters.append(new_cluster)
 
-    logger.info(
-        "clustering_complete",
-        input_count=len(items),
-        cluster_count=len(clusters),
-    )
+    return clusters
+
+
+def _cluster_hdbscan(items: list[ClusterItem]) -> list[Cluster] | None:
+    """HDBSCAN density-based clustering. Returns None if unavailable."""
+    if len(items) < _HDBSCAN_MIN_ITEMS:
+        return None
+
+    try:
+        from sklearn.cluster import HDBSCAN as SklearnHDBSCAN  # type: ignore[import-untyped]
+    except ImportError:
+        logger.info("hdbscan_unavailable_fallback")
+        return None
+
+    try:
+        # Build pairwise distance matrix
+        n = len(items)
+        dist_matrix = [[0.0] * n for _ in range(n)]
+        for i in range(n):
+            for j in range(i + 1, n):
+                sim = compute_similarity(items[i], items[j])
+                dist = max(0.0, 1.0 - sim)
+                dist_matrix[i][j] = dist
+                dist_matrix[j][i] = dist
+
+        model = SklearnHDBSCAN(
+            min_cluster_size=_HDBSCAN_MIN_CLUSTER_SIZE,
+            metric="precomputed",
+        )
+        labels = model.fit_predict(dist_matrix)
+
+        # Group items by label
+        label_groups: dict[int, list[ClusterItem]] = {}
+        for item, label in zip(items, labels):  # noqa: B905
+            label_groups.setdefault(int(label), []).append(item)
+
+        clusters: list[Cluster] = []
+        cluster_idx = 0
+
+        # Real clusters (label >= 0)
+        for label in sorted(k for k in label_groups if k >= 0):
+            members = label_groups[label]
+            rep, rest = _pick_representative(members)
+            clusters.append(
+                Cluster(
+                    cluster_id=f"cluster_{cluster_idx}",
+                    representative=rep,
+                    members=rest,
+                )
+            )
+            cluster_idx += 1
+
+        # Noise points (label == -1) become singletons
+        for noise_item in label_groups.get(-1, []):
+            clusters.append(
+                Cluster(
+                    cluster_id=f"noise_{cluster_idx}",
+                    representative=noise_item,
+                )
+            )
+            cluster_idx += 1
+
+        return clusters
+    except Exception as exc:
+        logger.warning("hdbscan_clustering_failed", error=str(exc))
+        return None
+
+
+def cluster_items(
+    items: list[ClusterItem],
+    *,
+    threshold: float = _DEFAULT_CLUSTER_THRESHOLD,
+) -> list[Cluster]:
+    """Cluster items using HDBSCAN with greedy single-linkage fallback.
+
+    Args:
+        items: Items to cluster.
+        threshold: Minimum similarity for greedy fallback.
+
+    Returns:
+        List of Cluster objects.
+    """
+    if not items:
+        return []
+
+    # Try HDBSCAN first
+    clusters = _cluster_hdbscan(items)
+    if clusters is None:
+        clusters = _cluster_greedy(items, threshold)
+        logger.info(
+            "clustering_complete",
+            method="greedy",
+            input_count=len(items),
+            cluster_count=len(clusters),
+        )
+    else:
+        logger.info(
+            "clustering_complete",
+            method="hdbscan",
+            input_count=len(items),
+            cluster_count=len(clusters),
+        )
 
     return clusters
+
+
+# --- Outlier refinement ---
+_OUTLIER_SIGMA: float = 1.0
+
+
+def _compute_centroid(members: list[ClusterItem]) -> list[float] | None:
+    """Compute the mean embedding vector of cluster members."""
+    embeddings = [m.embedding for m in members if m.embedding is not None]
+    if not embeddings:
+        return None
+    dim = len(embeddings[0])
+    centroid = [0.0] * dim
+    for emb in embeddings:
+        for i in range(dim):
+            centroid[i] += emb[i]
+    n = len(embeddings)
+    return [c / n for c in centroid]
+
+
+def _member_similarity(
+    member: ClusterItem,
+    centroid: list[float] | None,
+    rep_keywords: set[str],
+) -> float:
+    """Compute similarity of a member to the cluster centroid/representative."""
+    if centroid is not None and member.embedding is not None:
+        return compute_cosine_similarity(member.embedding, centroid)
+    # Fallback: Jaccard against representative keywords
+    if rep_keywords and member.keywords:
+        return compute_jaccard(member.keywords, rep_keywords)
+    return 1.0  # No data to judge → keep
+
+
+def refine_clusters(
+    clusters: list[Cluster],
+    *,
+    sigma: float = _OUTLIER_SIGMA,
+) -> list[Cluster]:
+    """Remove outlier members from clusters using centroid distance.
+
+    Members with similarity below (mean - sigma * std) are separated
+    into their own single-item clusters.
+
+    Args:
+        clusters: Clusters to refine.
+        sigma: Standard deviation multiplier for cutoff.
+
+    Returns:
+        Refined list of clusters (outliers become singleton clusters).
+    """
+    refined: list[Cluster] = []
+    total_removed = 0
+
+    for cluster in clusters:
+        all_members = [cluster.representative, *cluster.members]
+
+        # Skip singleton clusters
+        if len(all_members) <= 2:
+            refined.append(cluster)
+            continue
+
+        # Compute centroid and representative keywords
+        centroid = _compute_centroid(all_members)
+        rep_keywords = cluster.representative.keywords
+
+        # Compute per-member similarities
+        sims = [_member_similarity(m, centroid, rep_keywords) for m in all_members]
+
+        mean_sim = sum(sims) / len(sims)
+        variance = sum((s - mean_sim) ** 2 for s in sims) / len(sims)
+        std_sim = math.sqrt(variance)
+        cutoff = mean_sim - sigma * std_sim
+
+        # Partition: keep vs outlier
+        keep: list[ClusterItem] = []
+        outliers: list[ClusterItem] = []
+        for member, sim in zip(all_members, sims):  # noqa: B905
+            if sim >= cutoff:
+                keep.append(member)
+            else:
+                outliers.append(member)
+
+        if not outliers:
+            refined.append(cluster)
+            continue
+
+        total_removed += len(outliers)
+
+        # Rebuild cluster with remaining members
+        if keep:
+            new_rep = keep[0]
+            new_cluster = Cluster(
+                cluster_id=cluster.cluster_id,
+                representative=new_rep,
+                members=keep[1:],
+            )
+            refined.append(new_cluster)
+
+        # Outliers become singleton clusters
+        for outlier in outliers:
+            refined.append(
+                Cluster(
+                    cluster_id=f"outlier_{outlier.item_id}",
+                    representative=outlier,
+                )
+            )
+
+    if total_removed > 0:
+        logger.info(
+            "cluster_refinement_complete",
+            outliers_removed=total_removed,
+            clusters_before=len(clusters),
+            clusters_after=len(refined),
+        )
+
+    return refined
