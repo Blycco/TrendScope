@@ -177,7 +177,7 @@ class TestAddKeyword:
             json={"keyword": "fail"},
         )
         assert resp.status_code == 500
-        assert resp.json()["detail"]["code"] == "E0040"
+        assert resp.json()["code"] == "E0040"
 
 
 # ---------------------------------------------------------------------------
@@ -230,4 +230,4 @@ class TestDeleteKeyword:
             headers={"Authorization": f"Bearer {token}"},
         )
         assert resp.status_code == 500
-        assert resp.json()["detail"]["code"] == "E0040"
+        assert resp.json()["code"] == "E0040"
