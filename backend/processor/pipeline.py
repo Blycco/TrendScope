@@ -22,7 +22,7 @@ from backend.processor.shared.semantic_clusterer import (
     ClusterItem,
     cluster_items,
     compute_cosine_similarity,
-    encode_text,
+    encode_texts,
     refine_clusters,
 )
 from backend.processor.shared.spam_filter import classify_spam
@@ -214,10 +214,11 @@ async def _stage_match_existing_groups(
     if not group_rows:
         return articles
 
-    # Pre-build keyword sets and embeddings for each existing group
+    # Pre-build keyword sets and batch-encode group titles for all groups at once
     import uuid as _uuid  # noqa: PLC0415
 
-    group_data: list[tuple[_uuid.UUID, set[str], float, str]] = []
+    group_titles: list[str] = []
+    group_meta: list[tuple[_uuid.UUID, set[str], float]] = []
     for row in group_rows:
         group_id: _uuid.UUID = row["id"]
         raw_kw: list[str] = list(row["keywords"] or [])
@@ -227,12 +228,33 @@ async def _stage_match_existing_groups(
             if len(w) >= 2 and not w.isdigit()
         }
         combined: set[str] = set(raw_kw) | title_words
-        group_title: str = row["title"] or ""
-        group_data.append((group_id, combined, float(row["score"]), group_title))
+        group_titles.append(row["title"] or "")
+        group_meta.append((group_id, combined, float(row["score"])))
+
+    # Batch-encode all group titles at once (cached for this pipeline run)
+    group_embeddings: list[list[float]] = encode_texts(group_titles)
+
+    # Batch-encode all article texts at once
+    article_texts: list[str] = [f"{a.get('title', '')} {a.get('body', '')[:500]}" for a in articles]
+    article_embeddings: list[list[float]] = encode_texts(article_texts)
+
+    # Pre-load article counts for all candidate groups in a single batch query
+    group_ids_list: list[_uuid.UUID] = [gid for gid, _, _ in group_meta]
+    group_article_counts: dict[_uuid.UUID, int] = {}
+    try:
+        count_rows = await db_pool.fetch(
+            "SELECT group_id, COUNT(*) AS cnt FROM news_article "
+            "WHERE group_id = ANY($1) GROUP BY group_id",
+            group_ids_list,
+        )
+        for row in count_rows:
+            group_article_counts[row["group_id"]] = int(row["cnt"])
+    except Exception as exc:
+        logger.warning("pipeline_match_batch_count_failed", error=str(exc))
 
     unmatched: list[dict[str, Any]] = []
 
-    for article in articles:
+    for idx, article in enumerate(articles):
         try:
             article_kw_set: set[str] = set(article.get("keywords", []))
             title_words = {
@@ -249,17 +271,16 @@ async def _stage_match_existing_groups(
             best_score: float = 0.0
             best_current_score: float = 0.0
 
-            article_text = f"{article.get('title', '')} {article.get('body', '')[:500]}"
-            article_embedding = encode_text(article_text)
+            article_embedding = article_embeddings[idx] if idx < len(article_embeddings) else []
 
-            for group_id, group_kws, current_score, group_title in group_data:
+            for g_idx, (group_id, group_kws, current_score) in enumerate(group_meta):
                 jaccard = _jaccard(article_kw_set, group_kws)
 
-                # Compute cosine similarity if embeddings available
+                # Compute cosine similarity using pre-computed embeddings
                 cosine = 0.0
-                if article_embedding is not None:
-                    group_embedding = encode_text(group_title)
-                    if group_embedding is not None:
+                if article_embedding and g_idx < len(group_embeddings):
+                    group_embedding = group_embeddings[g_idx]
+                    if group_embedding:
                         cosine = compute_cosine_similarity(article_embedding, group_embedding)
 
                 # Composite: same weights as semantic_clusterer
@@ -279,13 +300,11 @@ async def _stage_match_existing_groups(
                         url_hash,
                     )
 
-                # Recalculate group score: increment article_count by 1
+                # Recalculate group score using pre-loaded counts (increment in-memory)
                 try:
-                    article_count_row = await db_pool.fetchrow(
-                        "SELECT COUNT(*) AS cnt FROM news_article WHERE group_id = $1",
-                        best_group_id,
-                    )
-                    new_article_count = int(article_count_row["cnt"]) if article_count_row else 1
+                    prev_count = group_article_counts.get(best_group_id, 0)
+                    new_article_count = prev_count + 1
+                    group_article_counts[best_group_id] = new_article_count
 
                     pub_time = article.get("publish_time", datetime.now(tz=timezone.utc))
                     if isinstance(pub_time, str):
@@ -509,8 +528,15 @@ async def _stage_save(
     scored_clusters: list[dict[str, Any]],
     db_pool: asyncpg.Pool,
 ) -> int:
-    """Stage 7: Save scored clusters to news_group and update news_article."""
+    """Stage 7: Save scored clusters to news_group and update news_article.
+
+    Uses per-group INSERT for news_group (needs RETURNING id), then batch
+    UPDATE for news_article assignments via executemany.
+    """
     saved = 0
+    # Collect all (group_id, url_hash) pairs for batch article UPDATE
+    article_updates: list[tuple[Any, str]] = []
+
     for item in scored_clusters:
         try:
             group_id = await db_pool.fetchval(
@@ -530,11 +556,7 @@ async def _stage_save(
             for article in articles:
                 url_hash = article.get("url_hash", "")
                 if url_hash:
-                    await db_pool.execute(
-                        "UPDATE news_article SET group_id = $1 WHERE url_hash = $2",
-                        group_id,
-                        url_hash,
-                    )
+                    article_updates.append((group_id, url_hash))
 
             saved += 1
         except Exception as exc:
@@ -544,6 +566,21 @@ async def _stage_save(
                 error=str(exc),
             )
             continue
+
+    # Batch UPDATE all article-group assignments at once
+    if article_updates:
+        try:
+            await db_pool.executemany(
+                "UPDATE news_article SET group_id = $1 WHERE url_hash = $2",
+                article_updates,
+            )
+        except Exception as exc:
+            logger.warning(
+                "pipeline_save_batch_update_error",
+                count=len(article_updates),
+                error=str(exc),
+            )
+
     return saved
 
 
