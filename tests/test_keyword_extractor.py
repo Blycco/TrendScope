@@ -152,3 +152,48 @@ class TestKiwiPosFiltering:
         verb_forms = {"성장하고", "발전했다"}
         for v in verb_forms:
             assert v not in tokens, f"동사 '{v}'가 kiwi 토큰에 포함됨"
+
+
+class TestBigramCooccurrence:
+    """Tests for bigram co-occurrence keyword extraction."""
+
+    def setup_method(self) -> None:
+        reset_corpus_stats()
+
+    def test_bigrams_extracted(self) -> None:
+        """Repeated adjacent token pairs should appear as bigrams."""
+        text = "machine learning machine learning machine learning deep learning"
+        result = extract_keywords(text, use_soynlp=False, top_k=20)
+        terms = [kw.term for kw in result]
+        assert "machine_learning" in terms
+
+    def test_bigrams_min_freq(self) -> None:
+        """Bigrams appearing only once should be excluded."""
+        text = "apple banana cherry date elderberry fig"
+        result = extract_keywords(text, use_soynlp=False, top_k=20)
+        terms = [kw.term for kw in result]
+        # Each bigram appears only once → none should be included
+        bigram_terms = [t for t in terms if "_" in t]
+        assert len(bigram_terms) == 0
+
+    def test_bigrams_disabled(self) -> None:
+        """With use_bigrams=False, no bigrams should appear."""
+        text = "machine learning machine learning machine learning"
+        result = extract_keywords(
+            text,
+            use_soynlp=False,
+            use_bigrams=False,
+            top_k=20,
+        )
+        terms = [kw.term for kw in result]
+        bigram_terms = [t for t in terms if "_" in t]
+        assert len(bigram_terms) == 0
+
+    def test_bigrams_have_scores(self) -> None:
+        """Bigram keywords should have non-zero scores."""
+        text = "python programming python programming python programming"
+        result = extract_keywords(text, use_soynlp=False, top_k=20)
+        bigram_kws = [kw for kw in result if "_" in kw.term]
+        for kw in bigram_kws:
+            assert kw.score > 0
+            assert kw.frequency >= 2
