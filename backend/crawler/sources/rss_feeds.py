@@ -1250,7 +1250,7 @@ NITTER_INSTANCES: list[str] = [
 # Aggregated access
 # ---------------------------------------------------------------------------
 
-ALL_NEWS_FEEDS: list[FeedSource] = KR_NEWS_FEEDS + GLOBAL_NEWS_FEEDS
+ALL_NEWS_FEEDS: list[FeedSource] = KR_NEWS_FEEDS + GLOBAL_NEWS_FEEDS + GOOGLE_TRENDS_FEEDS
 
 ALL_FEEDS: list[FeedSource] = (
     KR_NEWS_FEEDS + GLOBAL_NEWS_FEEDS + GOOGLE_TRENDS_FEEDS + COMMUNITY_FEEDS

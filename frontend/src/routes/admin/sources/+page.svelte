@@ -102,7 +102,7 @@
 	// Polling
 	let pollInterval: ReturnType<typeof setInterval> | null = null;
 
-	const SOURCE_TYPES = ['rss', 'reddit', 'nitter', 'community', 'google_trends'];
+	const SOURCE_TYPES = ['rss', 'reddit', 'nitter', 'community'];
 	const CATEGORIES = ['general', 'politics', 'economy', 'it', 'entertainment', 'sports'];
 	const LOCALES = ['ko', 'en', 'ja'];
 
@@ -311,8 +311,7 @@
 			rss: t_fn('admin.feeds.type_rss'),
 			reddit: t_fn('admin.feeds.type_reddit'),
 			nitter: t_fn('admin.feeds.type_nitter'),
-			community: t_fn('admin.feeds.type_community'),
-			google_trends: t_fn('admin.feeds.type_google_trends')
+			community: t_fn('admin.feeds.type_community')
 		};
 		return map[type] ?? type;
 	}

@@ -200,7 +200,7 @@ class FeedSourceListResponse(BaseModel):
 
 
 class FeedSourceCreateRequest(BaseModel):
-    source_type: str = Field(..., pattern=r"^(rss|reddit|nitter|community|google_trends)$")
+    source_type: str = Field(..., pattern=r"^(rss|reddit|nitter|community)$")
     name: str = Field(..., min_length=1, max_length=200)
     url: str = Field(..., min_length=1)
     category: str = "general"
