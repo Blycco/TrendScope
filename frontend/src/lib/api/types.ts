@@ -86,6 +86,23 @@ export interface TrendTimelineResponse {
 }
 
 // ---------------------------------------------------------------------------
+// Forecast types
+// ---------------------------------------------------------------------------
+
+export interface ForecastPoint {
+	date: string;
+	yhat: number;
+	yhat_lower: number;
+	yhat_upper: number;
+}
+
+export interface ForecastResponse {
+	group_id: string;
+	horizon_days: number;
+	points: ForecastPoint[];
+}
+
+// ---------------------------------------------------------------------------
 // Dashboard types
 // ---------------------------------------------------------------------------
 

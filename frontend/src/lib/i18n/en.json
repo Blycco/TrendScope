@@ -117,6 +117,16 @@
 	"trend.detail.insights": "View Insights",
 	"trend.detail.articles": "Related Articles",
 	"trend.sentiment": "Sentiment",
+	"trend.detail.forecast": "Trend Forecast",
+
+	"forecast.title": "Trend Forecast (12 months)",
+	"forecast.actual": "Actual",
+	"forecast.predicted": "Predicted",
+	"forecast.confidence": "Confidence Interval",
+	"forecast.no_data": "Insufficient data for forecast.",
+	"forecast.pro_required": "Trend forecasting is available on the Pro plan and above.",
+	"forecast.date": "Date",
+	"forecast.value": "Predicted Value",
 
 	"chart.timeline.title": "Article Timeline",
 	"chart.timeline.article_count": "Articles",
