@@ -2,6 +2,7 @@
 	import { t } from 'svelte-i18n';
 	import type { TrendItem } from '$lib/api';
 	import EarlyBadge from './EarlyBadge.svelte';
+	import DirectionBadge from './DirectionBadge.svelte';
 	import { formatDate } from '$lib/utils/locale';
 
 	interface Props {
@@ -23,6 +24,7 @@
 					{trend.title}
 				</a>
 				<EarlyBadge score={trend.early_trend_score} />
+				<DirectionBadge direction={trend.direction} />
 			</div>
 
 			<div class="mt-2 flex flex-wrap gap-1.5">

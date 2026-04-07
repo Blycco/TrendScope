@@ -16,6 +16,7 @@ class TrendItem(BaseModel):
     early_trend_score: float
     keywords: list[str]
     created_at: datetime
+    direction: str = "steady"
 
 
 class TrendListResponse(BaseModel):
@@ -42,6 +43,7 @@ class TrendDetailResponse(BaseModel):
     early_trend_score: float
     keywords: list[str]
     created_at: datetime
+    direction: str = "steady"
     articles: list[TrendArticleItem]
 
 

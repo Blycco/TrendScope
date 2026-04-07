@@ -19,7 +19,8 @@ describe('API Types', () => {
 			score: 0.85,
 			early_trend_score: 0.6,
 			keywords: ['ai', 'ml'],
-			created_at: '2024-01-01T00:00:00Z'
+			created_at: '2024-01-01T00:00:00Z',
+			direction: 'steady'
 		};
 		expect(trend.id).toBe('1');
 		expect(trend.keywords).toHaveLength(2);
