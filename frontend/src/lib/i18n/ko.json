@@ -117,6 +117,10 @@
 	"trend.detail.insights": "인사이트 보기",
 	"trend.detail.articles": "관련 기사",
 	"trend.sentiment": "감성 분석",
+	"trend.sentiment.positive": "긍정",
+	"trend.sentiment.neutral": "중립",
+	"trend.sentiment.negative": "부정",
+	"trend.sentiment.no_data": "감성 분석 데이터가 없습니다.",
 
 	"chart.timeline.title": "기사 추이",
 	"chart.timeline.article_count": "기사 수",

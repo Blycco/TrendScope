@@ -117,6 +117,10 @@
 	"trend.detail.insights": "View Insights",
 	"trend.detail.articles": "Related Articles",
 	"trend.sentiment": "Sentiment",
+	"trend.sentiment.positive": "Positive",
+	"trend.sentiment.neutral": "Neutral",
+	"trend.sentiment.negative": "Negative",
+	"trend.sentiment.no_data": "No sentiment data available.",
 
 	"chart.timeline.title": "Article Timeline",
 	"chart.timeline.article_count": "Articles",

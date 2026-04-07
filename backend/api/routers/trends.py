@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import Response, StreamingResponse
 
 from backend.api.schemas.trends import (
+    SentimentDistributionResponse,
     TimelinePoint,
     TrendArticleItem,
     TrendDetailResponse,
@@ -24,17 +25,21 @@ from backend.common.errors import ErrorCode, error_response
 from backend.db.queries.trends import (
     encode_cursor,
     fetch_early_trends,
+    fetch_group_article_texts,
     fetch_related_trends,
     fetch_trend_detail,
     fetch_trend_timeline,
     fetch_trends,
 )
+from backend.processor.algorithms.sentiment import SentimentAnalyzer
 from backend.processor.shared.cache_manager import get_cached, set_cached
 
 router = APIRouter(tags=["trends"])
 logger = structlog.get_logger(__name__)
 
 _CACHE_TTL = 180  # 3 minutes
+_SENTIMENT_CACHE_TTL = 3600  # 1 hour
+_sentiment_analyzer = SentimentAnalyzer()
 
 
 def _trend_cache_key(category: str | None, locale: str | None) -> str:
@@ -365,3 +370,58 @@ async def get_trend_timeline(
         content=body_bytes,
         media_type="application/json",
     )
+
+
+@router.get(
+    "/trends/{group_id}/sentiment",
+    response_model=SentimentDistributionResponse,
+)
+async def get_trend_sentiment(
+    group_id: str,
+    request: Request,
+) -> Response:
+    """Return sentiment distribution for articles in a trend group."""
+    cache_key = f"sentiment:{group_id}"
+    try:
+        cached = await get_cached(cache_key)
+        if cached is not None:
+            return Response(content=cached, media_type="application/json")
+    except Exception as exc:
+        logger.warning("sentiment_cache_read_failed", group_id=group_id, error=str(exc))
+
+    try:
+        pool = request.app.state.db_pool
+        texts = await fetch_group_article_texts(pool, group_id=group_id)
+    except Exception as exc:
+        logger.error("sentiment_article_fetch_failed", group_id=group_id, error=str(exc))
+        return error_response(
+            ErrorCode.DB_ERROR, "Failed to fetch articles for sentiment", status_code=500
+        )
+
+    if not texts:
+        body = SentimentDistributionResponse(positive=0, neutral=0, negative=0, total=0)
+        body_bytes = body.model_dump_json().encode()
+        return Response(content=body_bytes, media_type="application/json")
+
+    try:
+        counts: dict[str, int] = {"positive": 0, "neutral": 0, "negative": 0}
+        for text in texts:
+            result = _sentiment_analyzer.analyze(text)
+            label = result.label if result.label in counts else "neutral"
+            counts[label] += 1
+
+        total = sum(counts.values())
+        body = SentimentDistributionResponse(
+            positive=counts["positive"],
+            neutral=counts["neutral"],
+            negative=counts["negative"],
+            total=total,
+        )
+        body_bytes = body.model_dump_json().encode()
+        await set_cached(cache_key, body_bytes, _SENTIMENT_CACHE_TTL)
+        return Response(content=body_bytes, media_type="application/json")
+    except Exception as exc:
+        logger.error("sentiment_analysis_failed", group_id=group_id, error=str(exc))
+        return error_response(
+            ErrorCode.INTERNAL_ERROR, "Sentiment analysis failed", status_code=500
+        )
