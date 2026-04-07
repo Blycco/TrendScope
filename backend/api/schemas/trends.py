@@ -18,6 +18,7 @@ class TrendItem(BaseModel):
     created_at: datetime
     article_count: int = 0
     direction: str = "steady"
+    status: str = "stable"
 
 
 class TrendListResponse(BaseModel):

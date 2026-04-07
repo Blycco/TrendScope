@@ -103,6 +103,11 @@
 	"status.steady": "Steady",
 	"status.loading": "Loading...",
 	"status.no_results": "No results found.",
+	"status.trend.exploding": "Exploding",
+	"status.trend.rising": "Rising",
+	"status.trend.stable": "Stable",
+	"status.trend.declining": "Declining",
+	"status.trend.peaked": "Peaked",
 
 	"role.marketer": "Marketer",
 	"role.creator": "Creator",
@@ -121,6 +126,16 @@
 	"trend.sentiment.neutral": "Neutral",
 	"trend.sentiment.negative": "Negative",
 	"trend.sentiment.no_data": "No sentiment data available.",
+	"trend.detail.forecast": "Trend Forecast",
+
+	"forecast.title": "Trend Forecast (12 months)",
+	"forecast.actual": "Actual",
+	"forecast.predicted": "Predicted",
+	"forecast.confidence": "Confidence Interval",
+	"forecast.no_data": "Insufficient data for forecast.",
+	"forecast.pro_required": "Trend forecasting is available on the Pro plan and above.",
+	"forecast.date": "Date",
+	"forecast.value": "Predicted Value",
 
 	"chart.timeline.title": "Article Timeline",
 	"chart.timeline.article_count": "Articles",

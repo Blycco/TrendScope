@@ -103,6 +103,11 @@
 	"status.steady": "유지 중",
 	"status.loading": "로딩 중...",
 	"status.no_results": "결과가 없습니다.",
+	"status.trend.exploding": "급상승",
+	"status.trend.rising": "상승 중",
+	"status.trend.stable": "안정",
+	"status.trend.declining": "하락 중",
+	"status.trend.peaked": "정점",
 
 	"role.marketer": "마케터",
 	"role.creator": "크리에이터",
@@ -121,6 +126,16 @@
 	"trend.sentiment.neutral": "중립",
 	"trend.sentiment.negative": "부정",
 	"trend.sentiment.no_data": "감성 분석 데이터가 없습니다.",
+	"trend.detail.forecast": "트렌드 예측",
+
+	"forecast.title": "트렌드 예측 (12개월)",
+	"forecast.actual": "실제 데이터",
+	"forecast.predicted": "예측",
+	"forecast.confidence": "신뢰 구간",
+	"forecast.no_data": "예측 데이터가 충분하지 않습니다.",
+	"forecast.pro_required": "트렌드 예측은 Pro 이상 플랜에서 이용 가능합니다.",
+	"forecast.date": "날짜",
+	"forecast.value": "예측값",
 
 	"chart.timeline.title": "기사 추이",
 	"chart.timeline.article_count": "기사 수",

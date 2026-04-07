@@ -65,6 +65,7 @@ export interface TrendItem {
 	created_at: string;
 	article_count: number;
 	direction: 'rising' | 'steady' | 'declining';
+	status: 'exploding' | 'rising' | 'stable' | 'declining' | 'peaked';
 }
 
 export interface TrendListResponse {
@@ -90,6 +91,23 @@ export interface SentimentDistribution {
 	neutral: number;
 	negative: number;
 	total: number;
+}
+
+// ---------------------------------------------------------------------------
+// Forecast types
+// ---------------------------------------------------------------------------
+
+export interface ForecastPoint {
+	date: string;
+	yhat: number;
+	yhat_lower: number;
+	yhat_upper: number;
+}
+
+export interface ForecastResponse {
+	group_id: string;
+	horizon_days: number;
+	points: ForecastPoint[];
 }
 
 // ---------------------------------------------------------------------------
