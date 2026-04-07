@@ -5,12 +5,14 @@ from __future__ import annotations
 import json
 import time
 import uuid
+from datetime import datetime
 from typing import Any
 
 import asyncpg
 import structlog
 
 from backend.crawler.sources.burst_crawler import run_burst_crawl
+from backend.processor.algorithms.seasonality import detect_seasonality
 from backend.processor.shared.cache_manager import get_cached, get_redis, set_cached
 
 logger = structlog.get_logger(__name__)
@@ -78,6 +80,46 @@ async def get_burst_cooldown(pool: asyncpg.Pool) -> int:
     return int(
         float(await _get_setting(pool, "burst_cooldown_hours", str(_DEFAULT_COOLDOWN_HOURS)))
     )
+
+
+async def _fetch_keyword_history(
+    pool: asyncpg.Pool,
+    keyword: str,
+) -> list[tuple[datetime, float]]:
+    """Fetch historical frequency data for a keyword from news_group.
+
+    Returns list of (created_at, early_trend_score) tuples.
+    """
+    try:
+        rows = await pool.fetch(
+            """
+            SELECT ng.created_at, ng.early_trend_score
+            FROM news_group ng
+            WHERE $1 = ANY(ng.keywords)
+            ORDER BY ng.created_at ASC
+            """,
+            keyword,
+        )
+        return [(row["created_at"], float(row["early_trend_score"])) for row in rows]
+    except Exception as exc:
+        logger.warning("keyword_history_fetch_failed", keyword=keyword, error=str(exc))
+        return []
+
+
+async def _check_seasonality(
+    pool: asyncpg.Pool,
+    keywords: list[str],
+) -> bool:
+    """Check if any of the keywords show seasonal patterns."""
+    try:
+        for keyword in keywords:
+            history = await _fetch_keyword_history(pool, keyword)
+            if detect_seasonality(keyword, history):
+                return True
+        return False
+    except Exception as exc:
+        logger.warning("seasonality_check_failed", error=str(exc))
+        return False
 
 
 async def find_burst_candidates(
@@ -212,6 +254,14 @@ async def run_burst_job(
             score = float(row["early_trend_score"])
             group_id = row["id"]
 
+            is_seasonal = await _check_seasonality(pool, keywords)
+            if is_seasonal:
+                logger.info(
+                    "burst_candidate_seasonal",
+                    group_id=str(group_id),
+                    keywords=keywords,
+                )
+
             log_id = await log_burst_job(
                 pool,
                 trigger_source=trigger_source,
@@ -239,6 +289,7 @@ async def run_burst_job(
                     keywords=keywords,
                     articles_found=articles_found,
                     duration_ms=round(duration_ms, 1),
+                    is_seasonal=is_seasonal,
                 )
             except Exception as exc:
                 duration_ms = (time.monotonic() - t0) * 1000
