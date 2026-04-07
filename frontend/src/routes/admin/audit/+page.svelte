@@ -3,6 +3,7 @@
 	import { onMount } from 'svelte';
 	import { adminRequest, adminDownload } from '$lib/api/admin';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
+	import PageStateWrapper from '$lib/ui/PageStateWrapper.svelte';
 
 	interface AuditItem {
 		id: string | null;
@@ -107,44 +108,44 @@
 		</div>
 	</div>
 
-	{#if loading}
-		<p class="text-gray-500">{$t('status.loading')}</p>
-	{:else}
-		<div class="bg-white rounded-lg shadow overflow-x-auto">
-			<table class="min-w-[640px] w-full divide-y divide-gray-200">
-				<thead class="bg-gray-50">
-					<tr>
-						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.audit.col_time')}</th>
-						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.audit.col_user')}</th>
-						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.audit.col_action')}</th>
-						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.audit.col_target')}</th>
-						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.audit.col_ip')}</th>
-					</tr>
-				</thead>
-				<tbody class="divide-y divide-gray-200">
-					{#each logs as log}
+	<PageStateWrapper isLoading={loading} isEmpty={!loading && logs.length === 0}>
+		{#snippet children()}
+			<div class="bg-white rounded-lg shadow overflow-x-auto">
+				<table class="min-w-[640px] w-full divide-y divide-gray-200">
+					<thead class="bg-gray-50">
 						<tr>
-							<td class="px-4 py-3 text-xs text-gray-600">{log.created_at ?? '-'}</td>
-							<td class="px-4 py-3 text-xs text-gray-600">{log.user_id ?? '-'}</td>
-							<td class="px-4 py-3 text-xs font-medium text-gray-900">{log.action}</td>
-							<td class="px-4 py-3 text-xs text-gray-600">{log.target_type ?? ''} {log.target_id ?? ''}</td>
-							<td class="px-4 py-3 text-xs text-gray-500">{log.ip_address ?? '-'}</td>
+							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.audit.col_time')}</th>
+							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.audit.col_user')}</th>
+							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.audit.col_action')}</th>
+							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.audit.col_target')}</th>
+							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.audit.col_ip')}</th>
 						</tr>
-					{/each}
-				</tbody>
-			</table>
-		</div>
-
-		<div class="mt-4 flex items-center justify-between">
-			<p class="text-sm text-gray-600">{$t('admin.users.total')}: {total}</p>
-			<div class="flex gap-2">
-				<button disabled={page <= 1} onclick={() => { page--; fetchLogs(); }}
-					class="rounded border px-3 py-1 text-sm disabled:opacity-50">{$t('admin.users.prev')}</button>
-				<button disabled={page * 50 >= total} onclick={() => { page++; fetchLogs(); }}
-					class="rounded border px-3 py-1 text-sm disabled:opacity-50">{$t('admin.users.next')}</button>
+					</thead>
+					<tbody class="divide-y divide-gray-200">
+						{#each logs as log}
+							<tr>
+								<td class="px-4 py-3 text-xs text-gray-600">{log.created_at ?? '-'}</td>
+								<td class="px-4 py-3 text-xs text-gray-600">{log.user_id ?? '-'}</td>
+								<td class="px-4 py-3 text-xs font-medium text-gray-900">{log.action}</td>
+								<td class="px-4 py-3 text-xs text-gray-600">{log.target_type ?? ''} {log.target_id ?? ''}</td>
+								<td class="px-4 py-3 text-xs text-gray-500">{log.ip_address ?? '-'}</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
 			</div>
-		</div>
-	{/if}
+
+			<div class="mt-4 flex items-center justify-between">
+				<p class="text-sm text-gray-600">{$t('admin.users.total')}: {total}</p>
+				<div class="flex gap-2">
+					<button disabled={page <= 1} onclick={() => { page--; fetchLogs(); }}
+						class="rounded border px-3 py-1 text-sm disabled:opacity-50">{$t('admin.users.prev')}</button>
+					<button disabled={page * 50 >= total} onclick={() => { page++; fetchLogs(); }}
+						class="rounded border px-3 py-1 text-sm disabled:opacity-50">{$t('admin.users.next')}</button>
+				</div>
+			</div>
+		{/snippet}
+	</PageStateWrapper>
 </div>
 
 <ErrorModal open={errorOpen} {errorCode} onClose={() => (errorOpen = false)} onRetry={fetchLogs} />

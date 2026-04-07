@@ -3,6 +3,7 @@
 	import { onMount } from 'svelte';
 	import { adminRequest } from '$lib/api/admin';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
+	import PageStateWrapper from '$lib/ui/PageStateWrapper.svelte';
 
 	let totalUsers = $state(0);
 	let activeSubscriptions = $state(0);
@@ -72,18 +73,18 @@
 
 	<h2 class="text-2xl font-bold text-gray-900 mb-6">{$t('admin.home.title')}</h2>
 
-	{#if loading}
-		<p class="text-gray-500">{$t('status.loading')}</p>
-	{:else}
-		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-			{#each cards as card}
-				<div class="bg-white rounded-lg shadow p-6">
-					<p class="text-sm text-gray-500">{$t(card.labelKey)}</p>
-					<p class="mt-2 text-3xl font-bold text-gray-900">{card.value}</p>
-				</div>
-			{/each}
-		</div>
-	{/if}
+	<PageStateWrapper isLoading={loading} isEmpty={!loading && cards.every((c) => c.value === 0)}>
+		{#snippet children()}
+			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+				{#each cards as card}
+					<div class="bg-white rounded-lg shadow p-6">
+						<p class="text-sm text-gray-500">{$t(card.labelKey)}</p>
+						<p class="mt-2 text-3xl font-bold text-gray-900">{card.value}</p>
+					</div>
+				{/each}
+			</div>
+		{/snippet}
+	</PageStateWrapper>
 </div>
 
 <ErrorModal

@@ -3,6 +3,7 @@
 	import { onMount } from 'svelte';
 	import { adminRequest } from '$lib/api/admin';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
+	import PageStateWrapper from '$lib/ui/PageStateWrapper.svelte';
 
 	interface AIConfigResponse {
 		primary_model: string | null;
@@ -91,9 +92,8 @@
 <div>
 	<h2 class="text-2xl font-bold text-gray-900 mb-6">{$t('admin.ai_config.title')}</h2>
 
-	{#if loading}
-		<p class="text-gray-500">{$t('status.loading')}</p>
-	{:else}
+	<PageStateWrapper isLoading={loading} isEmpty={false}>
+		{#snippet children()}
 		<div class="bg-white rounded-lg shadow p-6 max-w-lg">
 			<div class="space-y-4">
 				<div>
@@ -154,7 +154,8 @@
 				{/if}
 			</div>
 		</div>
-	{/if}
+		{/snippet}
+	</PageStateWrapper>
 </div>
 
 <ErrorModal open={errorOpen} {errorCode} onClose={() => (errorOpen = false)} onRetry={fetchConfig} />

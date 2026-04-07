@@ -3,6 +3,7 @@
 	import { onMount, onDestroy, untrack } from 'svelte';
 	import { adminRequest } from '$lib/api/admin';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
+	import PageStateWrapper from '$lib/ui/PageStateWrapper.svelte';
 
 	// --- Types ---
 	interface Source {
@@ -367,59 +368,59 @@
 
 	{#if activeTab === 'groups'}
 		<!-- Source Groups Tab (existing) -->
-		{#if sourcesLoading}
-			<p class="text-gray-500">{$t('status.loading')}</p>
-		{:else}
-			<div class="bg-white rounded-lg shadow overflow-x-auto">
-				<table class="min-w-[640px] w-full divide-y divide-gray-200">
-					<thead class="bg-gray-50">
-						<tr>
-							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.sources.col_name')}</th>
-							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.sources.col_quota_limit')}</th>
-							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.sources.col_quota_used')}</th>
-							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.sources.col_status')}</th>
-							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.users.col_actions')}</th>
-						</tr>
-					</thead>
-					<tbody class="divide-y divide-gray-200">
-						{#each sources as source}
+		<PageStateWrapper isLoading={sourcesLoading} isEmpty={!sourcesLoading && sources.length === 0}>
+			{#snippet children()}
+				<div class="bg-white rounded-lg shadow overflow-x-auto">
+					<table class="min-w-[640px] w-full divide-y divide-gray-200">
+						<thead class="bg-gray-50">
 							<tr>
-								<td class="px-4 py-3 text-sm font-medium text-gray-900">{source.source_name}</td>
-								<td class="px-4 py-3">
-									<input
-										type="number"
-										value={source.quota_limit}
-										class="w-24 text-sm border border-gray-300 rounded px-2 py-1"
-										onchange={(e) => updateQuota(source.id, Number(e.currentTarget.value))}
-									/>
-								</td>
-								<td class="px-4 py-3 text-sm text-gray-600">
-									{source.quota_used}
-									{#if source.quota_limit > 0}
-										<span class="text-xs text-gray-400 ml-1">
-											({Math.round((source.quota_used / source.quota_limit) * 100)}%)
-										</span>
-									{/if}
-								</td>
-								<td class="px-4 py-3">
-									<span class="text-xs px-2 py-1 rounded {source.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
-										{source.is_active ? $t('admin.users.active') : $t('admin.users.suspended')}
-									</span>
-								</td>
-								<td class="px-4 py-3">
-									<button
-										class="text-xs text-blue-600 hover:text-blue-800"
-										onclick={() => resetQuota(source.id)}
-									>
-										{$t('admin.sources.reset_quota')}
-									</button>
-								</td>
+								<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.sources.col_name')}</th>
+								<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.sources.col_quota_limit')}</th>
+								<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.sources.col_quota_used')}</th>
+								<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.sources.col_status')}</th>
+								<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.users.col_actions')}</th>
 							</tr>
-						{/each}
-					</tbody>
-				</table>
-			</div>
-		{/if}
+						</thead>
+						<tbody class="divide-y divide-gray-200">
+							{#each sources as source}
+								<tr>
+									<td class="px-4 py-3 text-sm font-medium text-gray-900">{source.source_name}</td>
+									<td class="px-4 py-3">
+										<input
+											type="number"
+											value={source.quota_limit}
+											class="w-24 text-sm border border-gray-300 rounded px-2 py-1"
+											onchange={(e) => updateQuota(source.id, Number(e.currentTarget.value))}
+										/>
+									</td>
+									<td class="px-4 py-3 text-sm text-gray-600">
+										{source.quota_used}
+										{#if source.quota_limit > 0}
+											<span class="text-xs text-gray-400 ml-1">
+												({Math.round((source.quota_used / source.quota_limit) * 100)}%)
+											</span>
+										{/if}
+									</td>
+									<td class="px-4 py-3">
+										<span class="text-xs px-2 py-1 rounded {source.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+											{source.is_active ? $t('admin.users.active') : $t('admin.users.suspended')}
+										</span>
+									</td>
+									<td class="px-4 py-3">
+										<button
+											class="text-xs text-blue-600 hover:text-blue-800"
+											onclick={() => resetQuota(source.id)}
+										>
+											{$t('admin.sources.reset_quota')}
+										</button>
+									</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+			{/snippet}
+		</PageStateWrapper>
 
 	{:else}
 		<!-- Feed Management Tab -->
@@ -484,11 +485,11 @@
 		</div>
 
 		<!-- Feed Table -->
-		{#if feedsLoading && feeds.length === 0}
-			<p class="text-gray-500">{$t('status.loading')}</p>
-		{:else if feeds.length === 0}
-			<p class="text-gray-500">{$t('admin.feeds.no_feeds')}</p>
-		{:else}
+		<PageStateWrapper isLoading={feedsLoading && feeds.length === 0} isEmpty={!feedsLoading && feeds.length === 0}>
+			{#snippet empty()}
+				<p class="text-gray-500">{$t('admin.feeds.no_feeds')}</p>
+			{/snippet}
+			{#snippet children()}
 			<div class="bg-white rounded-lg shadow overflow-x-auto">
 				<table class="min-w-[640px] w-full divide-y divide-gray-200">
 					<thead class="bg-gray-50">
@@ -563,7 +564,8 @@
 					</div>
 				</div>
 			{/if}
-		{/if}
+			{/snippet}
+		</PageStateWrapper>
 	{/if}
 </div>
 
