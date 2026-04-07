@@ -29,6 +29,7 @@
 	"dashboard.top_keywords": "Top Keywords",
 	"dashboard.source_distribution": "Source Distribution",
 	"dashboard.trend_map": "Trend Relationship Map",
+	"dashboard.chart_total_label": "trends",
 	"dashboard.source.rss": "RSS",
 	"dashboard.source.reddit": "Reddit",
 	"dashboard.source.community": "Community",
