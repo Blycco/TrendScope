@@ -115,6 +115,13 @@
 	"trend.detail.articles": "관련 기사",
 	"trend.sentiment": "감성 분석",
 
+	"chart.timeline.title": "기사 추이",
+	"chart.timeline.article_count": "기사 수",
+	"chart.timeline.source_count": "소스 수",
+	"chart.timeline.interval.15m": "15분",
+	"chart.timeline.interval.30m": "30분",
+	"chart.timeline.no_data": "타임라인 데이터가 없습니다.",
+
 	"insight.action_points": "액션 포인트",
 	"insight.for_role": "{role}을 위한 인사이트",
 	"insight.summary": "요약",
