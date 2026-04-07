@@ -12,7 +12,7 @@ from backend.api.schemas.admin import (
     AdminSubscriptionListResponse,
 )
 from backend.auth.dependencies import CurrentUser, require_admin_role
-from backend.common.audit import write_audit_log
+from backend.common.audit import log_audit
 from backend.common.errors import ErrorCode, http_error
 from backend.db.queries.admin import admin_list_subscriptions, admin_refund_subscription
 
@@ -73,16 +73,15 @@ async def refund_subscription(
                 ErrorCode.NOT_FOUND, "Subscription not found or already refunded", status_code=404
             )
 
-        async with pool.acquire() as conn:
-            await write_audit_log(
-                conn,
-                user_id=current_user.user_id,
-                action="admin_subscription_refund",
-                target_type="subscription",
-                target_id=subscription_id,
-                ip_address=str(request.client.host) if request.client else None,
-                detail={"reason": body.reason},
-            )
+        await log_audit(
+            pool,
+            user_id=current_user.user_id,
+            action="admin_subscription_refund",
+            target_type="subscription",
+            target_id=subscription_id,
+            ip_address=str(request.client.host) if request.client else None,
+            detail={"reason": body.reason},
+        )
 
         logger.info(
             "admin_subscription_refunded",

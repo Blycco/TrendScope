@@ -13,7 +13,7 @@ from backend.api.schemas.admin import (
     AdminAIConfigUpdateRequest,
 )
 from backend.auth.dependencies import CurrentUser, require_admin_role
-from backend.common.audit import write_audit_log
+from backend.common.audit import log_audit
 from backend.common.errors import ErrorCode, http_error
 from backend.db.queries.admin import admin_get_settings, admin_update_settings
 
@@ -65,16 +65,15 @@ async def update_ai_config(
         if updates:
             await admin_update_settings(pool, updates)
 
-            async with pool.acquire() as conn:
-                await write_audit_log(
-                    conn,
-                    user_id=current_user.user_id,
-                    action="admin_ai_config_update",
-                    target_type="admin_settings",
-                    target_id=None,
-                    ip_address=str(request.client.host) if request.client else None,
-                    detail=updates,
-                )
+            await log_audit(
+                pool,
+                user_id=current_user.user_id,
+                action="admin_ai_config_update",
+                target_type="admin_settings",
+                target_id=None,
+                ip_address=str(request.client.host) if request.client else None,
+                detail=updates,
+            )
 
         rows = await admin_get_settings(pool)
         settings_map: dict[str, object] = {}

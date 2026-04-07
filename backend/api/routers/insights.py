@@ -20,7 +20,7 @@ from backend.api.schemas.insights import (
     OwnerInsight,
 )
 from backend.auth.dependencies import CurrentUser, require_plan
-from backend.common.audit import write_audit_log
+from backend.common.audit import log_audit
 from backend.common.errors import ErrorCode, error_response
 from backend.db.queries.insights import (
     fetch_group_info,
@@ -137,17 +137,16 @@ async def get_trend_insights(
             hour=0, minute=0, second=0, microsecond=0
         )
 
-        async with pool.acquire() as conn:
-            await write_audit_log(
-                conn=conn,
-                user_id=current_user.user_id,
-                action="insight_generated",
-                target_type="keyword",
-                target_id=resolved_keyword,
-                ip_address=request.client.host if request.client else None,
-                user_agent=request.headers.get("user-agent"),
-                detail={"role": role, "locale": locale, "cached": result["cached"]},
-            )
+        await log_audit(
+            pool,
+            user_id=current_user.user_id,
+            action="insight_generated",
+            target_type="keyword",
+            target_id=resolved_keyword,
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+            detail={"role": role, "locale": locale, "cached": result["cached"]},
+        )
 
         await increment_insight_usage(pool, current_user.user_id, "insights", today_reset_at)
 

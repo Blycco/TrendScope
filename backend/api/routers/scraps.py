@@ -8,7 +8,7 @@ from fastapi.responses import Response
 
 from backend.api.schemas.scraps import ScrapCreate, ScrapListResponse, ScrapResponse
 from backend.auth.dependencies import CurrentUser, require_auth
-from backend.common.audit import write_audit_log
+from backend.common.audit import log_audit
 from backend.common.errors import ErrorCode, http_error
 from backend.db.queries.scraps import (
     create_scrap,
@@ -47,15 +47,14 @@ async def create_scrap_endpoint(
             memo=body.memo,
         )
 
-        async with pool.acquire() as conn:
-            await write_audit_log(
-                conn,
-                user_id=current_user.user_id,
-                action="scrap_create",
-                target_type="scrap",
-                target_id=row["id"],
-                ip_address=str(request.client.host) if request.client else None,
-            )
+        await log_audit(
+            pool,
+            user_id=current_user.user_id,
+            action="scrap_create",
+            target_type="scrap",
+            target_id=row["id"],
+            ip_address=str(request.client.host) if request.client else None,
+        )
 
         logger.info("scrap_created", user_id=current_user.user_id, scrap_id=row["id"])
         return ScrapResponse(
@@ -120,15 +119,14 @@ async def delete_scrap_endpoint(
         if not deleted:
             raise http_error(ErrorCode.NOT_FOUND, "Scrap not found", status_code=404)
 
-        async with pool.acquire() as conn:
-            await write_audit_log(
-                conn,
-                user_id=current_user.user_id,
-                action="scrap_delete",
-                target_type="scrap",
-                target_id=scrap_id,
-                ip_address=str(request.client.host) if request.client else None,
-            )
+        await log_audit(
+            pool,
+            user_id=current_user.user_id,
+            action="scrap_delete",
+            target_type="scrap",
+            target_id=scrap_id,
+            ip_address=str(request.client.host) if request.client else None,
+        )
 
         logger.info("scrap_deleted", user_id=current_user.user_id, scrap_id=scrap_id)
         return Response(status_code=204)

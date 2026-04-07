@@ -10,7 +10,7 @@ import os
 import structlog
 from fastapi import APIRouter, HTTPException, Request
 
-from backend.common.audit import write_audit_log
+from backend.common.audit import log_audit
 from backend.common.errors import ErrorCode, http_error
 from backend.common.metrics import PAYMENT_FAILURES
 from backend.db.queries.subscriptions import update_subscription_by_provider_id
@@ -78,15 +78,14 @@ async def payment_webhook(request: Request) -> dict:
         )
 
         if result:
-            async with pool.acquire() as conn:
-                await write_audit_log(
-                    conn,
-                    user_id=result["user_id"],
-                    action=f"webhook_{event_type}",
-                    target_type="subscription",
-                    target_id=result["id"],
-                    detail={"event_type": event_type, "status": status},
-                )
+            await log_audit(
+                pool,
+                user_id=result["user_id"],
+                action=f"webhook_{event_type}",
+                target_type="subscription",
+                target_id=result["id"],
+                detail={"event_type": event_type, "status": status},
+            )
 
         logger.info(
             "payment_webhook_processed",

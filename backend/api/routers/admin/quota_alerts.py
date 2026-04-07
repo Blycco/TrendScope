@@ -11,7 +11,7 @@ from backend.api.schemas.admin import (
     QuotaAlertListResponse,
 )
 from backend.auth.dependencies import CurrentUser, require_admin_role
-from backend.common.audit import write_audit_log
+from backend.common.audit import log_audit
 from backend.common.errors import ErrorCode, http_error
 from backend.db.queries.admin import (
     admin_dismiss_quota_alert,
@@ -95,15 +95,14 @@ async def dismiss_quota_alert(
         if not row:
             raise http_error(ErrorCode.NOT_FOUND, "Alert not found", status_code=404)
 
-        async with pool.acquire() as conn:
-            await write_audit_log(
-                conn,
-                user_id=current_user.user_id,
-                action="admin_dismiss_quota_alert",
-                target_type="api_quota_alert",
-                target_id=alert_id,
-                ip_address=str(request.client.host) if request.client else None,
-            )
+        await log_audit(
+            pool,
+            user_id=current_user.user_id,
+            action="admin_dismiss_quota_alert",
+            target_type="api_quota_alert",
+            target_id=alert_id,
+            ip_address=str(request.client.host) if request.client else None,
+        )
 
         return QuotaAlertItem(
             id=str(row["id"]),

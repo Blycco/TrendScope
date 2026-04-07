@@ -13,7 +13,7 @@ from backend.api.schemas.admin import (
     AdminSettingsUpdateRequest,
 )
 from backend.auth.dependencies import CurrentUser, require_admin_role
-from backend.common.audit import write_audit_log
+from backend.common.audit import log_audit
 from backend.common.errors import ErrorCode, http_error
 from backend.db.queries.admin import (
     admin_get_settings,
@@ -77,16 +77,15 @@ async def update_settings(
         pool = request.app.state.db_pool
         rows = await admin_update_settings(pool, body.settings)
 
-        async with pool.acquire() as conn:
-            await write_audit_log(
-                conn,
-                user_id=current_user.user_id,
-                action="admin_settings_update",
-                target_type="admin_settings",
-                target_id=None,
-                ip_address=str(request.client.host) if request.client else None,
-                detail={"keys": list(body.settings.keys())},
-            )
+        await log_audit(
+            pool,
+            user_id=current_user.user_id,
+            action="admin_settings_update",
+            target_type="admin_settings",
+            target_id=None,
+            ip_address=str(request.client.host) if request.client else None,
+            detail={"keys": list(body.settings.keys())},
+        )
 
         logger.info("admin_settings_updated", by=current_user.user_id)
         return _rows_to_response(rows)
@@ -107,15 +106,14 @@ async def reset_settings(
         pool = request.app.state.db_pool
         rows = await admin_reset_settings(pool)
 
-        async with pool.acquire() as conn:
-            await write_audit_log(
-                conn,
-                user_id=current_user.user_id,
-                action="admin_settings_reset",
-                target_type="admin_settings",
-                target_id=None,
-                ip_address=str(request.client.host) if request.client else None,
-            )
+        await log_audit(
+            pool,
+            user_id=current_user.user_id,
+            action="admin_settings_reset",
+            target_type="admin_settings",
+            target_id=None,
+            ip_address=str(request.client.host) if request.client else None,
+        )
 
         logger.info("admin_settings_reset_to_defaults", by=current_user.user_id)
         return _rows_to_response(rows)

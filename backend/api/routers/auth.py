@@ -33,7 +33,7 @@ from backend.auth.jwt import create_access_token, create_refresh_token, decode_t
 from backend.auth.kakao_oauth import exchange_kakao_code, fetch_kakao_userinfo
 from backend.auth.password import hash_password, verify_password
 from backend.auth.token_store import delete_auth_token, get_auth_token, save_auth_token
-from backend.common.audit import write_audit_log
+from backend.common.audit import log_audit
 from backend.common.errors import ErrorCode, http_error
 from backend.common.quota_alert import handle_api_exception
 from backend.db.queries.users import (
@@ -551,13 +551,12 @@ async def verify_email(token: str, request: Request) -> dict:
         await update_user(pool, user_id, email_verified=True)
         await delete_auth_token(_EMAIL_VERIFY_PREFIX, token)
 
-        async with pool.acquire() as conn:
-            await write_audit_log(
-                conn,
-                user_id=user_id,
-                action="email_verified",
-                ip_address=str(request.client.host) if request.client else None,
-            )
+        await log_audit(
+            pool,
+            user_id=user_id,
+            action="email_verified",
+            ip_address=str(request.client.host) if request.client else None,
+        )
 
         logger.info("email_verified", user_id=user_id)
         return {"message": "Email verified successfully"}
@@ -613,13 +612,12 @@ async def reset_password(body: ResetPasswordRequest, request: Request) -> dict:
         await update_password_hash(pool, user_id, new_hash)
         await delete_auth_token(_PASSWORD_RESET_PREFIX, body.token)
 
-        async with pool.acquire() as conn:
-            await write_audit_log(
-                conn,
-                user_id=user_id,
-                action="password_reset",
-                ip_address=str(request.client.host) if request.client else None,
-            )
+        await log_audit(
+            pool,
+            user_id=user_id,
+            action="password_reset",
+            ip_address=str(request.client.host) if request.client else None,
+        )
 
         logger.info("password_reset_complete", user_id=user_id)
         return {"message": "Password has been reset"}
@@ -682,13 +680,12 @@ async def verify_2fa(
 
         await update_2fa(pool, current_user.user_id, secret=identity["two_fa_secret"], enabled=True)
 
-        async with pool.acquire() as conn:
-            await write_audit_log(
-                conn,
-                user_id=current_user.user_id,
-                action="2fa_enabled",
-                ip_address=str(request.client.host) if request.client else None,
-            )
+        await log_audit(
+            pool,
+            user_id=current_user.user_id,
+            action="2fa_enabled",
+            ip_address=str(request.client.host) if request.client else None,
+        )
 
         logger.info("2fa_enabled", user_id=current_user.user_id)
         return {"message": "2FA has been enabled"}
@@ -709,13 +706,12 @@ async def disable_2fa(
         pool = request.app.state.db_pool
         await update_2fa(pool, current_user.user_id, secret=None, enabled=False)
 
-        async with pool.acquire() as conn:
-            await write_audit_log(
-                conn,
-                user_id=current_user.user_id,
-                action="2fa_disabled",
-                ip_address=str(request.client.host) if request.client else None,
-            )
+        await log_audit(
+            pool,
+            user_id=current_user.user_id,
+            action="2fa_disabled",
+            ip_address=str(request.client.host) if request.client else None,
+        )
 
         logger.info("2fa_disabled", user_id=current_user.user_id)
         return {"message": "2FA has been disabled"}

@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 from backend.api.schemas.settings import SettingsResponse, UpdateSettingsRequest
 from backend.auth.dependencies import CurrentUser, require_auth
-from backend.common.audit import write_audit_log
+from backend.common.audit import log_audit
 from backend.common.errors import ErrorCode, http_error
 from backend.db.queries.settings import get_user_settings, update_user_settings
 
@@ -67,15 +67,14 @@ async def update_settings(
         if not row:
             raise http_error(ErrorCode.NOT_FOUND, "User not found", status_code=404)
 
-        async with pool.acquire() as conn:
-            await write_audit_log(
-                conn,
-                user_id=current_user.user_id,
-                action="settings_update",
-                target_type="user_profile",
-                target_id=current_user.user_id,
-                ip_address=str(request.client.host) if request.client else None,
-            )
+        await log_audit(
+            pool,
+            user_id=current_user.user_id,
+            action="settings_update",
+            target_type="user_profile",
+            target_id=current_user.user_id,
+            ip_address=str(request.client.host) if request.client else None,
+        )
 
         weights = row["category_weights"]
         if isinstance(weights, str):

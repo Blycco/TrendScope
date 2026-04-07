@@ -18,7 +18,7 @@ from backend.api.schemas.admin import (
     FeedSourceUpdateRequest,
 )
 from backend.auth.dependencies import CurrentUser, require_admin_role
-from backend.common.audit import write_audit_log
+from backend.common.audit import log_audit
 from backend.common.errors import ErrorCode, http_error
 from backend.db.queries.feed_sources import (
     bulk_toggle_feed_sources,
@@ -184,15 +184,14 @@ async def create_feed(
             config=json.dumps(body.config),
         )
 
-        async with pool.acquire() as conn:
-            await write_audit_log(
-                conn,
-                user_id=current_user.user_id,
-                action="admin_feed_source_create",
-                target_type="feed_source",
-                target_id=row["id"],
-                ip_address=str(request.client.host) if request.client else None,
-            )
+        await log_audit(
+            pool,
+            user_id=current_user.user_id,
+            action="admin_feed_source_create",
+            target_type="feed_source",
+            target_id=row["id"],
+            ip_address=str(request.client.host) if request.client else None,
+        )
 
         return _row_to_item(row)
     except HTTPException:
@@ -225,15 +224,14 @@ async def update_feed(
         if not row:
             raise http_error(ErrorCode.NOT_FOUND, "Feed not found", status_code=404)
 
-        async with pool.acquire() as conn:
-            await write_audit_log(
-                conn,
-                user_id=current_user.user_id,
-                action="admin_feed_source_update",
-                target_type="feed_source",
-                target_id=feed_id,
-                ip_address=str(request.client.host) if request.client else None,
-            )
+        await log_audit(
+            pool,
+            user_id=current_user.user_id,
+            action="admin_feed_source_update",
+            target_type="feed_source",
+            target_id=feed_id,
+            ip_address=str(request.client.host) if request.client else None,
+        )
 
         return _row_to_item(row)
     except HTTPException:
@@ -256,15 +254,14 @@ async def delete_feed(
         if not deleted:
             raise http_error(ErrorCode.NOT_FOUND, "Feed not found", status_code=404)
 
-        async with pool.acquire() as conn:
-            await write_audit_log(
-                conn,
-                user_id=current_user.user_id,
-                action="admin_feed_source_delete",
-                target_type="feed_source",
-                target_id=feed_id,
-                ip_address=str(request.client.host) if request.client else None,
-            )
+        await log_audit(
+            pool,
+            user_id=current_user.user_id,
+            action="admin_feed_source_delete",
+            target_type="feed_source",
+            target_id=feed_id,
+            ip_address=str(request.client.host) if request.client else None,
+        )
 
         logger.info("admin_feed_source_deleted", feed_id=feed_id, by=current_user.user_id)
     except HTTPException:
@@ -285,15 +282,14 @@ async def bulk_toggle_feeds(
         pool = request.app.state.db_pool
         count = await bulk_toggle_feed_sources(pool, body.feed_ids, is_active=body.is_active)
 
-        async with pool.acquire() as conn:
-            await write_audit_log(
-                conn,
-                user_id=current_user.user_id,
-                action="admin_feed_source_bulk_toggle",
-                target_type="feed_source",
-                target_id=None,
-                ip_address=str(request.client.host) if request.client else None,
-            )
+        await log_audit(
+            pool,
+            user_id=current_user.user_id,
+            action="admin_feed_source_bulk_toggle",
+            target_type="feed_source",
+            target_id=None,
+            ip_address=str(request.client.host) if request.client else None,
+        )
 
         return {"updated": count}
     except HTTPException:
