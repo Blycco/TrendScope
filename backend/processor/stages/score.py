@@ -8,6 +8,7 @@ from typing import Any
 
 import structlog
 
+from backend.processor.algorithms.cross_platform import verify_cross_platform
 from backend.processor.shared.score_calculator import ScoreInput, ScoreResult, calculate_score
 from backend.processor.shared.semantic_clusterer import Cluster
 
@@ -87,11 +88,14 @@ def stage_score(clusters: list[Cluster]) -> list[dict[str, Any]]:
 
             early_score = compute_early_trend_score(articles)
 
+            cross_platform_multiplier = verify_cross_platform(articles)
+
             scored.append(
                 {
                     "cluster": cluster,
                     "articles": articles,
-                    "score": result.normalized,
+                    "score": min(100.0, result.normalized * cross_platform_multiplier),
+                    "cross_platform_multiplier": cross_platform_multiplier,
                     "early_trend_score": early_score,
                     "title": group_title,
                     "category": rep_article.get("category", "general"),
