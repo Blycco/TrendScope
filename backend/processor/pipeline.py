@@ -164,7 +164,7 @@ def _stage_extract_keywords(articles: list[dict[str, Any]]) -> list[dict[str, An
     return articles
 
 
-_EXISTING_GROUP_MATCH_THRESHOLD = 0.25
+_EXISTING_GROUP_MATCH_THRESHOLD = 0.50
 _EXISTING_GROUP_LIMIT = 500
 
 
@@ -224,6 +224,12 @@ async def _stage_match_existing_groups(
     for article in articles:
         try:
             article_kw_set: set[str] = set(article.get("keywords", []))
+            title_words = {
+                w
+                for w in (article.get("title", "").split() if article.get("title") else [])
+                if len(w) >= 2 and not w.isdigit()
+            }
+            article_kw_set |= title_words
             if not article_kw_set:
                 unmatched.append(article)
                 continue
