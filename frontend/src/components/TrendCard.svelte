@@ -2,6 +2,7 @@
 	import { t } from 'svelte-i18n';
 	import type { TrendItem } from '$lib/api';
 	import EarlyBadge from './EarlyBadge.svelte';
+	import DirectionBadge from './DirectionBadge.svelte';
 	import { formatDate } from '$lib/utils/locale';
 
 	interface Props {
@@ -38,6 +39,7 @@
 					{keywordTitle}
 				</h3>
 				<EarlyBadge score={trend.early_trend_score} />
+				<DirectionBadge direction={trend.direction} />
 			</div>
 
 			{#if trend.keywords.length > 0 && trend.title !== keywordTitle}

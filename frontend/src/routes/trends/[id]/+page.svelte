@@ -4,6 +4,7 @@
 	import { page } from '$app/stores';
 	import { apiRequest, ApiRequestError } from '$lib/api';
 	import EarlyBadge from '../../../components/EarlyBadge.svelte';
+	import DirectionBadge from '../../../components/DirectionBadge.svelte';
 	import TrendChart from '../../../components/TrendChart.svelte';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
 	import { ExternalLink, ArrowLeft, Lightbulb } from 'lucide-svelte';
@@ -26,6 +27,7 @@
 		early_trend_score: number;
 		keywords: string[];
 		created_at: string;
+		direction: 'rising' | 'steady' | 'declining';
 		articles: TrendArticle[];
 	}
 
@@ -78,6 +80,7 @@
 					<div class="flex items-center gap-3">
 						<h1 class="text-xl font-bold text-gray-900">{detail.title}</h1>
 						<EarlyBadge score={detail.early_trend_score} />
+						<DirectionBadge direction={detail.direction} />
 					</div>
 					<div class="mt-2 flex items-center gap-4 text-sm text-gray-500">
 						<span>{$t('trend.category')}: {detail.category}</span>

@@ -98,6 +98,8 @@
 	"status.emerging": "Emerging",
 	"status.hot": "Hot",
 	"status.declining": "Declining",
+	"status.rising": "Rising",
+	"status.steady": "Steady",
 	"status.loading": "Loading...",
 	"status.no_results": "No results found.",
 

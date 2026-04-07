@@ -32,6 +32,36 @@ def decode_cursor(cursor: str) -> tuple[float, str]:
 
 
 # ---------------------------------------------------------------------------
+# Direction calculation (article velocity: recent 3h vs prev 3h)
+# ---------------------------------------------------------------------------
+
+_DIRECTION_LATERAL = """
+LEFT JOIN LATERAL (
+    SELECT
+        COUNT(*) FILTER (
+            WHERE publish_time >= now() - interval '3 hours'
+        ) AS recent_cnt,
+        COUNT(*) FILTER (
+            WHERE publish_time >= now() - interval '6 hours'
+              AND publish_time < now() - interval '3 hours'
+        ) AS prev_cnt
+    FROM news_article
+    WHERE group_id = ng.id
+      AND publish_time >= now() - interval '6 hours'
+) dir ON true
+"""
+
+_DIRECTION_CASE = """\
+CASE
+    WHEN dir.recent_cnt > dir.prev_cnt
+         AND dir.recent_cnt >= 2 THEN 'rising'
+    WHEN dir.recent_cnt < dir.prev_cnt
+         AND dir.prev_cnt >= 2 THEN 'declining'
+    ELSE 'steady'
+END AS direction"""
+
+
+# ---------------------------------------------------------------------------
 # Trend queries  (news_group)
 # ---------------------------------------------------------------------------
 
@@ -48,37 +78,43 @@ async def fetch_trends(
     """Fetch news_group rows ordered by score DESC with cursor pagination."""
     try:
         params: list[object] = []
-        conditions: list[str] = ["score >= 5.0"]
+        conditions: list[str] = ["ng.score >= 5.0"]
 
         if category:
             params.append(category)
-            conditions.append(f"category = ${len(params)}")
+            conditions.append(f"ng.category = ${len(params)}")
         if locale:
             params.append(locale)
-            conditions.append(f"locale = ${len(params)}")
+            conditions.append(f"ng.locale = ${len(params)}")
         if since_hours:
             params.append(since_hours)
-            conditions.append(f"created_at > now() - make_interval(hours => ${len(params)})")
+            conditions.append(f"ng.created_at > now() - make_interval(hours => ${len(params)})")
 
         if cursor:
             pivot_score, pivot_id = decode_cursor(cursor)
             params.extend([pivot_score, pivot_id])
             n = len(params)
-            conditions.append(f"(score < ${n - 1} OR (score = ${n - 1} AND id::text > ${n}))")
+            conditions.append(
+                f"(ng.score < ${n - 1} OR (ng.score = ${n - 1} AND ng.id::text > ${n}))"
+            )
 
         where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
         params.append(limit)
 
         query = f"""
-            SELECT id::text, category, locale, title, summary,
-                   score, early_trend_score, keywords, created_at,
+            SELECT ng.id::text, ng.category, ng.locale,
+                   ng.title, ng.summary, ng.score,
+                   ng.early_trend_score, ng.keywords,
+                   ng.created_at,
                    (SELECT COUNT(*)
                     FROM news_article
-                    WHERE group_id = news_group.id
-                   )::int AS article_count
-            FROM news_group
+                    WHERE group_id = ng.id
+                   )::int AS article_count,
+                   {_DIRECTION_CASE}
+            FROM news_group ng
+            {_DIRECTION_LATERAL}
             {where}
-            ORDER BY score DESC, id ASC
+            ORDER BY ng.score DESC, ng.id ASC
             LIMIT ${len(params)}
         """  # noqa: S608
 
@@ -99,34 +135,38 @@ async def fetch_early_trends(
     """Fetch news_group rows where early_trend_score > 0, ordered by early_trend_score DESC."""
     try:
         params: list[object] = []
-        conditions: list[str] = ["early_trend_score > 0"]
+        conditions: list[str] = ["ng.early_trend_score > 0"]
 
         if locale:
             params.append(locale)
-            conditions.append(f"locale = ${len(params)}")
+            conditions.append(f"ng.locale = ${len(params)}")
 
         if cursor:
             pivot_score, pivot_id = decode_cursor(cursor)
             params.extend([pivot_score, pivot_id])
             n = len(params)
             conditions.append(
-                f"(early_trend_score < ${n - 1}"
-                f" OR (early_trend_score = ${n - 1} AND id::text > ${n}))"
+                f"(ng.early_trend_score < ${n - 1}"
+                f" OR (ng.early_trend_score = ${n - 1} AND ng.id::text > ${n}))"
             )
 
         where = "WHERE " + " AND ".join(conditions)
         params.append(limit)
 
         query = f"""
-            SELECT id::text, category, locale, title, summary,
-                   score, early_trend_score, keywords, created_at,
+            SELECT ng.id::text, ng.category, ng.locale,
+                   ng.title, ng.summary, ng.score,
+                   ng.early_trend_score, ng.keywords,
+                   ng.created_at,
                    (SELECT COUNT(*)
                     FROM news_article
-                    WHERE group_id = news_group.id
-                   )::int AS article_count
-            FROM news_group
+                    WHERE group_id = ng.id
+                   )::int AS article_count,
+                   {_DIRECTION_CASE}
+            FROM news_group ng
+            {_DIRECTION_LATERAL}
             {where}
-            ORDER BY early_trend_score DESC, id ASC
+            ORDER BY ng.early_trend_score DESC, ng.id ASC
             LIMIT ${len(params)}
         """  # noqa: S608
 
@@ -151,11 +191,16 @@ async def fetch_trend_detail(
     try:
         async with pool.acquire() as conn:
             group = await conn.fetchrow(
-                """
-                SELECT id::text, category, locale, title, summary,
-                       score, early_trend_score, keywords, created_at
-                FROM news_group WHERE id = $1::uuid
-                """,
+                f"""
+                SELECT ng.id::text, ng.category, ng.locale,
+                       ng.title, ng.summary, ng.score,
+                       ng.early_trend_score, ng.keywords,
+                       ng.created_at,
+                       {_DIRECTION_CASE}
+                FROM news_group ng
+                {_DIRECTION_LATERAL}
+                WHERE ng.id = $1::uuid
+                """,  # noqa: S608
                 group_id,
             )
             if not group:
@@ -193,21 +238,26 @@ async def fetch_related_trends(
     try:
         async with pool.acquire() as conn:
             return await conn.fetch(
-                """
-                SELECT id::text, category, locale, title, summary,
-                       score, early_trend_score, keywords, created_at,
+                f"""
+                SELECT ng.id::text, ng.category, ng.locale,
+                       ng.title, ng.summary, ng.score,
+                       ng.early_trend_score, ng.keywords,
+                       ng.created_at,
                        (SELECT COUNT(*)
-                    FROM news_article
-                    WHERE group_id = news_group.id
-                   )::int AS article_count
-                FROM news_group
-                WHERE category = (
-                    SELECT category FROM news_group WHERE id = $1::uuid
+                        FROM news_article
+                        WHERE group_id = ng.id
+                       )::int AS article_count,
+                       {_DIRECTION_CASE}
+                FROM news_group ng
+                {_DIRECTION_LATERAL}
+                WHERE ng.category = (
+                    SELECT category FROM news_group
+                    WHERE id = $1::uuid
                 )
-                  AND id <> $1::uuid
-                ORDER BY score DESC
+                  AND ng.id <> $1::uuid
+                ORDER BY ng.score DESC
                 LIMIT $2
-                """,
+                """,  # noqa: S608
                 trend_id,
                 limit,
             )

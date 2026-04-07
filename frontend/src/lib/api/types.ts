@@ -64,6 +64,7 @@ export interface TrendItem {
 	keywords: string[];
 	created_at: string;
 	article_count: number;
+	direction: 'rising' | 'steady' | 'declining';
 }
 
 export interface TrendListResponse {
