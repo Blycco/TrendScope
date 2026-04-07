@@ -12,7 +12,12 @@ import feedparser
 import httpx
 import structlog
 
-from backend.crawler.sources.news_crawler import _content_fp, _url_hash
+from backend.processor.shared.dedupe_filter import (
+    compute_content_fingerprint as _content_fp,
+)
+from backend.processor.shared.dedupe_filter import (
+    compute_url_hash as _url_hash,
+)
 
 logger = structlog.get_logger(__name__)
 
