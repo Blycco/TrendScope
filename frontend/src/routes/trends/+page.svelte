@@ -9,6 +9,9 @@
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
 	import QuotaExceededModal from '$lib/ui/QuotaExceededModal.svelte';
 	import PlanGate from '$lib/ui/PlanGate.svelte';
+	import FilterButton from '$lib/ui/FilterButton.svelte';
+	import PageStateWrapper from '$lib/ui/PageStateWrapper.svelte';
+	import LoadMoreButton from '$lib/ui/LoadMoreButton.svelte';
 	import { Download, Share2 } from 'lucide-svelte';
 
 	interface PersonalizationSettings {
@@ -61,13 +64,6 @@
 		if (personalization.locale_ratio < 0.3) return 'en';
 		if (personalization.locale_ratio > 0.7) return 'ko';
 		return null;
-	}
-
-	function getSortedCategories(): Category[] {
-		if (!personalization) return [...ALL_CATEGORIES];
-		return [...ALL_CATEGORIES].sort(
-			(a, b) => personalization!.category_weights[b] - personalization!.category_weights[a]
-		);
 	}
 
 	async function loadTrends(cursor?: string): Promise<void> {
@@ -202,6 +198,27 @@
 		isLoadingMore = false;
 	}
 
+	function applyLocaleFilter(value: string | null): void {
+		selectedLocale = value;
+		trends = [];
+		nextCursor = null;
+		loadTrends();
+	}
+
+	function applyCategoryFilter(value: string | null): void {
+		selectedCategory = value;
+		trends = [];
+		nextCursor = null;
+		loadTrends();
+	}
+
+	function applyTimeFilter(value: number | null): void {
+		selectedTime = value;
+		trends = [];
+		nextCursor = null;
+		loadTrends();
+	}
+
 	onMount(async () => {
 		try {
 			personalization = await apiRequest<PersonalizationSettings>('/personalization');
@@ -259,80 +276,79 @@
 	<div class="space-y-2 sm:space-y-3">
 		<!-- Locale filter -->
 		<div class="flex gap-1.5 sm:gap-2 flex-wrap">
-			<button
-				onclick={() => { selectedLocale = null; trends = []; nextCursor = null; loadTrends(); }}
-				class="rounded-full px-2.5 py-1 sm:px-3 text-xs font-medium transition-colors {selectedLocale === null ? 'bg-indigo-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
-			>{$t('filter.all')}</button>
-			<button
-				onclick={() => { selectedLocale = 'ko'; trends = []; nextCursor = null; loadTrends(); }}
-				class="rounded-full px-2.5 py-1 sm:px-3 text-xs font-medium transition-colors {selectedLocale === 'ko' ? 'bg-indigo-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
-			>{$t('filter.locale.domestic')}</button>
-			<button
-				onclick={() => { selectedLocale = 'en'; trends = []; nextCursor = null; loadTrends(); }}
-				class="rounded-full px-2.5 py-1 sm:px-3 text-xs font-medium transition-colors {selectedLocale === 'en' ? 'bg-indigo-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
-			>{$t('filter.locale.international')}</button>
+			<FilterButton
+				label={$t('filter.all')}
+				active={selectedLocale === null}
+				onclick={() => applyLocaleFilter(null)}
+			/>
+			<FilterButton
+				label={$t('filter.locale.domestic')}
+				active={selectedLocale === 'ko'}
+				onclick={() => applyLocaleFilter('ko')}
+			/>
+			<FilterButton
+				label={$t('filter.locale.international')}
+				active={selectedLocale === 'en'}
+				onclick={() => applyLocaleFilter('en')}
+			/>
 		</div>
 
 		<!-- Category filter -->
 		<div class="flex gap-1.5 sm:gap-2 flex-wrap">
-			<button
-				onclick={() => { selectedCategory = null; trends = []; nextCursor = null; loadTrends(); }}
-				class="rounded-full px-2.5 py-1 sm:px-3 text-xs font-medium transition-colors {selectedCategory === null ? 'bg-blue-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
-			>{$t('filter.all')}</button>
+			<FilterButton
+				label={$t('filter.all')}
+				active={selectedCategory === null}
+				activeClass="bg-blue-600 text-white"
+				onclick={() => applyCategoryFilter(null)}
+			/>
 			{#each ALL_CATEGORIES as cat}
-				<button
-					onclick={() => { selectedCategory = cat; trends = []; nextCursor = null; loadTrends(); }}
-					class="rounded-full px-2.5 py-1 sm:px-3 text-xs font-medium transition-colors {selectedCategory === cat ? 'bg-blue-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
-				>{$t(`filter.category.${cat}`)}</button>
+				<FilterButton
+					label={$t(`filter.category.${cat}`)}
+					active={selectedCategory === cat}
+					activeClass="bg-blue-600 text-white"
+					onclick={() => applyCategoryFilter(cat)}
+				/>
 			{/each}
 		</div>
 
 		<!-- Time filter -->
 		<div class="flex gap-1.5 sm:gap-2 flex-wrap">
-			<button
-				onclick={() => { selectedTime = null; trends = []; nextCursor = null; loadTrends(); }}
-				class="rounded-full px-2.5 py-1 text-xs font-medium transition-colors {selectedTime === null ? 'bg-gray-800 text-white' : 'border border-gray-200 bg-white text-gray-500 hover:bg-gray-50'}"
-			>{$t('filter.all')}</button>
+			<FilterButton
+				label={$t('filter.all')}
+				active={selectedTime === null}
+				activeClass="bg-gray-800 text-white"
+				onclick={() => applyTimeFilter(null)}
+			/>
 			{#each TIME_OPTIONS as opt}
-				<button
-					onclick={() => { selectedTime = opt.value; trends = []; nextCursor = null; loadTrends(); }}
-					class="rounded-full px-2.5 py-1 text-xs font-medium transition-colors {selectedTime === opt.value ? 'bg-gray-800 text-white' : 'border border-gray-200 bg-white text-gray-500 hover:bg-gray-50'}"
-				>{$t(opt.label)}</button>
+				<FilterButton
+					label={$t(opt.label)}
+					active={selectedTime === opt.value}
+					activeClass="bg-gray-800 text-white"
+					onclick={() => applyTimeFilter(opt.value)}
+				/>
 			{/each}
 		</div>
 	</div>
 
-	{#if isLoading}
-		<div class="space-y-3">
-			{#each Array(5) as _}
-				<SkeletonCard />
-			{/each}
-		</div>
-	{:else if trends.length === 0}
-		<p class="text-gray-500">{$t('status.no_results')}</p>
-	{:else}
-		<div class="space-y-3">
-			{#each trends as trend (trend.id)}
-				<TrendCard {trend} />
-			{/each}
-		</div>
-
-		{#if nextCursor}
-			<div class="flex justify-center pt-4">
-				<button
-					onclick={loadMore}
-					disabled={isLoadingMore}
-					class="rounded-md border border-gray-300 px-6 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-				>
-					{#if isLoadingMore}
-						{$t('status.loading')}
-					{:else}
-						{$t('button.load_more')}
-					{/if}
-				</button>
+	<PageStateWrapper {isLoading} isEmpty={trends.length === 0 && !isLoading}>
+		{#snippet loading()}
+			<div class="space-y-3">
+				{#each Array(5) as _}
+					<SkeletonCard />
+				{/each}
 			</div>
-		{/if}
-	{/if}
+		{/snippet}
+
+		{#snippet children()}
+			<div class="space-y-3">
+				{#each trends as trend (trend.id)}
+					<TrendCard {trend} />
+				{/each}
+			</div>
+
+			<LoadMoreButton hasMore={nextCursor !== null} isLoading={isLoadingMore} onclick={loadMore} />
+		{/snippet}
+	</PageStateWrapper>
 
 	{#if topTrendId && !isLoading}
 		<TrendMap trendId={topTrendId} />
