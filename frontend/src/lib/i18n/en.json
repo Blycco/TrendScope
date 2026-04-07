@@ -107,6 +107,7 @@
 	"role.general": "General User",
 
 	"trend.score": "Trend Score",
+	"trend.article_count": "{count} articles",
 	"trend.source_count": "Source Count",
 	"trend.first_seen": "First Seen",
 	"trend.category": "Category",

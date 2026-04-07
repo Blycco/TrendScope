@@ -16,6 +16,7 @@ class TrendItem(BaseModel):
     early_trend_score: float
     keywords: list[str]
     created_at: datetime
+    article_count: int = 0
 
 
 class TrendListResponse(BaseModel):

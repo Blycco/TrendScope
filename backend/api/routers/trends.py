@@ -76,6 +76,7 @@ async def list_trends(
             early_trend_score=row["early_trend_score"],
             keywords=list(row["keywords"] or []),
             created_at=row["created_at"],
+            article_count=row["article_count"],
         )
         for row in rows
     ]
@@ -120,6 +121,7 @@ async def list_related_trends(
             early_trend_score=row["early_trend_score"],
             keywords=list(row["keywords"] or []),
             created_at=row["created_at"],
+            article_count=row["article_count"],
         )
         for row in rows
     ]
@@ -252,6 +254,7 @@ async def list_early_trends(
             early_trend_score=row["early_trend_score"],
             keywords=list(row["keywords"] or []),
             created_at=row["created_at"],
+            article_count=row["article_count"],
         )
         for row in rows
     ]
