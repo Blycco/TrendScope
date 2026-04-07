@@ -102,6 +102,11 @@
 	"status.steady": "Steady",
 	"status.loading": "Loading...",
 	"status.no_results": "No results found.",
+	"status.trend.exploding": "Exploding",
+	"status.trend.rising": "Rising",
+	"status.trend.stable": "Stable",
+	"status.trend.declining": "Declining",
+	"status.trend.peaked": "Peaked",
 
 	"role.marketer": "Marketer",
 	"role.creator": "Creator",

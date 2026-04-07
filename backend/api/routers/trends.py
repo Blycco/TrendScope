@@ -28,6 +28,7 @@ from backend.db.queries.trends import (
     fetch_trend_timeline,
     fetch_trends,
 )
+from backend.processor.algorithms.trend_status import classify_trend_status
 from backend.processor.shared.cache_manager import get_cached, set_cached
 
 router = APIRouter(tags=["trends"])
@@ -81,6 +82,7 @@ async def list_trends(
             created_at=row["created_at"],
             article_count=row["article_count"],
             direction=row["direction"],
+            status=classify_trend_status(row["score"], None, row["direction"]),
         )
         for row in rows
     ]
@@ -127,6 +129,7 @@ async def list_related_trends(
             created_at=row["created_at"],
             article_count=row["article_count"],
             direction=row["direction"],
+            status=classify_trend_status(row["score"], None, row["direction"]),
         )
         for row in rows
     ]
@@ -261,6 +264,7 @@ async def list_early_trends(
             created_at=row["created_at"],
             article_count=row["article_count"],
             direction=row["direction"],
+            status=classify_trend_status(row["score"], None, row["direction"]),
         )
         for row in rows
     ]

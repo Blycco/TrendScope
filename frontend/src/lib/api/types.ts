@@ -65,6 +65,7 @@ export interface TrendItem {
 	created_at: string;
 	article_count: number;
 	direction: 'rising' | 'steady' | 'declining';
+	status: 'exploding' | 'rising' | 'stable' | 'declining' | 'peaked';
 }
 
 export interface TrendListResponse {
