@@ -3,6 +3,7 @@
 	import type { TrendItem } from '$lib/api';
 	import EarlyBadge from './EarlyBadge.svelte';
 	import DirectionBadge from './DirectionBadge.svelte';
+	import StatusBadge from '$lib/ui/StatusBadge.svelte';
 	import { formatDate } from '$lib/utils/locale';
 
 	interface Props {
@@ -40,6 +41,7 @@
 				</h3>
 				<EarlyBadge score={trend.early_trend_score} />
 				<DirectionBadge direction={trend.direction} />
+				<StatusBadge status={trend.status} />
 			</div>
 
 			{#if trend.keywords.length > 0 && trend.title !== keywordTitle}
