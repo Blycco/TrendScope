@@ -21,6 +21,8 @@ _MAX_KEYWORD_LEN: int = 30
 _DEFAULT_TOP_K: int = 10
 _BM25_K1: float = 1.5
 _BM25_B: float = 0.75
+_BIGRAM_MIN_FREQ: int = 2
+_BIGRAM_SCORE_WEIGHT: float = 0.5
 
 # Korean noun-like pattern (2+ syllable sequences)
 _KOREAN_NOUN_PATTERN: re.Pattern[str] = re.compile(r"[가-힣]{2,}")
@@ -304,11 +306,33 @@ def _compute_bm25(
     return idf * numerator / denominator if denominator > 0 else 0.0
 
 
+def _extract_bigrams(
+    tokens: list[str],
+    *,
+    min_freq: int = _BIGRAM_MIN_FREQ,
+) -> Counter[str]:
+    """Extract bigrams (adjacent token pairs) from token list.
+
+    Args:
+        tokens: List of tokens.
+        min_freq: Minimum frequency to include a bigram.
+
+    Returns:
+        Counter of bigram strings with frequency >= min_freq.
+    """
+    bigrams: Counter[str] = Counter()
+    for i in range(len(tokens) - 1):
+        bigram = f"{tokens[i]}_{tokens[i + 1]}"
+        bigrams[bigram] += 1
+    return Counter({b: c for b, c in bigrams.items() if c >= min_freq})
+
+
 def extract_keywords(
     text: str,
     *,
     top_k: int = _DEFAULT_TOP_K,
     use_soynlp: bool = True,
+    use_bigrams: bool = True,
     corpus: CorpusStats | None = None,
 ) -> list[Keyword]:
     """Extract top-k keywords from text using TF-IDF x BM25 scoring.
@@ -317,6 +341,7 @@ def extract_keywords(
         text: Input text (should be pre-normalized).
         top_k: Number of keywords to return.
         use_soynlp: Attempt soynlp tokenization first.
+        use_bigrams: Include co-occurrence bigrams in keywords.
         corpus: Corpus stats for IDF computation. Uses module-level stats if None.
 
     Returns:
@@ -345,11 +370,22 @@ def extract_keywords(
 
     # Score each unique term: TF-IDF × BM25
     scored: list[Keyword] = []
+    unigram_scores: dict[str, float] = {}
     for term, freq in term_counts.items():
         tf_idf = _compute_tf(term, term_counts, doc_length) * _compute_idf(term, stats)
         bm25 = _compute_bm25(term, term_counts, doc_length, stats)
         combined = tf_idf * bm25
+        unigram_scores[term] = combined
         scored.append(Keyword(term=term, score=combined, frequency=freq))
+
+    # Add bigrams (co-occurrence patterns)
+    if use_bigrams and len(tokens) > 1:
+        bigram_counts = _extract_bigrams(tokens)
+        for bigram, freq in bigram_counts.items():
+            parts = bigram.split("_", 1)
+            avg_score = sum(unigram_scores.get(p, 0.0) for p in parts) / len(parts)
+            bigram_score = avg_score * _BIGRAM_SCORE_WEIGHT
+            scored.append(Keyword(term=bigram, score=bigram_score, frequency=freq))
 
     scored.sort(key=lambda kw: kw.score, reverse=True)
     return scored[:top_k]
