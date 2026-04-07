@@ -109,12 +109,20 @@
 	"role.general": "General User",
 
 	"trend.score": "Trend Score",
+	"trend.article_count": "{count} articles",
 	"trend.source_count": "Source Count",
 	"trend.first_seen": "First Seen",
 	"trend.category": "Category",
 	"trend.detail.insights": "View Insights",
 	"trend.detail.articles": "Related Articles",
 	"trend.sentiment": "Sentiment",
+
+	"chart.timeline.title": "Article Timeline",
+	"chart.timeline.article_count": "Articles",
+	"chart.timeline.source_count": "Sources",
+	"chart.timeline.interval.15m": "15m",
+	"chart.timeline.interval.30m": "30m",
+	"chart.timeline.no_data": "No timeline data available.",
 
 	"insight.action_points": "Action Points",
 	"insight.for_role": "Insights for {role}",

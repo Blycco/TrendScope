@@ -35,6 +35,7 @@ def _make_trend_row(
         "keywords": ["AI"],
         "created_at": datetime(2026, 3, 19, 0, 0, 0, tzinfo=timezone.utc),
         "summary": "요약",
+        "article_count": 2,
         "direction": "steady",
     }[key]
     return row

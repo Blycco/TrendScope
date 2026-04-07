@@ -5,6 +5,7 @@
 	import { apiRequest, ApiRequestError } from '$lib/api';
 	import EarlyBadge from '../../../components/EarlyBadge.svelte';
 	import DirectionBadge from '../../../components/DirectionBadge.svelte';
+	import TrendChart from '../../../components/TrendChart.svelte';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
 	import { ExternalLink, ArrowLeft, Lightbulb } from 'lucide-svelte';
 
@@ -110,6 +111,8 @@
 				{/each}
 			</div>
 		</div>
+
+		<TrendChart groupId={detail.id} />
 
 		<div>
 			<h2 class="text-lg font-semibold text-gray-900 mb-3">

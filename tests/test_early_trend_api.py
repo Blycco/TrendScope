@@ -42,6 +42,7 @@ def _make_trend_row(
         "early_trend_score": early_trend_score,
         "keywords": keywords or ["AI", "트렌드"],
         "created_at": datetime(2026, 3, 18, 0, 0, 0, tzinfo=timezone.utc),
+        "article_count": 1,
         "direction": "steady",
     }[key]
     return row

@@ -16,6 +16,7 @@ class TrendItem(BaseModel):
     early_trend_score: float
     keywords: list[str]
     created_at: datetime
+    article_count: int = 0
     direction: str = "steady"
 
 
@@ -60,3 +61,15 @@ class NewsItem(BaseModel):
 class NewsListResponse(BaseModel):
     items: list[NewsItem]
     next_cursor: str | None
+
+
+class TimelinePoint(BaseModel):
+    timestamp: datetime
+    article_count: int
+    source_count: int
+
+
+class TrendTimelineResponse(BaseModel):
+    group_id: str
+    interval: str
+    points: list[TimelinePoint]

@@ -18,6 +18,8 @@ export type {
 	TwoFARequiredResponse,
 	TrendItem,
 	TrendListResponse,
+	TimelinePoint,
+	TrendTimelineResponse,
 	DashboardSummaryResponse,
 	NewsItem,
 	NewsListResponse,
