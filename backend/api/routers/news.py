@@ -7,7 +7,7 @@ from fastapi import APIRouter, Query, Request
 from fastapi.responses import Response
 
 from backend.api.schemas.trends import NewsItem, NewsListResponse
-from backend.common.errors import ErrorCode, error_response
+from backend.common.decorators import handle_errors
 from backend.db.queries.trends import encode_cursor, fetch_news
 
 router = APIRouter(tags=["news"])
@@ -15,6 +15,7 @@ logger = structlog.get_logger(__name__)
 
 
 @router.get("/news", response_model=NewsListResponse)
+@handle_errors(log_event="news_fetch_failed")
 async def list_news(
     request: Request,
     category: str | None = Query(default=None),
@@ -25,27 +26,23 @@ async def list_news(
     cursor: str | None = Query(default=None),
 ) -> Response:
     """Return news articles ordered by publish_time DESC, grouped by news_group."""
-    try:
-        pool = request.app.state.db_pool
-        logger.info(
-            "news_request",
-            category=category,
-            locale=locale,
-            source_type=source_type,
-            cursor=cursor,
-        )
-        rows = await fetch_news(
-            pool,
-            category=category,
-            locale=locale,
-            source_type=source_type,
-            since_hours=since,
-            limit=limit,
-            cursor=cursor,
-        )
-    except Exception as exc:
-        logger.error("news_fetch_failed", error=str(exc))
-        return error_response(ErrorCode.DB_ERROR, "Failed to fetch news", status_code=500)
+    pool = request.app.state.db_pool
+    logger.info(
+        "news_request",
+        category=category,
+        locale=locale,
+        source_type=source_type,
+        cursor=cursor,
+    )
+    rows = await fetch_news(
+        pool,
+        category=category,
+        locale=locale,
+        source_type=source_type,
+        since_hours=since,
+        limit=limit,
+        cursor=cursor,
+    )
 
     items = [
         NewsItem(

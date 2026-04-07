@@ -21,6 +21,7 @@ from backend.api.schemas.insights import (
 )
 from backend.auth.dependencies import CurrentUser, require_plan
 from backend.common.audit import log_audit
+from backend.common.decorators import handle_errors
 from backend.common.errors import ErrorCode, error_response
 from backend.db.queries.insights import (
     fetch_group_info,
@@ -69,6 +70,12 @@ def _parse_content(
 
 
 @router.get("/trends/{group_id}/insights", response_model=InsightResponse)
+@handle_errors(
+    error_code=ErrorCode.INTERNAL_ERROR,
+    message="Insight generation failed",
+    status_code=500,
+    log_event="insight_generation_failed",
+)
 async def get_trend_insights(
     group_id: str,
     request: Request,
@@ -83,95 +90,78 @@ async def get_trend_insights(
     Accepts either a UUID (news_group.id) or a keyword string.
     When a UUID is given, resolves the group's title and keywords for source lookup.
     """
-    try:
-        decoded_input = urllib.parse.unquote(group_id)
+    decoded_input = urllib.parse.unquote(group_id)
 
-        role = role if role in {"marketer", "creator", "owner", "general"} else current_user.role
+    role = role if role in {"marketer", "creator", "owner", "general"} else current_user.role
 
-        pool = request.app.state.db_pool
+    pool = request.app.state.db_pool
 
-        ai_config = await get_ai_config(pool)
+    ai_config = await get_ai_config(pool)
 
-        # Resolve keywords: UUID → look up group title/keywords, else use as keyword
-        if _UUID_RE.match(decoded_input):
-            group_info = await fetch_group_info(pool, decoded_input)
-            if not group_info:
-                return error_response(ErrorCode.NOT_FOUND, "Trend group not found", status_code=404)
-            resolved_keyword = group_info["title"]
-            search_keywords = list(group_info["keywords"] or [])
-            if resolved_keyword and resolved_keyword not in search_keywords:
-                search_keywords.insert(0, resolved_keyword)
-            # Use multi-keyword search for better results
-            news_rows = await fetch_news_for_keywords(pool, search_keywords, limit=10)
-            sns_rows = await fetch_sns_for_keywords(pool, search_keywords, limit=20)
-        else:
-            resolved_keyword = decoded_input
-            news_rows = await fetch_news_for_keyword(pool, decoded_input, limit=10)
-            sns_rows = await fetch_sns_for_keyword(pool, decoded_input, limit=20)
+    # Resolve keywords: UUID → look up group title/keywords, else use as keyword
+    if _UUID_RE.match(decoded_input):
+        group_info = await fetch_group_info(pool, decoded_input)
+        if not group_info:
+            return error_response(ErrorCode.NOT_FOUND, "Trend group not found", status_code=404)
+        resolved_keyword = group_info["title"]
+        search_keywords = list(group_info["keywords"] or [])
+        if resolved_keyword and resolved_keyword not in search_keywords:
+            search_keywords.insert(0, resolved_keyword)
+        # Use multi-keyword search for better results
+        news_rows = await fetch_news_for_keywords(pool, search_keywords, limit=10)
+        sns_rows = await fetch_sns_for_keywords(pool, search_keywords, limit=20)
+    else:
+        resolved_keyword = decoded_input
+        news_rows = await fetch_news_for_keyword(pool, decoded_input, limit=10)
+        sns_rows = await fetch_sns_for_keyword(pool, decoded_input, limit=20)
 
-        sources: list[SourceItem] = []
-        for row in news_rows:
-            sources.append(
-                SourceItem(
-                    title=row["title"],
-                    body=row.get("body") or row["title"],
-                    url=row["url"],
-                    source_type="news",
-                )
+    sources: list[SourceItem] = []
+    for row in news_rows:
+        sources.append(
+            SourceItem(
+                title=row["title"],
+                body=row.get("body") or row["title"],
+                url=row["url"],
+                source_type="news",
             )
-        for row in sns_rows:
-            sources.append(
-                SourceItem(
-                    title=row["keyword"],
-                    body=row["keyword"],
-                    url=f"https://trends.trendscope.app/sns/{row['platform']}/{row['keyword']}",
-                    source_type="sns",
-                )
+        )
+    for row in sns_rows:
+        sources.append(
+            SourceItem(
+                title=row["keyword"],
+                body=row["keyword"],
+                url=f"https://trends.trendscope.app/sns/{row['platform']}/{row['keyword']}",
+                source_type="sns",
             )
-
-        engine = ActionInsightEngine(pool, ai_config)
-        insight_req = InsightRequest(keyword=resolved_keyword, role=role, locale=locale)
-        result = await engine.generate(insight_req, sources)
-
-        today_reset_at = datetime.now(timezone.utc).replace(
-            hour=0, minute=0, second=0, microsecond=0
         )
 
-        await log_audit(
-            pool,
-            user_id=current_user.user_id,
-            action="insight_generated",
-            target_type="keyword",
-            target_id=resolved_keyword,
-            ip_address=request.client.host if request.client else None,
-            user_agent=request.headers.get("user-agent"),
-            detail={"role": role, "locale": locale, "cached": result["cached"]},
-        )
+    engine = ActionInsightEngine(pool, ai_config)
+    insight_req = InsightRequest(keyword=resolved_keyword, role=role, locale=locale)
+    result = await engine.generate(insight_req, sources)
 
-        await increment_insight_usage(pool, current_user.user_id, "insights", today_reset_at)
+    await log_audit(
+        pool,
+        user_id=current_user.user_id,
+        action="insight_generated",
+        target_type="keyword",
+        target_id=resolved_keyword,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+        detail={"role": role, "locale": locale, "cached": result["cached"]},
+    )
 
-        content_obj = _parse_content(role, result["content"])
+    today_reset_at = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
 
-        return InsightResponse(
-            keyword=resolved_keyword,
-            role=role,
-            locale=locale,
-            content=content_obj,
-            cached=result["cached"],
-            degraded=result["degraded"],
-            generated_at=datetime.now(timezone.utc),
-        )
+    await increment_insight_usage(pool, current_user.user_id, "insights", today_reset_at)
 
-    except Exception as exc:
-        logger.error(
-            "insight_generation_failed",
-            group_id=group_id,
-            role=role,
-            user_id=getattr(current_user, "user_id", None),
-            error=str(exc),
-        )
-        return error_response(
-            ErrorCode.INTERNAL_ERROR,
-            "Insight generation failed",
-            status_code=500,
-        )
+    content_obj = _parse_content(role, result["content"])
+
+    return InsightResponse(
+        keyword=resolved_keyword,
+        role=role,
+        locale=locale,
+        content=content_obj,
+        cached=result["cached"],
+        degraded=result["degraded"],
+        generated_at=datetime.now(timezone.utc),
+    )
