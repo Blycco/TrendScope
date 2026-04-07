@@ -175,23 +175,39 @@ def compute_similarity(a: ClusterItem, b: ClusterItem) -> float:
     )
 
 
-def cluster_items(
+_HDBSCAN_MIN_CLUSTER_SIZE: int = 2
+_HDBSCAN_MIN_ITEMS: int = 3
+
+
+def _pick_representative(
+    members: list[ClusterItem],
+) -> tuple[ClusterItem, list[ClusterItem]]:
+    """Pick the member closest to centroid as representative."""
+    if len(members) == 1:
+        return members[0], []
+
+    centroid = _compute_centroid(members)
+    if centroid is not None:
+        best_idx = 0
+        best_sim = -1.0
+        for i, m in enumerate(members):
+            if m.embedding is not None:
+                sim = compute_cosine_similarity(m.embedding, centroid)
+                if sim > best_sim:
+                    best_sim = sim
+                    best_idx = i
+        rep = members[best_idx]
+        rest = members[:best_idx] + members[best_idx + 1 :]
+        return rep, rest
+
+    return members[0], members[1:]
+
+
+def _cluster_greedy(
     items: list[ClusterItem],
-    *,
-    threshold: float = _DEFAULT_CLUSTER_THRESHOLD,
+    threshold: float,
 ) -> list[Cluster]:
-    """Cluster items using greedy single-linkage with composite similarity.
-
-    Args:
-        items: Items to cluster.
-        threshold: Minimum similarity to join a cluster.
-
-    Returns:
-        List of Cluster objects.
-    """
-    if not items:
-        return []
-
+    """Original greedy single-linkage clustering (fallback)."""
     clusters: list[Cluster] = []
 
     for item in items:
@@ -219,11 +235,108 @@ def cluster_items(
             )
             clusters.append(new_cluster)
 
-    logger.info(
-        "clustering_complete",
-        input_count=len(items),
-        cluster_count=len(clusters),
-    )
+    return clusters
+
+
+def _cluster_hdbscan(items: list[ClusterItem]) -> list[Cluster] | None:
+    """HDBSCAN density-based clustering. Returns None if unavailable."""
+    if len(items) < _HDBSCAN_MIN_ITEMS:
+        return None
+
+    try:
+        from sklearn.cluster import HDBSCAN as SklearnHDBSCAN  # type: ignore[import-untyped]
+    except ImportError:
+        logger.info("hdbscan_unavailable_fallback")
+        return None
+
+    try:
+        # Build pairwise distance matrix
+        n = len(items)
+        dist_matrix = [[0.0] * n for _ in range(n)]
+        for i in range(n):
+            for j in range(i + 1, n):
+                sim = compute_similarity(items[i], items[j])
+                dist = max(0.0, 1.0 - sim)
+                dist_matrix[i][j] = dist
+                dist_matrix[j][i] = dist
+
+        model = SklearnHDBSCAN(
+            min_cluster_size=_HDBSCAN_MIN_CLUSTER_SIZE,
+            metric="precomputed",
+        )
+        labels = model.fit_predict(dist_matrix)
+
+        # Group items by label
+        label_groups: dict[int, list[ClusterItem]] = {}
+        for item, label in zip(items, labels):  # noqa: B905
+            label_groups.setdefault(int(label), []).append(item)
+
+        clusters: list[Cluster] = []
+        cluster_idx = 0
+
+        # Real clusters (label >= 0)
+        for label in sorted(k for k in label_groups if k >= 0):
+            members = label_groups[label]
+            rep, rest = _pick_representative(members)
+            clusters.append(
+                Cluster(
+                    cluster_id=f"cluster_{cluster_idx}",
+                    representative=rep,
+                    members=rest,
+                )
+            )
+            cluster_idx += 1
+
+        # Noise points (label == -1) become singletons
+        for noise_item in label_groups.get(-1, []):
+            clusters.append(
+                Cluster(
+                    cluster_id=f"noise_{cluster_idx}",
+                    representative=noise_item,
+                )
+            )
+            cluster_idx += 1
+
+        return clusters
+    except Exception as exc:
+        logger.warning("hdbscan_clustering_failed", error=str(exc))
+        return None
+
+
+def cluster_items(
+    items: list[ClusterItem],
+    *,
+    threshold: float = _DEFAULT_CLUSTER_THRESHOLD,
+) -> list[Cluster]:
+    """Cluster items using HDBSCAN with greedy single-linkage fallback.
+
+    Args:
+        items: Items to cluster.
+        threshold: Minimum similarity for greedy fallback.
+
+    Returns:
+        List of Cluster objects.
+    """
+    if not items:
+        return []
+
+    # Try HDBSCAN first
+    clusters = _cluster_hdbscan(items)
+    if clusters is None:
+        clusters = _cluster_greedy(items, threshold)
+        logger.info(
+            "clustering_complete",
+            method="greedy",
+            input_count=len(items),
+            cluster_count=len(clusters),
+        )
+    else:
+        logger.info(
+            "clustering_complete",
+            method="hdbscan",
+            input_count=len(items),
+            cluster_count=len(clusters),
+        )
 
     return clusters
 
