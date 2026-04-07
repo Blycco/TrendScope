@@ -226,3 +226,120 @@ def cluster_items(
     )
 
     return clusters
+
+
+# --- Outlier refinement ---
+_OUTLIER_SIGMA: float = 1.0
+
+
+def _compute_centroid(members: list[ClusterItem]) -> list[float] | None:
+    """Compute the mean embedding vector of cluster members."""
+    embeddings = [m.embedding for m in members if m.embedding is not None]
+    if not embeddings:
+        return None
+    dim = len(embeddings[0])
+    centroid = [0.0] * dim
+    for emb in embeddings:
+        for i in range(dim):
+            centroid[i] += emb[i]
+    n = len(embeddings)
+    return [c / n for c in centroid]
+
+
+def _member_similarity(
+    member: ClusterItem,
+    centroid: list[float] | None,
+    rep_keywords: set[str],
+) -> float:
+    """Compute similarity of a member to the cluster centroid/representative."""
+    if centroid is not None and member.embedding is not None:
+        return compute_cosine_similarity(member.embedding, centroid)
+    # Fallback: Jaccard against representative keywords
+    if rep_keywords and member.keywords:
+        return compute_jaccard(member.keywords, rep_keywords)
+    return 1.0  # No data to judge → keep
+
+
+def refine_clusters(
+    clusters: list[Cluster],
+    *,
+    sigma: float = _OUTLIER_SIGMA,
+) -> list[Cluster]:
+    """Remove outlier members from clusters using centroid distance.
+
+    Members with similarity below (mean - sigma * std) are separated
+    into their own single-item clusters.
+
+    Args:
+        clusters: Clusters to refine.
+        sigma: Standard deviation multiplier for cutoff.
+
+    Returns:
+        Refined list of clusters (outliers become singleton clusters).
+    """
+    refined: list[Cluster] = []
+    total_removed = 0
+
+    for cluster in clusters:
+        all_members = [cluster.representative, *cluster.members]
+
+        # Skip singleton clusters
+        if len(all_members) <= 2:
+            refined.append(cluster)
+            continue
+
+        # Compute centroid and representative keywords
+        centroid = _compute_centroid(all_members)
+        rep_keywords = cluster.representative.keywords
+
+        # Compute per-member similarities
+        sims = [_member_similarity(m, centroid, rep_keywords) for m in all_members]
+
+        mean_sim = sum(sims) / len(sims)
+        variance = sum((s - mean_sim) ** 2 for s in sims) / len(sims)
+        std_sim = math.sqrt(variance)
+        cutoff = mean_sim - sigma * std_sim
+
+        # Partition: keep vs outlier
+        keep: list[ClusterItem] = []
+        outliers: list[ClusterItem] = []
+        for member, sim in zip(all_members, sims):  # noqa: B905
+            if sim >= cutoff:
+                keep.append(member)
+            else:
+                outliers.append(member)
+
+        if not outliers:
+            refined.append(cluster)
+            continue
+
+        total_removed += len(outliers)
+
+        # Rebuild cluster with remaining members
+        if keep:
+            new_rep = keep[0]
+            new_cluster = Cluster(
+                cluster_id=cluster.cluster_id,
+                representative=new_rep,
+                members=keep[1:],
+            )
+            refined.append(new_cluster)
+
+        # Outliers become singleton clusters
+        for outlier in outliers:
+            refined.append(
+                Cluster(
+                    cluster_id=f"outlier_{outlier.item_id}",
+                    representative=outlier,
+                )
+            )
+
+    if total_removed > 0:
+        logger.info(
+            "cluster_refinement_complete",
+            outliers_removed=total_removed,
+            clusters_before=len(clusters),
+            clusters_after=len(refined),
+        )
+
+    return refined

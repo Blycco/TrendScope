@@ -13,6 +13,7 @@ from backend.processor.shared.semantic_clusterer import (
     compute_similarity,
     compute_source_similarity,
     compute_temporal_similarity,
+    refine_clusters,
 )
 
 
@@ -212,3 +213,92 @@ class TestClusterItems:
         assert isinstance(cluster, Cluster)
         assert cluster.cluster_id == "cluster_0"
         assert cluster.representative.item_id == "1"
+
+
+class TestRefineClusters:
+    """Tests for refine_clusters outlier removal."""
+
+    def test_refine_removes_outlier(self) -> None:
+        """Outlier with very different embedding is separated."""
+        good_emb = [1.0, 0.0, 0.0]
+        outlier_emb = [0.0, 0.0, 1.0]  # orthogonal → low cosine
+        cluster = Cluster(
+            cluster_id="c0",
+            representative=ClusterItem(
+                item_id="1",
+                text="a",
+                keywords={"경제"},
+                embedding=good_emb,
+            ),
+            members=[
+                ClusterItem(item_id="2", text="b", keywords={"경제"}, embedding=good_emb),
+                ClusterItem(item_id="3", text="c", keywords={"경제"}, embedding=good_emb),
+                ClusterItem(
+                    item_id="outlier",
+                    text="d",
+                    keywords={"스포츠"},
+                    embedding=outlier_emb,
+                ),
+            ],
+        )
+        result = refine_clusters([cluster])
+        # outlier should be separated
+        all_ids = set()
+        for c in result:
+            all_ids.add(c.representative.item_id)
+            for m in c.members:
+                all_ids.add(m.item_id)
+        assert "outlier" in all_ids  # not lost, just separated
+        assert len(result) >= 2  # at least original + outlier singleton
+
+    def test_refine_keeps_good_members(self) -> None:
+        """All similar members stay together."""
+        emb = [1.0, 0.0, 0.0]
+        cluster = Cluster(
+            cluster_id="c0",
+            representative=ClusterItem(
+                item_id="1",
+                text="a",
+                keywords={"경제"},
+                embedding=emb,
+            ),
+            members=[
+                ClusterItem(item_id="2", text="b", keywords={"경제"}, embedding=emb),
+                ClusterItem(item_id="3", text="c", keywords={"경제"}, embedding=emb),
+            ],
+        )
+        result = refine_clusters([cluster])
+        assert len(result) == 1
+        assert result[0].size == 3
+
+    def test_refine_single_item_cluster(self) -> None:
+        """Singleton clusters are unchanged."""
+        cluster = Cluster(
+            cluster_id="c0",
+            representative=ClusterItem(item_id="1", text="a"),
+        )
+        result = refine_clusters([cluster])
+        assert len(result) == 1
+        assert result[0].size == 1
+
+    def test_refine_no_embeddings_fallback(self) -> None:
+        """Without embeddings, Jaccard is used as fallback."""
+        shared_kw = {"경제", "성장", "투자"}
+        outlier_kw = {"스포츠", "야구", "축구"}
+        cluster = Cluster(
+            cluster_id="c0",
+            representative=ClusterItem(
+                item_id="1",
+                text="a",
+                keywords=shared_kw,
+            ),
+            members=[
+                ClusterItem(item_id="2", text="b", keywords=shared_kw),
+                ClusterItem(item_id="3", text="c", keywords=shared_kw),
+                ClusterItem(item_id="outlier", text="d", keywords=outlier_kw),
+            ],
+        )
+        result = refine_clusters([cluster])
+        # outlier has zero keyword overlap → should be separated
+        singleton_ids = {c.representative.item_id for c in result if c.size == 1}
+        assert "outlier" in singleton_ids

@@ -23,6 +23,7 @@ from backend.processor.shared.semantic_clusterer import (
     cluster_items,
     compute_cosine_similarity,
     encode_text,
+    refine_clusters,
 )
 from backend.processor.shared.spam_filter import classify_spam
 from backend.processor.shared.text_normalizer import normalize_text
@@ -361,6 +362,7 @@ def _stage_cluster(articles: list[dict[str, Any]]) -> list[Cluster]:
             )
 
         clusters = cluster_items(items)
+        clusters = refine_clusters(clusters)
 
         # Attach original article data to clusters
         article_map = {a.get("url_hash", ""): a for a in articles}
