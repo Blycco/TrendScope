@@ -173,6 +173,7 @@ def _stage_extract_keywords(articles: list[dict[str, Any]]) -> list[dict[str, An
 
 _EXISTING_GROUP_MATCH_THRESHOLD = 0.50
 _EXISTING_GROUP_LIMIT = 500
+_EXISTING_GROUP_WINDOW_HOURS = 6
 
 
 def _jaccard(set_a: set[str], set_b: set[str]) -> float:
@@ -198,10 +199,11 @@ async def _stage_match_existing_groups(
             """
             SELECT id, title, keywords, score, category
             FROM news_group
-            WHERE created_at > now() - interval '48 hours'
+            WHERE created_at > now() - make_interval(hours => $1)
             ORDER BY score DESC
-            LIMIT $1
+            LIMIT $2
             """,
+            _EXISTING_GROUP_WINDOW_HOURS,
             _EXISTING_GROUP_LIMIT,
         )
     except Exception as exc:
