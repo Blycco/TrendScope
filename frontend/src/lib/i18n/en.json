@@ -114,6 +114,13 @@
 	"trend.detail.articles": "Related Articles",
 	"trend.sentiment": "Sentiment",
 
+	"chart.timeline.title": "Article Timeline",
+	"chart.timeline.article_count": "Articles",
+	"chart.timeline.source_count": "Sources",
+	"chart.timeline.interval.15m": "15m",
+	"chart.timeline.interval.30m": "30m",
+	"chart.timeline.no_data": "No timeline data available.",
+
 	"insight.action_points": "Action Points",
 	"insight.for_role": "Insights for {role}",
 	"insight.summary": "Summary",

@@ -71,6 +71,18 @@ export interface TrendListResponse {
 	total: number;
 }
 
+export interface TimelinePoint {
+	timestamp: string;
+	article_count: number;
+	source_count: number;
+}
+
+export interface TrendTimelineResponse {
+	group_id: string;
+	interval: string;
+	points: TimelinePoint[];
+}
+
 // ---------------------------------------------------------------------------
 // Dashboard types
 // ---------------------------------------------------------------------------

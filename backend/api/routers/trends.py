@@ -11,10 +11,12 @@ from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import Response, StreamingResponse
 
 from backend.api.schemas.trends import (
+    TimelinePoint,
     TrendArticleItem,
     TrendDetailResponse,
     TrendItem,
     TrendListResponse,
+    TrendTimelineResponse,
 )
 from backend.auth.dependencies import PLAN_LEVEL, CurrentUser, require_plan
 from backend.common.errors import ErrorCode, error_response
@@ -23,6 +25,7 @@ from backend.db.queries.trends import (
     fetch_early_trends,
     fetch_related_trends,
     fetch_trend_detail,
+    fetch_trend_timeline,
     fetch_trends,
 )
 from backend.processor.shared.cache_manager import get_cached, set_cached
@@ -305,4 +308,88 @@ async def get_trend_detail(
         keywords=list(group["keywords"] or []),
         created_at=group["created_at"],
         articles=articles,
+    )
+
+
+# Interval → (bucket_minutes, range_minutes)
+_INTERVAL_MAP: dict[str, tuple[int, int]] = {
+    "15m": (15, 360),
+    "30m": (30, 720),
+    "1h": (60, 1440),
+    "6h": (360, 10080),
+    "24h": (1440, 43200),
+    "7d": (10080, 129600),
+}
+_TIMELINE_CACHE_TTL: dict[str, int] = {
+    "15m": 60,
+    "30m": 60,
+    "1h": 180,
+    "6h": 180,
+    "24h": 300,
+    "7d": 300,
+}
+
+
+@router.get(
+    "/trends/{group_id}/timeline",
+    response_model=TrendTimelineResponse,
+)
+async def get_trend_timeline(
+    group_id: str,
+    request: Request,
+    interval: str = Query(
+        default="1h",
+        pattern="^(15m|30m|1h|6h|24h|7d)$",
+    ),
+) -> Response:
+    """Return article arrival timeline for a trend group."""
+    cache_key = f"timeline:{group_id}:{interval}"
+    cached = await get_cached(cache_key)
+    if cached is not None:
+        return Response(content=cached, media_type="application/json")
+
+    bucket_minutes, range_minutes = _INTERVAL_MAP[interval]
+
+    try:
+        pool = request.app.state.db_pool
+        rows = await fetch_trend_timeline(
+            pool,
+            group_id=group_id,
+            interval_minutes=bucket_minutes,
+            range_minutes=range_minutes,
+        )
+    except Exception as exc:
+        logger.error(
+            "trend_timeline_fetch_failed",
+            group_id=group_id,
+            error=str(exc),
+        )
+        return error_response(
+            ErrorCode.DB_ERROR,
+            "Failed to fetch trend timeline",
+            status_code=500,
+        )
+
+    points = [
+        TimelinePoint(
+            timestamp=row["bucket_start"],
+            article_count=row["article_count"],
+            source_count=row["source_count"],
+        )
+        for row in rows
+    ]
+    body = TrendTimelineResponse(
+        group_id=group_id,
+        interval=interval,
+        points=points,
+    )
+    body_bytes = body.model_dump_json().encode()
+    await set_cached(
+        cache_key,
+        body_bytes,
+        _TIMELINE_CACHE_TTL.get(interval, 180),
+    )
+    return Response(
+        content=body_bytes,
+        media_type="application/json",
     )

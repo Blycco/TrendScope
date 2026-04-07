@@ -58,3 +58,15 @@ class NewsItem(BaseModel):
 class NewsListResponse(BaseModel):
     items: list[NewsItem]
     next_cursor: str | None
+
+
+class TimelinePoint(BaseModel):
+    timestamp: datetime
+    article_count: int
+    source_count: int
+
+
+class TrendTimelineResponse(BaseModel):
+    group_id: str
+    interval: str
+    points: list[TimelinePoint]

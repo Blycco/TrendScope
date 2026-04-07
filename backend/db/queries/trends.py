@@ -205,6 +205,61 @@ async def fetch_related_trends(
 
 
 # ---------------------------------------------------------------------------
+# Trend timeline query  (article arrival rate per time bucket)
+# ---------------------------------------------------------------------------
+
+
+async def fetch_trend_timeline(
+    pool: asyncpg.Pool,
+    *,
+    group_id: str,
+    interval_minutes: int,
+    range_minutes: int,
+) -> list[asyncpg.Record]:
+    """Fetch article count per time bucket for a trend group.
+
+    Uses generate_series to produce contiguous buckets even when
+    no articles exist in a given interval.
+    """
+    try:
+        async with pool.acquire() as conn:
+            return await conn.fetch(
+                """
+                SELECT
+                    bucket AS bucket_start,
+                    COALESCE(cnt, 0)::int AS article_count,
+                    COALESCE(src, 0)::int AS source_count
+                FROM generate_series(
+                    now() - make_interval(mins => $2),
+                    now(),
+                    make_interval(mins => $3)
+                ) AS bucket
+                LEFT JOIN LATERAL (
+                    SELECT
+                        COUNT(*)::int AS cnt,
+                        COUNT(DISTINCT source)::int AS src
+                    FROM news_article
+                    WHERE group_id = $1::uuid
+                      AND publish_time >= bucket
+                      AND publish_time < bucket
+                          + make_interval(mins => $3)
+                ) agg ON true
+                ORDER BY bucket ASC
+                """,
+                group_id,
+                range_minutes,
+                interval_minutes,
+            )
+    except Exception as exc:
+        logger.error(
+            "fetch_trend_timeline_failed",
+            group_id=group_id,
+            error=str(exc),
+        )
+        raise
+
+
+# ---------------------------------------------------------------------------
 # News queries  (news_article JOIN news_group)
 # ---------------------------------------------------------------------------
 
