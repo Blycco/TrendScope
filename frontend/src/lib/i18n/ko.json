@@ -122,6 +122,16 @@
 	"trend.detail.insights": "인사이트 보기",
 	"trend.detail.articles": "관련 기사",
 	"trend.sentiment": "감성 분석",
+	"trend.detail.forecast": "트렌드 예측",
+
+	"forecast.title": "트렌드 예측 (12개월)",
+	"forecast.actual": "실제 데이터",
+	"forecast.predicted": "예측",
+	"forecast.confidence": "신뢰 구간",
+	"forecast.no_data": "예측 데이터가 충분하지 않습니다.",
+	"forecast.pro_required": "트렌드 예측은 Pro 이상 플랜에서 이용 가능합니다.",
+	"forecast.date": "날짜",
+	"forecast.value": "예측값",
 
 	"chart.timeline.title": "기사 추이",
 	"chart.timeline.article_count": "기사 수",

@@ -2,12 +2,15 @@
 	import { t } from 'svelte-i18n';
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
-	import { apiRequest, ApiRequestError } from '$lib/api';
+	import { apiRequest, ApiRequestError, PlanGateRequestError } from '$lib/api';
+	import type { ForecastResponse, ForecastPoint } from '$lib/api';
 	import EarlyBadge from '../../../components/EarlyBadge.svelte';
 	import DirectionBadge from '../../../components/DirectionBadge.svelte';
 	import TrendChart from '../../../components/TrendChart.svelte';
+	import ForecastChart from '$lib/components/ForecastChart.svelte';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
-	import { ExternalLink, ArrowLeft, Lightbulb } from 'lucide-svelte';
+	import PlanGate from '$lib/ui/PlanGate.svelte';
+	import { ExternalLink, ArrowLeft, Lightbulb, TrendingUp } from 'lucide-svelte';
 
 	interface TrendArticle {
 		id: string;
@@ -39,6 +42,11 @@
 	let errorCode = $state('');
 	let errorMessageKey = $state('');
 
+	let forecastData = $state<ForecastPoint[]>([]);
+	let isForecastLoading = $state(false);
+	let planGateOpen = $state(false);
+	let planGateRequired = $state('pro');
+
 	async function loadDetail(): Promise<void> {
 		try {
 			detail = await apiRequest<TrendDetail>(`/trends/${groupId}`);
@@ -56,7 +64,26 @@
 		}
 	}
 
-	onMount(() => { loadDetail(); });
+	async function loadForecast(): Promise<void> {
+		isForecastLoading = true;
+		try {
+			const resp = await apiRequest<ForecastResponse>(`/forecast/${groupId}?horizon=365`);
+			forecastData = resp.points;
+		} catch (error) {
+			if (error instanceof PlanGateRequestError) {
+				planGateRequired = error.requiredPlan;
+				planGateOpen = true;
+			}
+			forecastData = [];
+		} finally {
+			isForecastLoading = false;
+		}
+	}
+
+	onMount(() => {
+		loadDetail();
+		loadForecast();
+	});
 
 	const formattedDate = $derived(
 		detail ? new Date(detail.created_at).toLocaleDateString('ko-KR', {
@@ -114,6 +141,14 @@
 
 		<TrendChart groupId={detail.id} />
 
+		{#if isForecastLoading}
+			<div class="rounded-lg border border-gray-200 bg-white p-4">
+				<p class="text-sm text-gray-400">{$t('status.loading')}</p>
+			</div>
+		{:else if forecastData.length > 0}
+			<ForecastChart data={forecastData} />
+		{/if}
+
 		<div>
 			<h2 class="text-lg font-semibold text-gray-900 mb-3">
 				{$t('trend.detail.articles')} ({detail.articles.length})
@@ -152,4 +187,5 @@
 	{/if}
 </div>
 
+<PlanGate open={planGateOpen} requiredPlan={planGateRequired} onClose={() => (planGateOpen = false)} />
 <ErrorModal open={errorOpen} errorCode={errorCode} messageKey={errorMessageKey} onClose={() => (errorOpen = false)} onRetry={() => { errorOpen = false; loadDetail(); }} />

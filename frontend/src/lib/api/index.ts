@@ -20,6 +20,8 @@ export type {
 	TrendListResponse,
 	TimelinePoint,
 	TrendTimelineResponse,
+	ForecastPoint,
+	ForecastResponse,
 	DashboardSummaryResponse,
 	NewsItem,
 	NewsListResponse,
