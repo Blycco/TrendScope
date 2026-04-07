@@ -61,11 +61,16 @@ def stage_score(clusters: list[Cluster]) -> list[dict[str, Any]]:
             if isinstance(pub_time, str):
                 pub_time = datetime.fromisoformat(pub_time)
 
+            # Count unique sources for normalized scoring
+            sources = {a.get("source", "") for a in articles if a.get("source")}
+            source_count = max(1, len(sources))
+
             score_input = ScoreInput(
                 published_at=pub_time,
                 category=rep_article.get("category", "default"),
                 source_type=rep_article.get("source", "default"),
                 article_count=len(articles),
+                source_count=source_count,
                 keyword_importance=rep_article.get("keyword_importance", 0.0),
             )
             result: ScoreResult = calculate_score(score_input)
@@ -86,7 +91,7 @@ def stage_score(clusters: list[Cluster]) -> list[dict[str, Any]]:
                 {
                     "cluster": cluster,
                     "articles": articles,
-                    "score": result.total,
+                    "score": result.normalized,
                     "early_trend_score": early_score,
                     "title": group_title,
                     "category": rep_article.get("category", "general"),

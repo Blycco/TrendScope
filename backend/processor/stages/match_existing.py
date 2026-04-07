@@ -148,15 +148,24 @@ async def stage_match_existing_groups(
                     if isinstance(pub_time, str):
                         pub_time = datetime.fromisoformat(pub_time)
 
+                    # Count unique sources for normalized scoring
+                    source_count_row = await db_pool.fetchrow(
+                        "SELECT COUNT(DISTINCT source) AS cnt "
+                        "FROM news_article WHERE group_id = $1",
+                        best_group_id,
+                    )
+                    new_source_count = int(source_count_row["cnt"]) if source_count_row else 1
+
                     score_input = ScoreInput(
                         published_at=pub_time,
                         category=article.get("category", "general"),
                         source_type=article.get("source", "default"),
                         article_count=new_article_count,
+                        source_count=new_source_count,
                         keyword_importance=article.get("keyword_importance", 0.0),
                     )
                     new_score_result: ScoreResult = calculate_score(score_input)
-                    new_score = max(best_current_score, new_score_result.total)
+                    new_score = max(best_current_score, new_score_result.normalized)
 
                     # Recalculate early_trend_score based on updated article count
                     early_score = min(1.0, new_article_count / 10.0) * 0.4 + 0.3
