@@ -14,7 +14,7 @@ from backend.api.schemas.subscriptions import (
     SubscriptionResponse,
 )
 from backend.auth.dependencies import CurrentUser, require_auth
-from backend.common.audit import write_audit_log
+from backend.common.audit import log_audit
 from backend.common.decorators import handle_errors
 from backend.common.errors import ErrorCode, http_error
 from backend.db.queries.subscriptions import (
@@ -86,15 +86,14 @@ async def checkout(
         provider_sub_id=session_id,
     )
 
-    async with pool.acquire() as conn:
-        await write_audit_log(
-            conn,
-            user_id=current_user.user_id,
-            action="subscription_checkout",
-            target_type="subscription",
-            target_id=session_id,
-            ip_address=str(request.client.host) if request.client else None,
-        )
+    await log_audit(
+        pool,
+        user_id=current_user.user_id,
+        action="subscription_checkout",
+        target_type="subscription",
+        target_id=session_id,
+        ip_address=str(request.client.host) if request.client else None,
+    )
 
     checkout_url = f"/payments/toss/checkout/{session_id}"
     logger.info("checkout_created", user_id=current_user.user_id, plan=body.plan)
@@ -128,15 +127,14 @@ async def cancel(
             status_code=404,
         )
 
-    async with pool.acquire() as conn:
-        await write_audit_log(
-            conn,
-            user_id=current_user.user_id,
-            action="subscription_cancel",
-            target_type="subscription",
-            target_id=sub["id"],
-            ip_address=str(request.client.host) if request.client else None,
-        )
+    await log_audit(
+        pool,
+        user_id=current_user.user_id,
+        action="subscription_cancel",
+        target_type="subscription",
+        target_id=sub["id"],
+        ip_address=str(request.client.host) if request.client else None,
+    )
 
     logger.info("subscription_cancelled", user_id=current_user.user_id)
     return {"message": "Subscription cancelled"}

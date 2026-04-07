@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Request
 
 from backend.api.schemas.events import EventBatchRequest
 from backend.auth.dependencies import CurrentUser, require_auth
-from backend.common.audit import write_audit_log
+from backend.common.audit import log_audit
 from backend.common.decorators import handle_errors
 from backend.common.errors import ErrorCode
 from backend.db.queries.events import batch_insert_events
@@ -33,14 +33,13 @@ async def batch_events(
     events_data = [evt.model_dump() for evt in body.events]
     count = await batch_insert_events(pool, user_id=current_user.user_id, events=events_data)
 
-    async with pool.acquire() as conn:
-        await write_audit_log(
-            conn,
-            user_id=current_user.user_id,
-            action="events_batch",
-            ip_address=str(request.client.host) if request.client else None,
-            detail={"count": count},
-        )
+    await log_audit(
+        pool,
+        user_id=current_user.user_id,
+        action="events_batch",
+        ip_address=str(request.client.host) if request.client else None,
+        detail={"count": count},
+    )
 
     logger.info("events_batch_inserted", user_id=current_user.user_id, count=count)
     return {"inserted": count}

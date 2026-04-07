@@ -99,7 +99,7 @@ async def insights_client(mock_db_pool: MagicMock, mock_redis: AsyncMock) -> Asy
             new=AsyncMock(return_value=[]),
         ),
         patch(
-            "backend.api.routers.insights.write_audit_log",
+            "backend.api.routers.insights.log_audit",
             new=AsyncMock(return_value=None),
         ),
         patch(
@@ -405,7 +405,7 @@ class TestGetTrendInsightsGroupId:
                 new=AsyncMock(return_value=[]),
             ),
             patch(
-                "backend.api.routers.insights.write_audit_log",
+                "backend.api.routers.insights.log_audit",
                 new=AsyncMock(return_value=None),
             ),
             patch(

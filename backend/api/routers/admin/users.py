@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Request
 
 from backend.api.schemas.admin import AdminUserItem, AdminUserListResponse, AdminUserUpdateRequest
 from backend.auth.dependencies import CurrentUser, require_admin_role
-from backend.common.audit import write_audit_log
+from backend.common.audit import log_audit
 from backend.common.decorators import handle_errors
 from backend.common.errors import ErrorCode, http_error
 from backend.db.queries.admin import admin_delete_user, admin_list_users, admin_update_user
@@ -70,15 +70,14 @@ async def update_user(
     if not row:
         raise http_error(ErrorCode.NOT_FOUND, "User not found", status_code=404)
 
-    async with pool.acquire() as conn:
-        await write_audit_log(
-            conn,
-            user_id=current_user.user_id,
-            action="admin_user_update",
-            target_type="user_profile",
-            target_id=user_id,
-            ip_address=str(request.client.host) if request.client else None,
-        )
+    await log_audit(
+        pool,
+        user_id=current_user.user_id,
+        action="admin_user_update",
+        target_type="user_profile",
+        target_id=user_id,
+        ip_address=str(request.client.host) if request.client else None,
+    )
 
     return AdminUserItem(
         id=row["id"],
@@ -110,14 +109,13 @@ async def delete_user(
     if not deleted:
         raise http_error(ErrorCode.NOT_FOUND, "User not found", status_code=404)
 
-    async with pool.acquire() as conn:
-        await write_audit_log(
-            conn,
-            user_id=current_user.user_id,
-            action="admin_user_delete",
-            target_type="user_profile",
-            target_id=user_id,
-            ip_address=str(request.client.host) if request.client else None,
-        )
+    await log_audit(
+        pool,
+        user_id=current_user.user_id,
+        action="admin_user_delete",
+        target_type="user_profile",
+        target_id=user_id,
+        ip_address=str(request.client.host) if request.client else None,
+    )
 
     logger.info("admin_user_deleted", target_user_id=user_id, by=current_user.user_id)
