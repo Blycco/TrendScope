@@ -116,7 +116,7 @@
 </script>
 
 <div class="space-y-3 sm:space-y-4">
-	<h1 class="text-xl sm:text-2xl font-bold text-gray-900">{$t('page.news.title')}</h1>
+	<h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">{$t('page.news.title')}</h1>
 
 	<!-- Filters -->
 	<div class="space-y-2 sm:space-y-3">

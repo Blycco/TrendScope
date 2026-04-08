@@ -7,8 +7,10 @@
 	import PlanGate from '$lib/ui/PlanGate.svelte';
 	import PageStateWrapper from '$lib/ui/PageStateWrapper.svelte';
 	import { X } from 'lucide-svelte';
+	import { Sun, Moon, Monitor } from 'lucide-svelte';
+	import { themeStore } from '$lib/stores/theme.svelte';
 
-	type Tab = 'account' | 'plan' | 'notifications' | 'security' | 'personalization';
+	type Tab = 'account' | 'plan' | 'notifications' | 'security' | 'personalization' | 'appearance';
 	let activeTab = $state<Tab>('account');
 
 	// Account tab
@@ -310,14 +312,15 @@
 		{ key: 'notifications', labelKey: 'settings.tab.notifications' },
 		{ key: 'security', labelKey: 'settings.tab.security' },
 		{ key: 'personalization', labelKey: 'settings.tab.personalization' },
+		{ key: 'appearance', labelKey: 'settings.tab.appearance' },
 	];
 </script>
 
 <div class="space-y-6">
-	<h1 class="text-2xl font-bold text-gray-900">{$t('settings.title')}</h1>
+	<h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{$t('settings.title')}</h1>
 
 	<!-- Tab nav -->
-	<div class="border-b border-gray-200">
+	<div class="border-b border-gray-200 dark:border-gray-700">
 		<nav class="-mb-px flex gap-6">
 			{#each tabs as tab}
 				<button
@@ -327,6 +330,7 @@
 					class:text-blue-600={activeTab === tab.key}
 					class:border-transparent={activeTab !== tab.key}
 					class:text-gray-500={activeTab !== tab.key}
+				class:dark:text-gray-400={activeTab !== tab.key}
 				>
 					{$t(tab.labelKey)}
 				</button>
@@ -338,25 +342,25 @@
 	{#if activeTab === 'account'}
 		<div class="max-w-md space-y-4">
 			<div>
-				<label class="block text-sm font-medium text-gray-700 mb-1" for="display-name">
+				<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="display-name">
 					{$t('settings.account.display_name')}
 				</label>
 				<input
 					id="display-name"
 					type="text"
 					bind:value={displayName}
-					class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+					class="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
 				/>
 			</div>
 			<div>
-				<label class="block text-sm font-medium text-gray-700 mb-1">
+				<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
 					{$t('label.email')}
 				</label>
 				<input
 					type="email"
 					value={authStore.user?.email ?? ''}
 					readonly
-					class="w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500"
+					class="w-full rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 px-3 py-2 text-sm text-gray-500 dark:text-gray-400"
 				/>
 			</div>
 			<button
@@ -376,9 +380,9 @@
 	<!-- Plan tab -->
 	{#if activeTab === 'plan'}
 		<div class="max-w-md space-y-4">
-			<div class="rounded-lg border border-gray-200 bg-white p-4">
-				<p class="text-sm text-gray-500">{$t('settings.plan.current_plan')}</p>
-				<p class="mt-1 text-lg font-semibold capitalize text-gray-900">{authStore.user?.plan ?? '-'}</p>
+			<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+				<p class="text-sm text-gray-500 dark:text-gray-400">{$t('settings.plan.current_plan')}</p>
+				<p class="mt-1 text-lg font-semibold capitalize text-gray-900 dark:text-gray-100">{authStore.user?.plan ?? '-'}</p>
 			</div>
 			<a
 				href="/pricing"
@@ -397,8 +401,8 @@
 				{#snippet children()}
 					<div class="space-y-3">
 						{#each (['trend_alert', 'quota_warning', 'plan_expiry'] as const) as channel}
-							<div class="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4">
-								<span class="text-sm font-medium text-gray-900">{$t(`settings.notifications.${channel}`)}</span>
+							<div class="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+								<span class="text-sm font-medium text-gray-900 dark:text-gray-100">{$t(`settings.notifications.${channel}`)}</span>
 								<button
 									role="switch"
 									aria-checked={notifSettings[channel]}
@@ -422,7 +426,7 @@
 			<!-- Keyword alerts -->
 			<div class="space-y-3">
 				<div>
-					<h2 class="text-sm font-semibold text-gray-900">{$t('notification.keywords.title')}</h2>
+					<h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{$t('notification.keywords.title')}</h2>
 					<p class="text-xs text-gray-500 mt-0.5">{$t('notification.keywords.description')}</p>
 					<p class="text-xs text-gray-400 mt-0.5">
 						{$t('notification.keywords.limit_pro')} · {$t('notification.keywords.limit_business')}
@@ -456,7 +460,7 @@
 						<ul class="space-y-2">
 							{#each keywordAlerts as kw}
 								<li class="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-2.5">
-									<span class="text-sm text-gray-800">{kw.keyword}</span>
+									<span class="text-sm text-gray-800 dark:text-gray-200">{kw.keyword}</span>
 									<button
 										onclick={() => deleteKeywordAlert(kw.id)}
 										disabled={deletingKeywordId === kw.id}
@@ -477,12 +481,12 @@
 	<!-- Personalization tab -->
 	{#if activeTab === 'personalization'}
 		<div class="max-w-md space-y-6">
-			<h2 class="text-base font-semibold text-gray-900">{$t('settings.personalization.title')}</h2>
+			<h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">{$t('settings.personalization.title')}</h2>
 
 			<PageStateWrapper isLoading={isLoadingPersonalization} isEmpty={false}>
 			{#snippet children()}
 				<div class="space-y-4">
-					<h3 class="text-sm font-medium text-gray-700">{$t('settings.personalization.category_weights')}</h3>
+					<h3 class="text-sm font-medium text-gray-700 dark:text-gray-300">{$t('settings.personalization.category_weights')}</h3>
 					{#each (['tech', 'finance', 'entertainment', 'lifestyle'] as const) as cat}
 						<div class="space-y-1">
 							<div class="flex justify-between text-sm">
@@ -503,7 +507,7 @@
 				</div>
 
 				<div class="space-y-2">
-					<h3 class="text-sm font-medium text-gray-700">{$t('settings.personalization.locale_ratio')}</h3>
+					<h3 class="text-sm font-medium text-gray-700 dark:text-gray-300">{$t('settings.personalization.locale_ratio')}</h3>
 					<div class="flex justify-between text-xs text-gray-500">
 						<span>{$t('settings.personalization.locale_overseas')}</span>
 						<span>{$t('settings.personalization.locale_domestic')}</span>
@@ -534,8 +538,8 @@
 		</PageStateWrapper>
 
 			<!-- Behavior-based insights -->
-			<div class="border-t border-gray-200 pt-6 space-y-4">
-				<h2 class="text-base font-semibold text-gray-900">{$t('settings.behavior.title')}</h2>
+			<div class="border-t border-gray-200 dark:border-gray-700 pt-6 space-y-4">
+				<h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">{$t('settings.behavior.title')}</h2>
 				<p class="text-sm text-gray-500">{$t('settings.behavior.description')}</p>
 
 				{#if isLoadingBehavior}
@@ -543,20 +547,20 @@
 				{:else if behaviorStats && behaviorStats.total_events > 0}
 					<div class="space-y-3">
 						<div class="flex items-baseline justify-between">
-							<span class="text-sm text-gray-600">{$t('settings.behavior.total_events')}</span>
-							<span class="text-lg font-semibold text-gray-900">{behaviorStats.total_events}</span>
+							<span class="text-sm text-gray-600 dark:text-gray-400">{$t('settings.behavior.total_events')}</span>
+							<span class="text-lg font-semibold text-gray-900 dark:text-gray-100">{behaviorStats.total_events}</span>
 						</div>
 
 						<!-- Category interest bars -->
 						<div class="space-y-2">
-							<h3 class="text-sm font-medium text-gray-700">{$t('settings.behavior.interests')}</h3>
+							<h3 class="text-sm font-medium text-gray-700 dark:text-gray-300">{$t('settings.behavior.interests')}</h3>
 							{#each behaviorCategories as [cat, count]}
 								<div class="space-y-0.5">
 									<div class="flex justify-between text-xs">
 										<span class="text-gray-600">{cat}</span>
 										<span class="text-gray-400">{count}</span>
 									</div>
-									<div class="h-2 rounded-full bg-gray-100">
+									<div class="h-2 rounded-full bg-gray-100 dark:bg-gray-700">
 										<div
 											class="h-2 rounded-full bg-blue-500 transition-all"
 											style="width: {behaviorMaxCount > 0 ? (count / behaviorMaxCount) * 100 : 0}%"
@@ -568,11 +572,11 @@
 
 						<!-- Suggested weights preview -->
 						{#if Object.keys(behaviorStats.suggested_weights).length > 0}
-							<div class="rounded-md bg-blue-50 p-3 space-y-2">
-								<h3 class="text-sm font-medium text-blue-800">{$t('settings.behavior.suggested')}</h3>
+							<div class="rounded-md bg-blue-50 dark:bg-blue-900/20 p-3 space-y-2">
+								<h3 class="text-sm font-medium text-blue-800 dark:text-blue-300">{$t('settings.behavior.suggested')}</h3>
 								<div class="flex flex-wrap gap-2">
 									{#each Object.entries(behaviorStats.suggested_weights) as [cat, weight]}
-										<span class="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-700">
+										<span class="inline-flex items-center rounded-full bg-blue-100 dark:bg-blue-800/40 px-2.5 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-400">
 											{cat}: {weight}
 										</span>
 									{/each}
@@ -592,8 +596,8 @@
 						{/if}
 					</div>
 				{:else}
-					<div class="rounded-md bg-gray-50 p-4 text-center">
-						<p class="text-sm text-gray-500">{$t('settings.behavior.no_data')}</p>
+					<div class="rounded-md bg-gray-50 dark:bg-gray-700 p-4 text-center">
+						<p class="text-sm text-gray-500 dark:text-gray-400">{$t('settings.behavior.no_data')}</p>
 					</div>
 				{/if}
 			</div>
@@ -603,7 +607,7 @@
 	<!-- Security tab -->
 	{#if activeTab === 'security'}
 		<div class="max-w-md space-y-4">
-			<h2 class="text-base font-semibold text-gray-900">{$t('settings.security.2fa_title')}</h2>
+			<h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">{$t('settings.security.2fa_title')}</h2>
 
 			{#if twoFaSuccess}
 				<p class="text-sm text-green-600">{$t('settings.security.2fa_success')}</p>
@@ -612,7 +616,7 @@
 					<p class="text-sm text-gray-600">{$t('settings.security.2fa_scan_qr')}</p>
 					<img src={twoFaQrUrl} alt="2FA QR code" class="h-48 w-48 rounded border border-gray-200" />
 					<div>
-						<label class="block text-sm font-medium text-gray-700 mb-1" for="totp-code">
+						<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="totp-code">
 							{$t('settings.security.2fa_code_label')}
 						</label>
 						<input
@@ -620,7 +624,7 @@
 							type="text"
 							bind:value={twoFaCode}
 							maxlength={6}
-							class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+							class="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
 						/>
 					</div>
 					<button
@@ -648,6 +652,46 @@
 					{/if}
 				</button>
 			{/if}
+		</div>
+	{/if}
+
+	<!-- Appearance tab -->
+	{#if activeTab === 'appearance'}
+		<div class="max-w-md space-y-6">
+			<h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">{$t('settings.appearance.title')}</h2>
+
+			<div class="space-y-3">
+				<label class="text-sm font-medium text-gray-700 dark:text-gray-300">{$t('settings.appearance.theme')}</label>
+				<div class="grid grid-cols-3 gap-3">
+					<button
+						onclick={() => themeStore.setTheme('light')}
+						class="flex flex-col items-center gap-2 rounded-lg border-2 p-4 transition-colors {themeStore.theme === 'light'
+							? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20'
+							: 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'}"
+					>
+						<Sun size={24} class="{themeStore.theme === 'light' ? 'text-blue-600' : 'text-gray-500 dark:text-gray-400'}" />
+						<span class="text-sm font-medium {themeStore.theme === 'light' ? 'text-blue-600' : 'text-gray-700 dark:text-gray-300'}">{$t('settings.appearance.light')}</span>
+					</button>
+					<button
+						onclick={() => themeStore.setTheme('dark')}
+						class="flex flex-col items-center gap-2 rounded-lg border-2 p-4 transition-colors {themeStore.theme === 'dark'
+							? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20'
+							: 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'}"
+					>
+						<Moon size={24} class="{themeStore.theme === 'dark' ? 'text-blue-600' : 'text-gray-500 dark:text-gray-400'}" />
+						<span class="text-sm font-medium {themeStore.theme === 'dark' ? 'text-blue-600' : 'text-gray-700 dark:text-gray-300'}">{$t('settings.appearance.dark')}</span>
+					</button>
+					<button
+						onclick={() => themeStore.setTheme('system')}
+						class="flex flex-col items-center gap-2 rounded-lg border-2 p-4 transition-colors {themeStore.theme === 'system'
+							? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20'
+							: 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'}"
+					>
+						<Monitor size={24} class="{themeStore.theme === 'system' ? 'text-blue-600' : 'text-gray-500 dark:text-gray-400'}" />
+						<span class="text-sm font-medium {themeStore.theme === 'system' ? 'text-blue-600' : 'text-gray-700 dark:text-gray-300'}">{$t('settings.appearance.system')}</span>
+					</button>
+				</div>
+			</div>
 		</div>
 	{/if}
 </div>

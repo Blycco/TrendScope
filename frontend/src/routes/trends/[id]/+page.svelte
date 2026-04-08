@@ -94,7 +94,7 @@
 </script>
 
 <div class="space-y-6">
-	<a href="/trends" class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700">
+	<a href="/trends" class="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
 		<ArrowLeft size={16} />
 		{$t('nav.sidebar.trends')}
 	</a>
@@ -102,15 +102,15 @@
 	{#if isLoading}
 		<p class="text-gray-500">{$t('status.loading')}</p>
 	{:else if detail}
-		<div class="rounded-lg border border-gray-200 bg-white p-6">
+		<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6">
 			<div class="flex items-start justify-between">
 				<div class="flex-1">
 					<div class="flex items-center gap-3">
-						<h1 class="text-xl font-bold text-gray-900">{detail.title}</h1>
+						<h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">{detail.title}</h1>
 						<EarlyBadge score={detail.early_trend_score} />
 						<DirectionBadge direction={detail.direction} />
 					</div>
-					<div class="mt-2 flex items-center gap-4 text-sm text-gray-500">
+					<div class="mt-2 flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
 						<span>{$t('trend.category')}: {detail.category}</span>
 						<span>{formattedDate}</span>
 						<span>{$t('trend.score')}: {detail.score.toFixed(1)}</span>
@@ -126,14 +126,14 @@
 			</div>
 
 			{#if detail.summary}
-				<div class="mt-4 rounded-md bg-gray-50 p-4">
-					<p class="text-sm text-gray-700">{detail.summary}</p>
+				<div class="mt-4 rounded-md bg-gray-50 dark:bg-gray-700 p-4">
+					<p class="text-sm text-gray-700 dark:text-gray-300">{detail.summary}</p>
 				</div>
 			{/if}
 
 			<div class="mt-4 flex flex-wrap gap-1.5">
 				{#each detail.keywords as keyword}
-					<span class="inline-flex rounded-md bg-blue-50 px-2 py-0.5 text-xs text-blue-700">
+					<span class="inline-flex rounded-md bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 text-xs text-blue-700 dark:text-blue-400">
 						{keyword}
 					</span>
 				{/each}
@@ -145,7 +145,7 @@
 		<SentimentChart groupId={detail.id} />
 
 		{#if isForecastLoading}
-			<div class="rounded-lg border border-gray-200 bg-white p-4">
+			<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
 				<p class="text-sm text-gray-400">{$t('status.loading')}</p>
 			</div>
 		{:else if forecastData.length > 0}
@@ -153,7 +153,7 @@
 		{/if}
 
 		<div>
-			<h2 class="text-lg font-semibold text-gray-900 mb-3">
+			<h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
 				{$t('trend.detail.articles')} ({detail.articles.length})
 			</h2>
 			<div class="space-y-2">
@@ -162,15 +162,15 @@
 						href={article.url}
 						target="_blank"
 						rel="noopener noreferrer"
-						class="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-4 hover:shadow-sm transition-shadow"
+						class="flex items-start gap-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 hover:shadow-sm transition-shadow"
 					>
 						<div class="flex-1 min-w-0">
 							<div class="flex items-center gap-2">
-								<p class="text-sm font-medium text-gray-900 truncate">{article.title}</p>
+								<p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{article.title}</p>
 								<ExternalLink size={12} class="text-gray-400 shrink-0" />
 							</div>
 							{#if article.body_snippet}
-								<p class="mt-1 text-xs text-gray-500 line-clamp-2">{article.body_snippet}</p>
+								<p class="mt-1 text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{article.body_snippet}</p>
 							{/if}
 							<div class="mt-1.5 flex items-center gap-3 text-xs text-gray-400">
 								{#if article.source}

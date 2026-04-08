@@ -90,14 +90,14 @@
 </script>
 
 <div class="space-y-6">
-	<h1 class="text-2xl font-bold text-gray-900">{$t('page.tracker.title')}</h1>
+	<h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{$t('page.tracker.title')}</h1>
 
 	<form onsubmit={handleSubmit} class="flex gap-3">
 		<input
 			type="text"
 			bind:value={newKeyword}
 			placeholder={$t('label.keyword')}
-			class="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+			class="flex-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
 		/>
 		<button
 			type="submit"
@@ -108,12 +108,12 @@
 	</form>
 
 	<div>
-		<h2 class="text-lg font-semibold text-gray-900 mb-3">{$t('tracker.my_keywords')}</h2>
+		<h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">{$t('tracker.my_keywords')}</h2>
 		<PageStateWrapper isLoading={false} isEmpty={keywords.length === 0}>
 			{#snippet children()}
 				<div class="flex flex-wrap gap-2">
 					{#each keywords as keyword}
-						<span class="inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1.5 text-sm text-blue-700">
+						<span class="inline-flex items-center gap-1 rounded-full bg-blue-50 dark:bg-blue-900/20 px-3 py-1.5 text-sm text-blue-700 dark:text-blue-400">
 							{keyword}
 							<button
 								onclick={() => removeKeyword(keyword)}

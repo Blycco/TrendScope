@@ -55,9 +55,9 @@
 <div class="space-y-6">
 	<div>
 		<a href="/trends/{groupId}" class="text-sm text-blue-600 hover:underline">&larr; {$t('nav.sidebar.trends')}</a>
-		<h1 class="mt-2 text-2xl font-bold text-gray-900">{$t('page.insights.title')}</h1>
+		<h1 class="mt-2 text-2xl font-bold text-gray-900 dark:text-gray-100">{$t('page.insights.title')}</h1>
 		{#if displayKeyword}
-			<p class="text-gray-600">{displayKeyword}</p>
+			<p class="text-gray-600 dark:text-gray-400">{displayKeyword}</p>
 		{/if}
 	</div>
 
