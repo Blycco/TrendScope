@@ -7,6 +7,8 @@ from typing import Any
 import asyncpg
 import structlog
 
+from backend.processor.shared.cache_manager import publish
+
 logger = structlog.get_logger(__name__)
 
 
@@ -59,6 +61,14 @@ async def stage_save(
                     )
 
                 saved = len(group_rows)
+
+        # Publish new group IDs outside transaction (fire-and-forget)
+        for group_row in group_rows:
+            try:
+                await publish("trends:new", str(group_row["id"]))
+            except Exception as pub_exc:
+                logger.warning("publish_after_save_failed", error=str(pub_exc))
+
     except Exception as exc:
         logger.warning("pipeline_batch_save_error", error=str(exc))
         # Fallback to individual saves

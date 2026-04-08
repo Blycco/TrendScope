@@ -490,6 +490,8 @@
 	"tour.step.nav.title": "더 탐색하기",
 	"tour.step.nav.desc": "트렌드 피드, 뉴스, 콘텐츠 아이디어를 확인해보세요.",
 
+	"live.new_trends": "새 트렌드 {count}개가 업데이트되었습니다.",
+	"live.refresh": "새로고침",
 	"common.load_more": "더 보기",
 	"common.no_results": "결과 없음",
 	"common.no_results_desc": "검색 조건에 맞는 결과가 없습니다",
@@ -502,4 +504,5 @@
 	"compare.empty": "비교할 트렌드를 2개 이상 선택하세요.",
 	"compare.remove": "제거",
 	"compare.add": "비교에 추가"
+
 }
