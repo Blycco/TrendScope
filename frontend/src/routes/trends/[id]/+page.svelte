@@ -6,6 +6,8 @@
 	import EarlyBadge from '../../../components/EarlyBadge.svelte';
 	import DirectionBadge from '../../../components/DirectionBadge.svelte';
 	import TrendChart from '../../../components/TrendChart.svelte';
+	import AspectSentimentChart from '$lib/components/AspectSentimentChart.svelte';
+	import KeywordTimeline from '$lib/components/KeywordTimeline.svelte';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
 	import { ExternalLink, ArrowLeft, Lightbulb } from 'lucide-svelte';
 
@@ -113,6 +115,10 @@
 		</div>
 
 		<TrendChart groupId={detail.id} />
+
+		<AspectSentimentChart groupId={detail.id} />
+
+		<KeywordTimeline groupId={detail.id} />
 
 		<div>
 			<h2 class="text-lg font-semibold text-gray-900 mb-3">

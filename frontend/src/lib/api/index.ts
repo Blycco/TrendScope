@@ -30,5 +30,15 @@ export type {
 	InsightContent,
 	InsightResponse,
 	CursorParams,
-	BehaviorEvent
+	BehaviorEvent,
+	AspectSentimentItem,
+	AspectSentimentResponse,
+	MetaTrendItem,
+	MetaTrendListResponse,
+	KeywordFrequencyPoint,
+	KeywordSnapshot,
+	KeywordHistoryResponse,
+	TrendItemMinimal,
+	RegionalTrendEntry,
+	RegionalTrendResponse
 } from './types';
