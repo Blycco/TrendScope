@@ -86,6 +86,17 @@ export interface TrendTimelineResponse {
 	points: TimelinePoint[];
 }
 
+export interface CompareTimelineItem {
+	group_id: string;
+	title: string;
+	points: TimelinePoint[];
+}
+
+export interface CompareTimelineResponse {
+	interval: string;
+	trends: CompareTimelineItem[];
+}
+
 export interface SentimentDistribution {
 	positive: number;
 	neutral: number;

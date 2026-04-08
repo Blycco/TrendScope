@@ -20,6 +20,8 @@ export type {
 	TrendListResponse,
 	TimelinePoint,
 	TrendTimelineResponse,
+	CompareTimelineItem,
+	CompareTimelineResponse,
 	SentimentDistribution,
 	ForecastPoint,
 	ForecastResponse,
