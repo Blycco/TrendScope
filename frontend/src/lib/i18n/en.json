@@ -453,5 +453,15 @@
 	"tour.step.hot_trends.title": "Hot Trends",
 	"tour.step.hot_trends.desc": "The top-ranked trends right now. Click any card to see full details.",
 	"tour.step.nav.title": "Explore More",
-	"tour.step.nav.desc": "Visit Trends for the full feed, News for articles, or Content Ideas for AI-powered suggestions."
+	"tour.step.nav.desc": "Visit Trends for the full feed, News for articles, or Content Ideas for AI-powered suggestions.",
+
+	"meta_trends.title": "Meta Trends",
+	"meta_trends.subtitle": "Macro Pattern Analysis",
+	"meta_trends.sub_trends": "{count} related trends",
+	"meta_trends.empty": "No meta trend data available.",
+	"meta_trends.expand": "Expand",
+	"meta_trends.collapse": "Collapse",
+	"keyword.history.title": "Keyword History",
+	"keyword.history.empty": "No keyword history available.",
+	"keyword.history.snapshot": "As of {time}"
 }
