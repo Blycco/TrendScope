@@ -65,6 +65,7 @@ export interface TrendItem {
 	created_at: string;
 	article_count: number;
 	direction: 'rising' | 'steady' | 'declining';
+	growth_type?: string;
 	status: 'exploding' | 'rising' | 'stable' | 'declining' | 'peaked';
 }
 
@@ -219,6 +220,77 @@ export interface BehaviorEvent {
 }
 
 // ---------------------------------------------------------------------------
+// E5 Aspect Sentiment
+// ---------------------------------------------------------------------------
+
+export interface AspectSentimentItem {
+	aspect: string;
+	positive: number;
+	neutral: number;
+	negative: number;
+	total: number;
+}
+
+export interface AspectSentimentResponse {
+	group_id: string;
+	aspects: AspectSentimentItem[];
+}
+
+// ---------------------------------------------------------------------------
+// D2 Meta Trends
+// ---------------------------------------------------------------------------
+
+export interface MetaTrendItem {
+	meta_title: string;
+	keywords: string[];
+	sub_trend_ids: string[];
+	total_score: number;
+}
+
+export interface MetaTrendListResponse {
+	items: MetaTrendItem[];
+	locale: string | null;
+	total: number;
+}
+
+// ---------------------------------------------------------------------------
+// D3 Keyword History
+// ---------------------------------------------------------------------------
+
+export interface KeywordFrequencyPoint {
+	term: string;
+	frequency: number;
+}
+
+export interface KeywordSnapshot {
+	snapshot_at: string;
+	top_keywords: KeywordFrequencyPoint[];
+}
+
+export interface KeywordHistoryResponse {
+	group_id: string;
+	snapshots: KeywordSnapshot[];
+}
+
+// ---------------------------------------------------------------------------
+// D4 Regional
+// ---------------------------------------------------------------------------
+
+export interface TrendItemMinimal {
+	id: string;
+	title: string;
+	score: number;
+}
+
+export interface RegionalTrendEntry {
+	locale: string;
+	count: number;
+	top_trends: TrendItemMinimal[];
+}
+
+export interface RegionalTrendResponse {
+	entries: RegionalTrendEntry[];
+	total_locales: number;
 // Keyword Graph types
 // ---------------------------------------------------------------------------
 

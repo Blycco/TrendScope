@@ -7,6 +7,8 @@
 	import EarlyBadge from '../../../components/EarlyBadge.svelte';
 	import DirectionBadge from '../../../components/DirectionBadge.svelte';
 	import TrendChart from '../../../components/TrendChart.svelte';
+	import AspectSentimentChart from '$lib/components/AspectSentimentChart.svelte';
+	import KeywordTimeline from '$lib/components/KeywordTimeline.svelte';
 	import KeywordGraph from '$lib/components/KeywordGraph.svelte';
 	import SentimentChart from '$lib/components/SentimentChart.svelte';
 	import ForecastChart from '$lib/components/ForecastChart.svelte';
@@ -143,6 +145,9 @@
 
 		<TrendChart groupId={detail.id} />
 
+		<AspectSentimentChart groupId={detail.id} />
+
+		<KeywordTimeline groupId={detail.id} />
 		<SentimentChart groupId={detail.id} />
 
 		<KeywordGraph groupId={detail.id} />

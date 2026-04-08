@@ -10,6 +10,7 @@
 	import TrendCard from '../../components/TrendCard.svelte';
 	import SkeletonCard from '../../components/SkeletonCard.svelte';
 	import TrendMap from '$lib/components/TrendMap.svelte';
+	import MetaTrendsSection from '$lib/components/MetaTrendsSection.svelte';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
 	import QuotaExceededModal from '$lib/ui/QuotaExceededModal.svelte';
 	import PlanGate from '$lib/ui/PlanGate.svelte';
@@ -358,6 +359,10 @@
 
 	{#if topTrendId && !pagination.isLoading}
 		<TrendMap trendId={topTrendId} />
+	{/if}
+
+	{#if !isLoading}
+		<MetaTrendsSection locale={selectedLocale ?? undefined} />
 	{/if}
 </div>
 

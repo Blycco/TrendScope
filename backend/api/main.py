@@ -34,6 +34,7 @@ from backend.api.routers import (
     notifications,
     payments,
     personalization,
+    regional,
     scraps,
     settings,
     shares,
@@ -166,6 +167,7 @@ def create_app() -> FastAPI:
     app.include_router(shares.router, prefix="/api/v1")
     app.include_router(forecast.router, prefix="/api/v1")
     app.include_router(webhooks_payment.router, prefix="/api/v1")
+    app.include_router(regional.router, prefix="/api/v1")
     app.include_router(live.router, prefix="/api/v1")
 
     # Mount admin sub-application at /admin.

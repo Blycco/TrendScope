@@ -36,6 +36,16 @@ export type {
 	InsightResponse,
 	CursorParams,
 	BehaviorEvent,
+	AspectSentimentItem,
+	AspectSentimentResponse,
+	MetaTrendItem,
+	MetaTrendListResponse,
+	KeywordFrequencyPoint,
+	KeywordSnapshot,
+	KeywordHistoryResponse,
+	TrendItemMinimal,
+	RegionalTrendEntry,
+	RegionalTrendResponse
 	KeywordNode,
 	KeywordEdge,
 	KeywordGraphResponse
