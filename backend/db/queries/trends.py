@@ -432,3 +432,45 @@ async def fetch_news(
     except Exception as exc:
         logger.error("fetch_news_failed", error=str(exc))
         raise
+
+
+# ---------------------------------------------------------------------------
+# Aspect-Based Sentiment: article text extraction
+# ---------------------------------------------------------------------------
+
+
+async def fetch_group_article_sentences(
+    pool: asyncpg.Pool,
+    *,
+    group_id: str,
+    limit: int = 50,
+) -> list[str]:
+    """아티클 title + body[:500] 텍스트 목록 반환 (aspect 추출용).
+
+    Args:
+        pool: asyncpg connection pool.
+        group_id: news_group UUID string.
+        limit: 반환할 최대 아티클 수.
+
+    Returns:
+        텍스트 문자열 목록 (빈 문자열 제외).
+    """
+    try:
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT COALESCE(title, '') || '. ' || COALESCE(LEFT(body, 500), '') AS text "
+                "FROM news_article "
+                "WHERE group_id = $1::uuid "
+                "ORDER BY publish_time DESC NULLS LAST "
+                "LIMIT $2",
+                group_id,
+                limit,
+            )
+        return [row["text"] for row in rows if row["text"].strip()]
+    except Exception as exc:
+        logger.error(
+            "fetch_group_article_sentences_failed",
+            group_id=group_id,
+            error=str(exc),
+        )
+        raise

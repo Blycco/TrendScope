@@ -11,6 +11,8 @@ from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import Response, StreamingResponse
 
 from backend.api.schemas.trends import (
+    AspectSentimentItem,
+    AspectSentimentResponse,
     SentimentDistributionResponse,
     TimelinePoint,
     TrendArticleItem,
@@ -25,6 +27,7 @@ from backend.common.errors import ErrorCode, error_response
 from backend.db.queries.trends import (
     encode_cursor,
     fetch_early_trends,
+    fetch_group_article_sentences,
     fetch_group_article_texts,
     fetch_related_trends,
     fetch_trend_detail,
@@ -378,6 +381,100 @@ async def get_trend_timeline(
         content=body_bytes,
         media_type="application/json",
     )
+
+
+# ---------------------------------------------------------------------------
+# Aspect-Based Sentiment endpoint
+# ---------------------------------------------------------------------------
+
+_sentiment_analyzer: object | None = None
+
+
+def _get_sentiment_analyzer() -> object:
+    """Lazy-init singleton SentimentAnalyzer."""
+    global _sentiment_analyzer  # noqa: PLW0603
+    if _sentiment_analyzer is None:
+        from backend.processor.algorithms.sentiment import SentimentAnalyzer
+
+        _sentiment_analyzer = SentimentAnalyzer()
+    return _sentiment_analyzer
+
+
+_ASPECT_CACHE_TTL = 3600  # 1 hour
+
+
+@router.get(
+    "/trends/{group_id}/sentiment/aspects",
+    response_model=AspectSentimentResponse,
+)
+async def get_trend_sentiment_aspects(
+    group_id: str,
+    request: Request,
+    top_k: int = Query(default=8, ge=1, le=20),
+) -> Response:
+    """키워드별 감성 분석. Cache: 1h.
+
+    각 트렌드 키워드(aspect)를 포함하는 아티클 문장을 추출하여
+    SentimentAnalyzer로 감성을 집계합니다.
+    """
+    from backend.processor.algorithms.aspect_sentiment import (
+        analyze_aspect_sentiments,
+    )
+
+    cache_key = f"sentiment_aspects:{group_id}:{top_k}"
+    cached = await get_cached(cache_key)
+    if cached is not None:
+        return Response(content=cached, media_type="application/json")
+
+    db_pool = request.app.state.db_pool
+
+    try:
+        detail = await fetch_trend_detail(db_pool, group_id=group_id)
+        if detail is None:
+            from fastapi import HTTPException
+
+            raise HTTPException(status_code=404, detail="Trend not found")
+
+        keywords: list[str] = list(detail["group"]["keywords"] or [])[:top_k]
+
+        if not keywords:
+            body = AspectSentimentResponse(group_id=group_id, aspects=[])
+            body_bytes = body.model_dump_json().encode()
+            await set_cached(cache_key, body_bytes, _ASPECT_CACHE_TTL)
+            return Response(content=body_bytes, media_type="application/json")
+
+        texts = await fetch_group_article_sentences(db_pool, group_id=group_id)
+
+        results = analyze_aspect_sentiments(texts, keywords, _get_sentiment_analyzer())
+
+        body = AspectSentimentResponse(
+            group_id=group_id,
+            aspects=[
+                AspectSentimentItem(
+                    aspect=r.aspect,
+                    positive=r.positive,
+                    neutral=r.neutral,
+                    negative=r.negative,
+                    total=r.total,
+                )
+                for r in results
+            ],
+        )
+        body_bytes = body.model_dump_json().encode()
+        await set_cached(cache_key, body_bytes, _ASPECT_CACHE_TTL)
+        return Response(content=body_bytes, media_type="application/json")
+
+    except Exception as exc:
+        from fastapi import HTTPException
+
+        if isinstance(exc, HTTPException):
+            raise
+        logger.warning(
+            "get_trend_sentiment_aspects_failed",
+            group_id=group_id,
+            error=str(exc),
+        )
+        raise HTTPException(status_code=500, detail="Internal error") from exc
 
 
 @router.get(

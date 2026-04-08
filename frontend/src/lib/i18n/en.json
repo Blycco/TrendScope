@@ -490,6 +490,10 @@
 	"tour.step.nav.title": "Explore More",
 	"tour.step.nav.desc": "Visit Trends for the full feed, News for articles, or Content Ideas for AI-powered suggestions.",
 
+	"trend.sentiment.aspects.title": "Sentiment by Keyword",
+	"trend.sentiment.aspects.loading": "Analyzing keyword sentiments...",
+	"trend.sentiment.aspects.empty": "No keywords to analyze.",
+	"trend.sentiment.aspects.total": "{count} sentences analyzed",
 	"trend.growth_type.growth": "Sustained Growth",
 	"trend.growth_type.spike": "Spike",
 	"trend.growth_type.unknown": "Analyzing",
