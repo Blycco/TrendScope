@@ -10,6 +10,11 @@
 	"nav.mobile.menu": "메뉴 열기",
 	"nav.mobile.close": "메뉴 닫기",
 
+	"a11y.skip_to_main": "본문으로 건너뛰기",
+	"a11y.external_link": "{title} - 외부 링크 열기",
+	"a11y.loading": "로딩 중...",
+	"a11y.close_dialog": "대화창 닫기",
+
 	"page.home.title": "TrendScope",
 	"page.home.description": "트렌드 인텔리전스 대시보드",
 
@@ -29,6 +34,7 @@
 	"dashboard.top_keywords": "인기 키워드",
 	"dashboard.source_distribution": "소스 분포",
 	"dashboard.trend_map": "트렌드 관계 맵",
+	"dashboard.chart_total_label": "트렌드",
 	"dashboard.source.rss": "RSS",
 	"dashboard.source.reddit": "Reddit",
 	"dashboard.source.community": "커뮤니티",
@@ -102,6 +108,11 @@
 	"status.steady": "유지 중",
 	"status.loading": "로딩 중...",
 	"status.no_results": "결과가 없습니다.",
+	"status.trend.exploding": "급상승",
+	"status.trend.rising": "상승 중",
+	"status.trend.stable": "안정",
+	"status.trend.declining": "하락 중",
+	"status.trend.peaked": "정점",
 
 	"role.marketer": "마케터",
 	"role.creator": "크리에이터",
@@ -116,6 +127,20 @@
 	"trend.detail.insights": "인사이트 보기",
 	"trend.detail.articles": "관련 기사",
 	"trend.sentiment": "감성 분석",
+	"trend.sentiment.positive": "긍정",
+	"trend.sentiment.neutral": "중립",
+	"trend.sentiment.negative": "부정",
+	"trend.sentiment.no_data": "감성 분석 데이터가 없습니다.",
+	"trend.detail.forecast": "트렌드 예측",
+
+	"forecast.title": "트렌드 예측 (12개월)",
+	"forecast.actual": "실제 데이터",
+	"forecast.predicted": "예측",
+	"forecast.confidence": "신뢰 구간",
+	"forecast.no_data": "예측 데이터가 충분하지 않습니다.",
+	"forecast.pro_required": "트렌드 예측은 Pro 이상 플랜에서 이용 가능합니다.",
+	"forecast.date": "날짜",
+	"forecast.value": "예측값",
 
 	"chart.timeline.title": "기사 추이",
 	"chart.timeline.article_count": "기사 수",
@@ -165,6 +190,13 @@
 	"settings.security.2fa_code_label": "인증 코드",
 	"settings.security.2fa_verify": "인증 확인",
 	"settings.security.2fa_success": "2단계 인증이 성공적으로 활성화되었습니다.",
+	"settings.tab.appearance": "외관",
+	"settings.appearance.title": "테마 설정",
+	"settings.appearance.theme": "테마",
+	"settings.appearance.light": "라이트",
+	"settings.appearance.dark": "다크",
+	"settings.appearance.system": "시스템",
+	"theme.toggle": "테마 전환",
 
 	"nav.content": "콘텐츠 아이디어",
 
@@ -386,6 +418,9 @@
 	"trends.share.error": "링크 생성에 실패했습니다.",
 	"trends.map.title": "트렌드 맵",
 	"trends.map.empty": "관련 트렌드 데이터가 없습니다.",
+	"trends.keyword_graph.title": "연관 키워드",
+	"trends.keyword_graph.empty": "연관 키워드 데이터가 없습니다.",
+	"trends.keyword_graph.loading": "키워드 그래프 로딩 중...",
 
 	"admin.layout.quota_alerts": "API 알림",
 	"admin.quota_alerts.title": "API Rate Limit 알림",
@@ -458,5 +493,20 @@
 	"trend.growth_type.growth": "지속 성장",
 	"trend.growth_type.spike": "단기 급등",
 	"trend.growth_type.unknown": "분류 중",
-	"trend.growth_type.label": "성장 유형"
+	"trend.growth_type.label": "성장 유형",
+	"live.new_trends": "새 트렌드 {count}개가 업데이트되었습니다.",
+	"live.refresh": "새로고침",
+	"common.load_more": "더 보기",
+	"common.no_results": "결과 없음",
+	"common.no_results_desc": "검색 조건에 맞는 결과가 없습니다",
+
+	"nav.compare": "비교",
+	"page.compare.title": "트렌드 비교",
+	"compare.select_trends": "비교할 트렌드를 선택하세요 (2~5개)",
+	"compare.search_placeholder": "트렌드 검색...",
+	"compare.max_reached": "최대 5개까지 비교할 수 있습니다.",
+	"compare.empty": "비교할 트렌드를 2개 이상 선택하세요.",
+	"compare.remove": "제거",
+	"compare.add": "비교에 추가"
+
 }
