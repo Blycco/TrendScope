@@ -13,6 +13,7 @@ from backend.crawler.sources.sns_crawler import collect_all as sns_collect_all
 from backend.jobs.burst_job import run_burst_job
 from backend.jobs.digest_job import run_daily_digest
 from backend.jobs.early_trend_update import run_early_trend_update
+from backend.jobs.keyword_snapshot_job import run_keyword_snapshot
 
 logger = structlog.get_logger(__name__)
 
@@ -59,6 +60,15 @@ async def _job_early_trend_update(db_pool: asyncpg.Pool) -> None:
             logger.info("scheduled_burst_triggered", burst_count=burst_count)
     except Exception as exc:
         logger.error("scheduled_burst_job_failed", error=str(exc))
+
+
+async def _job_keyword_snapshot(db_pool: asyncpg.Pool) -> None:
+    """Scheduled job: save keyword snapshots for active trend groups."""
+    try:
+        await run_keyword_snapshot(db_pool)
+        logger.info("scheduled_keyword_snapshot_done")
+    except Exception as exc:
+        logger.error("scheduled_keyword_snapshot_failed", error=str(exc))
 
 
 async def _job_daily_digest(db_pool: asyncpg.Pool) -> None:
@@ -130,6 +140,17 @@ def create_scheduler(db_pool: asyncpg.Pool) -> AsyncIOScheduler:
         args=[db_pool],
         id="early_trend_update",
         name="Early Trend Score Recalculation",
+        max_instances=1,
+        coalesce=True,
+    )
+
+    scheduler.add_job(
+        _job_keyword_snapshot,
+        "cron",
+        hour="*/6",
+        args=[db_pool],
+        id="keyword_snapshot",
+        name="Keyword Snapshot (6h)",
         max_instances=1,
         coalesce=True,
     )
