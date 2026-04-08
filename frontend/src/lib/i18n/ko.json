@@ -413,6 +413,9 @@
 	"trends.share.error": "링크 생성에 실패했습니다.",
 	"trends.map.title": "트렌드 맵",
 	"trends.map.empty": "관련 트렌드 데이터가 없습니다.",
+	"trends.keyword_graph.title": "연관 키워드",
+	"trends.keyword_graph.empty": "연관 키워드 데이터가 없습니다.",
+	"trends.keyword_graph.loading": "키워드 그래프 로딩 중...",
 
 	"admin.layout.quota_alerts": "API 알림",
 	"admin.quota_alerts.title": "API Rate Limit 알림",
@@ -484,5 +487,14 @@
 
 	"common.load_more": "더 보기",
 	"common.no_results": "결과 없음",
-	"common.no_results_desc": "검색 조건에 맞는 결과가 없습니다"
+	"common.no_results_desc": "검색 조건에 맞는 결과가 없습니다",
+
+	"nav.compare": "비교",
+	"page.compare.title": "트렌드 비교",
+	"compare.select_trends": "비교할 트렌드를 선택하세요 (2~5개)",
+	"compare.search_placeholder": "트렌드 검색...",
+	"compare.max_reached": "최대 5개까지 비교할 수 있습니다.",
+	"compare.empty": "비교할 트렌드를 2개 이상 선택하세요.",
+	"compare.remove": "제거",
+	"compare.add": "비교에 추가"
 }

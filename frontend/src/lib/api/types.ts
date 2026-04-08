@@ -86,6 +86,17 @@ export interface TrendTimelineResponse {
 	points: TimelinePoint[];
 }
 
+export interface CompareTimelineItem {
+	group_id: string;
+	title: string;
+	points: TimelinePoint[];
+}
+
+export interface CompareTimelineResponse {
+	interval: string;
+	trends: CompareTimelineItem[];
+}
+
 export interface SentimentDistribution {
 	positive: number;
 	neutral: number;
@@ -205,4 +216,26 @@ export interface BehaviorEvent {
 	event_type: string;
 	payload: Record<string, unknown>;
 	timestamp?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Keyword Graph types
+// ---------------------------------------------------------------------------
+
+export interface KeywordNode {
+	term: string;
+	score: number;
+	frequency: number;
+}
+
+export interface KeywordEdge {
+	source: string;
+	target: string;
+	weight: number;
+}
+
+export interface KeywordGraphResponse {
+	group_id: string;
+	nodes: KeywordNode[];
+	edges: KeywordEdge[];
 }

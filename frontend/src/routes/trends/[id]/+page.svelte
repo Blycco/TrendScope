@@ -7,6 +7,7 @@
 	import EarlyBadge from '../../../components/EarlyBadge.svelte';
 	import DirectionBadge from '../../../components/DirectionBadge.svelte';
 	import TrendChart from '../../../components/TrendChart.svelte';
+	import KeywordGraph from '$lib/components/KeywordGraph.svelte';
 	import SentimentChart from '$lib/components/SentimentChart.svelte';
 	import ForecastChart from '$lib/components/ForecastChart.svelte';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
@@ -143,6 +144,8 @@
 		<TrendChart groupId={detail.id} />
 
 		<SentimentChart groupId={detail.id} />
+
+		<KeywordGraph groupId={detail.id} />
 
 		{#if isForecastLoading}
 			<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">

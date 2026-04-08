@@ -1,10 +1,13 @@
 <script lang="ts">
 	import { t } from 'svelte-i18n';
+	import { goto } from '$app/navigation';
 	import type { TrendItem } from '$lib/api';
 	import EarlyBadge from './EarlyBadge.svelte';
 	import DirectionBadge from './DirectionBadge.svelte';
 	import StatusBadge from '$lib/ui/StatusBadge.svelte';
 	import { formatDate } from '$lib/utils/locale';
+	import { compareStore } from '$lib/stores/compare.svelte';
+	import { BarChart3 } from 'lucide-svelte';
 
 	interface Props {
 		trend: TrendItem;
@@ -27,6 +30,13 @@
 					? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
 					: 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
 	);
+
+	function handleCompare(e: MouseEvent): void {
+		e.preventDefault();
+		e.stopPropagation();
+		compareStore.addTrend(trend.id);
+		goto(`/compare?ids=${compareStore.toUrlParam()}`);
+	}
 </script>
 
 <a
@@ -49,9 +59,19 @@
 			{/if}
 		</div>
 
-		<span class="shrink-0 inline-flex items-center rounded-full px-2.5 py-1 text-sm font-semibold {scoreColor}">
-			{trend.score.toFixed(1)}
-		</span>
+		<div class="flex items-center gap-2 shrink-0">
+			<button
+				type="button"
+				class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-blue-600 transition-colors"
+				title={$t('compare.add')}
+				onclick={handleCompare}
+			>
+				<BarChart3 size={16} />
+			</button>
+			<span class="inline-flex items-center rounded-full px-2.5 py-1 text-sm font-semibold {scoreColor}">
+				{trend.score.toFixed(1)}
+			</span>
+		</div>
 	</div>
 
 	<div class="mt-3 flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
