@@ -10,6 +10,11 @@
 	"nav.mobile.menu": "메뉴 열기",
 	"nav.mobile.close": "메뉴 닫기",
 
+	"a11y.skip_to_main": "본문으로 건너뛰기",
+	"a11y.external_link": "{title} - 외부 링크 열기",
+	"a11y.loading": "로딩 중...",
+	"a11y.close_dialog": "대화창 닫기",
+
 	"page.home.title": "TrendScope",
 	"page.home.description": "트렌드 인텔리전스 대시보드",
 

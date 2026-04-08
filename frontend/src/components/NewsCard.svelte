@@ -2,6 +2,7 @@
 	import type { NewsItem } from '$lib/api';
 	import { ExternalLink } from 'lucide-svelte';
 	import { formatDate } from '$lib/utils/locale';
+	import { t } from 'svelte-i18n';
 
 	interface Props {
 		news: NewsItem;
@@ -28,6 +29,7 @@
 				target="_blank"
 				rel="noopener noreferrer"
 				class="text-base font-semibold text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 inline-flex items-center gap-1"
+				aria-label={$t('a11y.external_link', { values: { title: news.title } })}
 			>
 				{news.title}
 				<ExternalLink size={14} class="text-gray-400" />
