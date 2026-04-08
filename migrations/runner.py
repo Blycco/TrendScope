@@ -30,6 +30,10 @@ MIGRATIONS: list[str] = [
     "migrations.016_clean_titles",
     "migrations.017_error_log",
     "migrations.018_burst_job_log",
+    "migrations.019_fix_google_trends_source_type",
+    "migrations.020_growth_type",
+    "migrations.021_keyword_snapshot",
+    "migrations.022_naver_datalab_source",
 ]
 
 

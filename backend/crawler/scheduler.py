@@ -8,6 +8,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from backend.crawler.quota_guard import reset_all_quotas
 from backend.crawler.sources.community_crawler import crawl_all as community_crawl_all
+from backend.crawler.sources.naver_datalab_crawler import crawl_naver_datalab
 from backend.crawler.sources.news_crawler import crawl_all as news_crawl_all
 from backend.crawler.sources.sns_crawler import collect_all as sns_collect_all
 from backend.jobs.burst_job import run_burst_job
@@ -60,6 +61,15 @@ async def _job_early_trend_update(db_pool: asyncpg.Pool) -> None:
             logger.info("scheduled_burst_triggered", burst_count=burst_count)
     except Exception as exc:
         logger.error("scheduled_burst_job_failed", error=str(exc))
+
+
+async def _job_naver_datalab(db_pool: asyncpg.Pool) -> None:
+    """Scheduled job: collect Naver DataLab search trends."""
+    try:
+        saved = await crawl_naver_datalab(db_pool)
+        logger.info("scheduled_naver_datalab_done", saved=len(saved))
+    except Exception as exc:
+        logger.error("scheduled_naver_datalab_failed", error=str(exc))
 
 
 async def _job_keyword_snapshot(db_pool: asyncpg.Pool) -> None:
@@ -140,6 +150,17 @@ def create_scheduler(db_pool: asyncpg.Pool) -> AsyncIOScheduler:
         args=[db_pool],
         id="early_trend_update",
         name="Early Trend Score Recalculation",
+        max_instances=1,
+        coalesce=True,
+    )
+
+    scheduler.add_job(
+        _job_naver_datalab,
+        "interval",
+        minutes=30,
+        args=[db_pool],
+        id="naver_datalab",
+        name="Naver DataLab Crawler",
         max_instances=1,
         coalesce=True,
     )

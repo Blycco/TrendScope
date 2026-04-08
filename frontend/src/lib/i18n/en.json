@@ -42,6 +42,7 @@
 	"dashboard.source.google_trends": "Google Trends",
 	"dashboard.source.burst_gnews": "Burst News",
 	"dashboard.source.burst_reddit": "Burst Reddit",
+	"source.naver_datalab": "Naver DataLab",
 	"dashboard.last_24h": "Last 24 hours",
 	"page.trends.title": "Trend Feed",
 	"page.news.title": "News Feed",
