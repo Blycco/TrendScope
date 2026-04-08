@@ -30,6 +30,7 @@ MIGRATIONS: list[str] = [
     "migrations.016_clean_titles",
     "migrations.017_error_log",
     "migrations.018_burst_job_log",
+    "migrations.020_naver_datalab_source",
 ]
 
 
