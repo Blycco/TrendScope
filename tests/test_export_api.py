@@ -22,8 +22,7 @@ def _make_trend_row(
     early_trend_score: float = 0.5,
     keywords: list[str] | None = None,
 ) -> MagicMock:
-    row = MagicMock()
-    row.__getitem__ = lambda self, key: {
+    _data = {
         "id": row_id,
         "title": title,
         "category": category,
@@ -35,7 +34,11 @@ def _make_trend_row(
         "summary": "요약",
         "article_count": 3,
         "direction": "steady",
-    }[key]
+        "growth_type": "unknown",
+    }
+    row = MagicMock()
+    row.__getitem__ = lambda self, key: _data[key]
+    row.get = lambda key, default=None: _data.get(key, default)
     return row
 
 

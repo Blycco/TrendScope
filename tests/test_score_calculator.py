@@ -6,6 +6,11 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 from backend.processor.shared.score_calculator import (
+    WEIGHT_ARTICLE_COUNT,
+    WEIGHT_FRESHNESS,
+    WEIGHT_KEYWORD_IMPORTANCE,
+    WEIGHT_SOCIAL_SIGNAL,
+    WEIGHT_SOURCE_DIVERSITY,
     ScoreInput,
     ScoreResult,
     calculate_score,
@@ -70,6 +75,7 @@ class TestCalculateScore:
         result = calculate_score(inp, now)
         assert isinstance(result, ScoreResult)
         assert result.total > 0
+        assert result.normalized > 0
 
     def test_score_components_sum(self) -> None:
         now = datetime.now(timezone.utc)
@@ -115,3 +121,64 @@ class TestCalculateScore:
             now,
         )
         assert result.social_signal == 0.0
+
+    def test_normalized_within_0_100(self) -> None:
+        now = datetime.now(timezone.utc)
+        result = calculate_score(
+            ScoreInput(
+                published_at=now,
+                article_count=100,
+                source_count=10,
+                social_signal=200.0,
+                keyword_importance=1.0,
+            ),
+            now,
+        )
+        assert 0 <= result.normalized <= 100
+
+    def test_normalized_max_score(self) -> None:
+        """All components at max should yield exactly 100."""
+        now = datetime.now(timezone.utc)
+        result = calculate_score(
+            ScoreInput(
+                published_at=now,
+                article_count=1000,
+                source_count=100,
+                social_signal=1000.0,
+                keyword_importance=1.0,
+            ),
+            now,
+        )
+        assert result.normalized == pytest.approx(100.0, abs=0.1)
+
+    def test_normalized_weights_sum_to_100(self) -> None:
+        total_weight = (
+            WEIGHT_FRESHNESS
+            + WEIGHT_SOURCE_DIVERSITY
+            + WEIGHT_ARTICLE_COUNT
+            + WEIGHT_SOCIAL_SIGNAL
+            + WEIGHT_KEYWORD_IMPORTANCE
+        )
+        assert total_weight == pytest.approx(100.0)
+
+    def test_source_diversity_increases_score(self) -> None:
+        now = datetime.now(timezone.utc)
+        one_src = calculate_score(
+            ScoreInput(published_at=now, source_count=1),
+            now,
+        )
+        many_src = calculate_score(
+            ScoreInput(published_at=now, source_count=5),
+            now,
+        )
+        assert many_src.normalized > one_src.normalized
+        assert many_src.source_diversity > one_src.source_diversity
+
+    def test_normalized_zero_for_old_article(self) -> None:
+        now = datetime.now(timezone.utc)
+        very_old = now - timedelta(days=7)
+        result = calculate_score(
+            ScoreInput(published_at=very_old),
+            now,
+        )
+        assert result.normalized < 20  # mostly decayed

@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 
 from backend.api.schemas.admin import (
     AdminSettingItem,
@@ -13,8 +13,9 @@ from backend.api.schemas.admin import (
     AdminSettingsUpdateRequest,
 )
 from backend.auth.dependencies import CurrentUser, require_admin_role
-from backend.common.audit import write_audit_log
-from backend.common.errors import ErrorCode, http_error
+from backend.common.audit import log_audit
+from backend.common.decorators import handle_errors
+from backend.common.errors import ErrorCode
 from backend.db.queries.admin import (
     admin_get_settings,
     admin_reset_settings,
@@ -50,77 +51,75 @@ def _rows_to_response(rows: list) -> AdminSettingsResponse:
 
 
 @router.get("", response_model=AdminSettingsResponse)
+@handle_errors(
+    error_code=ErrorCode.DB_ERROR,
+    message="Failed to get settings",
+    status_code=500,
+    log_event="admin_get_settings_failed",
+)
 async def get_settings(
     request: Request,
     current_user: CurrentUser = Depends(require_admin_role()),  # noqa: B008
 ) -> AdminSettingsResponse:
     """Get all admin settings."""
-    try:
-        pool = request.app.state.db_pool
-        rows = await admin_get_settings(pool)
-        return _rows_to_response(rows)
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logger.error("admin_get_settings_failed", error=str(exc))
-        raise http_error(ErrorCode.DB_ERROR, "Failed to get settings", status_code=500) from exc
+    pool = request.app.state.db_pool
+    rows = await admin_get_settings(pool)
+    return _rows_to_response(rows)
 
 
 @router.patch("", response_model=AdminSettingsResponse)
+@handle_errors(
+    error_code=ErrorCode.DB_ERROR,
+    message="Failed to update settings",
+    status_code=500,
+    log_event="admin_update_settings_failed",
+)
 async def update_settings(
     body: AdminSettingsUpdateRequest,
     request: Request,
     current_user: CurrentUser = Depends(require_admin_role(admin_only=True)),  # noqa: B008
 ) -> AdminSettingsResponse:
     """Update admin settings (admin only)."""
-    try:
-        pool = request.app.state.db_pool
-        rows = await admin_update_settings(pool, body.settings)
+    pool = request.app.state.db_pool
+    rows = await admin_update_settings(pool, body.settings)
 
-        async with pool.acquire() as conn:
-            await write_audit_log(
-                conn,
-                user_id=current_user.user_id,
-                action="admin_settings_update",
-                target_type="admin_settings",
-                target_id=None,
-                ip_address=str(request.client.host) if request.client else None,
-                detail={"keys": list(body.settings.keys())},
-            )
+    await log_audit(
+        pool,
+        user_id=current_user.user_id,
+        action="admin_settings_update",
+        target_type="admin_settings",
+        target_id=None,
+        ip_address=str(request.client.host) if request.client else None,
+        detail={"keys": list(body.settings.keys())},
+    )
 
-        logger.info("admin_settings_updated", by=current_user.user_id)
-        return _rows_to_response(rows)
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logger.error("admin_update_settings_failed", error=str(exc))
-        raise http_error(ErrorCode.DB_ERROR, "Failed to update settings", status_code=500) from exc
+    logger.info("admin_settings_updated", by=current_user.user_id)
+    return _rows_to_response(rows)
 
 
 @router.post("/reset", response_model=AdminSettingsResponse)
+@handle_errors(
+    error_code=ErrorCode.DB_ERROR,
+    message="Failed to reset settings",
+    status_code=500,
+    log_event="admin_reset_settings_failed",
+)
 async def reset_settings(
     request: Request,
     current_user: CurrentUser = Depends(require_admin_role(admin_only=True)),  # noqa: B008
 ) -> AdminSettingsResponse:
     """Reset all settings to default values (admin only)."""
-    try:
-        pool = request.app.state.db_pool
-        rows = await admin_reset_settings(pool)
+    pool = request.app.state.db_pool
+    rows = await admin_reset_settings(pool)
 
-        async with pool.acquire() as conn:
-            await write_audit_log(
-                conn,
-                user_id=current_user.user_id,
-                action="admin_settings_reset",
-                target_type="admin_settings",
-                target_id=None,
-                ip_address=str(request.client.host) if request.client else None,
-            )
+    await log_audit(
+        pool,
+        user_id=current_user.user_id,
+        action="admin_settings_reset",
+        target_type="admin_settings",
+        target_id=None,
+        ip_address=str(request.client.host) if request.client else None,
+    )
 
-        logger.info("admin_settings_reset_to_defaults", by=current_user.user_id)
-        return _rows_to_response(rows)
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logger.error("admin_reset_settings_failed", error=str(exc))
-        raise http_error(ErrorCode.DB_ERROR, "Failed to reset settings", status_code=500) from exc
+    logger.info("admin_settings_reset_to_defaults", by=current_user.user_id)
+    return _rows_to_response(rows)

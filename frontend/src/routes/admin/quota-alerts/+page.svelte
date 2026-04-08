@@ -3,6 +3,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { adminRequest } from '$lib/api/admin';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
+	import PageStateWrapper from '$lib/ui/PageStateWrapper.svelte';
 
 	interface QuotaAlert {
 		id: string;
@@ -101,14 +102,14 @@
 </script>
 
 <div>
-	<h2 class="text-2xl font-bold text-gray-900 mb-6">{$t('admin.quota_alerts.title')}</h2>
+	<h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">{$t('admin.quota_alerts.title')}</h2>
 
 	<!-- Filters -->
 	<div class="flex flex-wrap gap-2 sm:gap-4 mb-4">
 		<select
 			bind:value={filterService}
 			onchange={() => { page = 1; fetchAlerts(); }}
-			class="border border-gray-300 rounded px-3 py-2 text-sm"
+			class="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded px-3 py-2 text-sm"
 		>
 			<option value="">{$t('admin.quota_alerts.filter_all')}</option>
 			{#each services as svc}
@@ -119,7 +120,7 @@
 		<select
 			bind:value={filterDismissed}
 			onchange={() => { page = 1; fetchAlerts(); }}
-			class="border border-gray-300 rounded px-3 py-2 text-sm"
+			class="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded px-3 py-2 text-sm"
 		>
 			<option value="false">{$t('admin.quota_alerts.active')}</option>
 			<option value="true">{$t('admin.quota_alerts.dismissed')}</option>
@@ -128,37 +129,37 @@
 	</div>
 
 	<!-- Table -->
-	{#if loading}
-		<p class="text-gray-500">{$t('status.loading')}</p>
-	{:else if alerts.length === 0}
-		<p class="text-gray-500">{$t('admin.quota_alerts.no_alerts')}</p>
-	{:else}
+	<PageStateWrapper isLoading={loading} isEmpty={!loading && alerts.length === 0}>
+		{#snippet empty()}
+			<p class="text-gray-500">{$t('admin.quota_alerts.no_alerts')}</p>
+		{/snippet}
+		{#snippet children()}
 		<div class="overflow-x-auto">
-			<table class="min-w-[640px] w-full bg-white border border-gray-200 rounded-lg">
-				<thead class="bg-gray-50">
+			<table class="min-w-[640px] w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+				<thead class="bg-gray-50 dark:bg-gray-700">
 					<tr>
-						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.quota_alerts.col_service')}</th>
-						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.quota_alerts.col_error_type')}</th>
-						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.quota_alerts.col_detail')}</th>
-						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.quota_alerts.col_email_sent')}</th>
-						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.quota_alerts.col_created_at')}</th>
-						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.quota_alerts.col_status')}</th>
+						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{$t('admin.quota_alerts.col_service')}</th>
+						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{$t('admin.quota_alerts.col_error_type')}</th>
+						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{$t('admin.quota_alerts.col_detail')}</th>
+						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{$t('admin.quota_alerts.col_email_sent')}</th>
+						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{$t('admin.quota_alerts.col_created_at')}</th>
+						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{$t('admin.quota_alerts.col_status')}</th>
 						<th class="px-4 py-3"></th>
 					</tr>
 				</thead>
-				<tbody class="divide-y divide-gray-200">
+				<tbody class="divide-y divide-gray-200 dark:divide-gray-700">
 					{#each alerts as alert}
-						<tr class={alert.is_dismissed ? 'bg-gray-50' : 'bg-white'}>
-							<td class="px-4 py-3 text-sm font-medium text-gray-900">{alert.service_name}</td>
-							<td class="px-4 py-3 text-sm text-gray-600">{alert.error_type}</td>
-							<td class="px-4 py-3 text-sm text-gray-600" title={alert.detail ?? ''}>{truncate(alert.detail)}</td>
-							<td class="px-4 py-3 text-sm text-gray-600">{alert.email_sent ? $t('admin.quota_alerts.yes') : $t('admin.quota_alerts.no')}</td>
-							<td class="px-4 py-3 text-sm text-gray-600">{formatDate(alert.created_at)}</td>
+						<tr class={alert.is_dismissed ? 'bg-gray-50 dark:bg-gray-700' : 'bg-white dark:bg-gray-800'}>
+							<td class="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">{alert.service_name}</td>
+							<td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{alert.error_type}</td>
+							<td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400" title={alert.detail ?? ''}>{truncate(alert.detail)}</td>
+							<td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{alert.email_sent ? $t('admin.quota_alerts.yes') : $t('admin.quota_alerts.no')}</td>
+							<td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{formatDate(alert.created_at)}</td>
 							<td class="px-4 py-3 text-sm">
 								{#if alert.is_dismissed}
-									<span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">{$t('admin.quota_alerts.dismissed')}</span>
+									<span class="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-700 px-2.5 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-400">{$t('admin.quota_alerts.dismissed')}</span>
 								{:else}
-									<span class="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700">{$t('admin.quota_alerts.active')}</span>
+									<span class="inline-flex items-center rounded-full bg-red-100 dark:bg-red-900/30 px-2.5 py-0.5 text-xs font-medium text-red-700 dark:text-red-400">{$t('admin.quota_alerts.active')}</span>
 								{/if}
 							</td>
 							<td class="px-4 py-3 text-sm">
@@ -187,7 +188,7 @@
 				>
 					&laquo;
 				</button>
-				<span class="px-3 py-1 text-sm text-gray-600">{page} / {totalPages}</span>
+				<span class="px-3 py-1 text-sm text-gray-600 dark:text-gray-400">{page} / {totalPages}</span>
 				<button
 					onclick={() => { page = Math.min(totalPages, page + 1); fetchAlerts(); }}
 					disabled={page >= totalPages}
@@ -197,7 +198,8 @@
 				</button>
 			</div>
 		{/if}
-	{/if}
+		{/snippet}
+	</PageStateWrapper>
 </div>
 
 <ErrorModal open={errorOpen} errorCode={errorCode} messageKey="error.server" onClose={() => (errorOpen = false)} onRetry={() => { errorOpen = false; fetchAlerts(); }} />

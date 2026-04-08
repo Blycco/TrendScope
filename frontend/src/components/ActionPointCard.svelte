@@ -53,23 +53,23 @@
 	);
 </script>
 
-<div class="rounded-lg border border-gray-200 bg-white p-5">
+<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5">
 	<div class="flex items-center justify-between mb-4">
-		<h3 class="text-lg font-semibold text-gray-900">
+		<h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
 			{$t('insight.for_role', { values: { role: $t(roleLabel) } })}
 		</h3>
 		{#if insight.degraded}
-			<span class="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">Fallback</span>
+			<span class="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 px-2 py-1 rounded">Fallback</span>
 		{/if}
 	</div>
 
 	<div class="space-y-4">
 		{#each actionItems as section}
 			<div>
-				<h4 class="text-sm font-medium text-gray-700 mb-2">{section.label}</h4>
+				<h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{section.label}</h4>
 				<ul class="space-y-1.5">
 					{#each section.items as item}
-						<li class="text-sm text-gray-600 pl-4 relative before:content-[''] before:absolute before:left-0 before:top-2 before:w-1.5 before:h-1.5 before:rounded-full before:bg-blue-400">
+						<li class="text-sm text-gray-600 dark:text-gray-400 pl-4 relative before:content-[''] before:absolute before:left-0 before:top-2 before:w-1.5 before:h-1.5 before:rounded-full before:bg-blue-400">
 							{item}
 						</li>
 					{/each}
@@ -79,15 +79,15 @@
 	</div>
 
 	{#if sourceUrls.length > 0}
-		<div class="mt-4 pt-3 border-t border-gray-100">
-			<h4 class="text-xs font-medium text-gray-500 mb-1.5">Sources</h4>
+		<div class="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700">
+			<h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Sources</h4>
 			<div class="flex flex-wrap gap-2">
 				{#each sourceUrls as url, i}
 					<a
 						href={url}
 						target="_blank"
 						rel="noopener noreferrer"
-						class="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
+						class="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
 					>
 						[{i + 1}] <ExternalLink size={10} />
 					</a>

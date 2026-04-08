@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import re
 import time
 from datetime import datetime, timezone
@@ -21,6 +20,12 @@ from backend.crawler.sources.extractor import extract_body
 from backend.crawler.sources.robots import is_allowed
 from backend.crawler.sources.rss_feeds import FeedSource
 from backend.db.queries.feed_sources import get_feed_sources_for_crawl, update_feed_health
+from backend.processor.shared.dedupe_filter import (
+    compute_content_fingerprint as _content_fp,
+)
+from backend.processor.shared.dedupe_filter import (
+    compute_url_hash as _url_hash,
+)
 
 _TRAILING_COUNT_RE = re.compile(r"[\s]*[\[(]\d+[\])]\s*$")
 _TRAILING_NUM_RE = re.compile(r"\s+\d+\s*$")
@@ -30,17 +35,6 @@ logger = structlog.get_logger(__name__)
 _HTTP_TIMEOUT = 15.0
 _MIN_BODY_LENGTH = 50
 _BODY_FETCH_DELAY = 0.5
-
-
-def _url_hash(url: str) -> str:
-    """SHA-256[:16] of URL for dedup."""
-    return hashlib.sha256(url.encode()).hexdigest()[:16]
-
-
-def _content_fp(title: str, body: str) -> str:
-    """SHA-256(title+body[:200])[:16] for content dedup."""
-    raw = f"{title}{body[:200]}"
-    return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 
 async def crawl_dc_inside(db_pool: asyncpg.Pool) -> list[dict[str, Any]]:
