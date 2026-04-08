@@ -12,7 +12,12 @@ import structlog
 
 from backend.common.logging_config import setup_logging
 from backend.processor.pipeline import process_articles
-from backend.processor.shared.cache_manager import close_redis, init_redis
+from backend.processor.shared.cache_manager import (
+    close_pubsub,
+    close_redis,
+    init_pubsub,
+    init_redis,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -65,6 +70,7 @@ async def main() -> None:
 
     redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
     await init_redis(redis_url)
+    await init_pubsub(redis_url)
 
     db_pool = await asyncpg.create_pool(dsn=database_url, min_size=2, max_size=10)
     logger.info("processor_db_pool_created")
@@ -82,6 +88,7 @@ async def main() -> None:
     logger.info("processor_running")
     await _poll_loop(db_pool, stop_event)
 
+    await close_pubsub()
     await close_redis()
     await db_pool.close()
     logger.info("processor_shutdown_complete")
