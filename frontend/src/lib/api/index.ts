@@ -30,5 +30,8 @@ export type {
 	InsightContent,
 	InsightResponse,
 	CursorParams,
-	BehaviorEvent
+	BehaviorEvent,
+	KeywordNode,
+	KeywordEdge,
+	KeywordGraphResponse
 } from './types';
