@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, Query, Request
 
 from backend.api.schemas.admin import BurstJobListResponse, BurstTriggerRequest
 from backend.auth.dependencies import CurrentUser, require_admin_role
+from backend.common.decorators import handle_errors
 from backend.common.errors import ErrorCode, http_error
 from backend.jobs.burst_job import manual_burst_trigger
 
@@ -15,6 +16,12 @@ logger = structlog.get_logger(__name__)
 
 
 @router.get("")
+@handle_errors(
+    error_code=ErrorCode.DB_ERROR,
+    message="Failed to list burst jobs",
+    status_code=500,
+    log_event="admin_list_burst_jobs_failed",
+)
 async def list_burst_jobs(
     request: Request,
     status: str | None = Query(default=None),
@@ -24,76 +31,72 @@ async def list_burst_jobs(
     current_user: CurrentUser = Depends(require_admin_role()),  # noqa: B008
 ) -> BurstJobListResponse:
     """List burst job logs with optional filters."""
-    try:
-        pool = request.app.state.db_pool
+    pool = request.app.state.db_pool
 
-        conditions: list[str] = []
-        params: list[object] = []
-        idx = 1
+    conditions: list[str] = []
+    params: list[object] = []
+    idx = 1
 
-        if status:
-            conditions.append(f"status = ${idx}")
-            params.append(status)
-            idx += 1
-        if trigger_source:
-            conditions.append(f"trigger_source = ${idx}")
-            params.append(trigger_source)
-            idx += 1
+    if status:
+        conditions.append(f"status = ${idx}")
+        params.append(status)
+        idx += 1
+    if trigger_source:
+        conditions.append(f"trigger_source = ${idx}")
+        params.append(trigger_source)
+        idx += 1
 
-        where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+    where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
 
-        count_query = f"SELECT COUNT(*) FROM burst_job_log {where}"  # noqa: S608
-        total = await pool.fetchval(count_query, *params)
+    count_query = f"SELECT COUNT(*) FROM burst_job_log {where}"  # noqa: S608
+    total = await pool.fetchval(count_query, *params)
 
-        offset = (page - 1) * page_size
-        data_query = (
-            f"SELECT id, triggered_at, trigger_source, group_id, "  # noqa: S608
-            f"keywords, threshold, early_trend_score, articles_found, "
-            f"duration_ms, status, error_detail, completed_at "
-            f"FROM burst_job_log {where} "
-            f"ORDER BY triggered_at DESC "
-            f"LIMIT ${idx} OFFSET ${idx + 1}"
-        )
-        params.extend([page_size, offset])
+    offset = (page - 1) * page_size
+    data_query = (
+        f"SELECT id, triggered_at, trigger_source, group_id, "  # noqa: S608
+        f"keywords, threshold, early_trend_score, articles_found, "
+        f"duration_ms, status, error_detail, completed_at "
+        f"FROM burst_job_log {where} "
+        f"ORDER BY triggered_at DESC "
+        f"LIMIT ${idx} OFFSET ${idx + 1}"
+    )
+    params.extend([page_size, offset])
 
-        rows = await pool.fetch(data_query, *params)
+    rows = await pool.fetch(data_query, *params)
 
-        items = [
-            {
-                "id": row["id"],
-                "triggered_at": (row["triggered_at"].isoformat() if row["triggered_at"] else None),
-                "trigger_source": row["trigger_source"],
-                "group_id": str(row["group_id"]) if row["group_id"] else None,
-                "keywords": list(row["keywords"]) if row["keywords"] else [],
-                "threshold": row["threshold"],
-                "early_trend_score": row["early_trend_score"],
-                "articles_found": row["articles_found"],
-                "duration_ms": row["duration_ms"],
-                "status": row["status"],
-                "error_detail": row["error_detail"],
-                "completed_at": (row["completed_at"].isoformat() if row["completed_at"] else None),
-            }
-            for row in rows
-        ]
+    items = [
+        {
+            "id": row["id"],
+            "triggered_at": (row["triggered_at"].isoformat() if row["triggered_at"] else None),
+            "trigger_source": row["trigger_source"],
+            "group_id": str(row["group_id"]) if row["group_id"] else None,
+            "keywords": list(row["keywords"]) if row["keywords"] else [],
+            "threshold": row["threshold"],
+            "early_trend_score": row["early_trend_score"],
+            "articles_found": row["articles_found"],
+            "duration_ms": row["duration_ms"],
+            "status": row["status"],
+            "error_detail": row["error_detail"],
+            "completed_at": (row["completed_at"].isoformat() if row["completed_at"] else None),
+        }
+        for row in rows
+    ]
 
-        return BurstJobListResponse(
-            items=items,
-            total=total,
-            page=page,
-            page_size=page_size,
-        )
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logger.error("admin_list_burst_jobs_failed", error=str(exc))
-        raise http_error(
-            ErrorCode.DB_ERROR,
-            "Failed to list burst jobs",
-            status_code=500,
-        ) from exc
+    return BurstJobListResponse(
+        items=items,
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
 
 
 @router.post("/trigger")
+@handle_errors(
+    error_code=ErrorCode.DB_ERROR,
+    message="Failed to trigger burst job",
+    status_code=500,
+    log_event="admin_trigger_burst_failed",
+)
 async def trigger_burst_job(
     body: BurstTriggerRequest,
     request: Request,
@@ -103,28 +106,18 @@ async def trigger_burst_job(
 
     Rate limited: max 1 burst per 30 minutes (returns 429 if locked).
     """
-    try:
-        pool = request.app.state.db_pool
-        result = await manual_burst_trigger(
-            pool,
-            keywords=body.keywords,
-            locale=body.locale,
+    pool = request.app.state.db_pool
+    result = await manual_burst_trigger(
+        pool,
+        keywords=body.keywords,
+        locale=body.locale,
+    )
+
+    if not result.get("success") and result.get("error") == "rate_limited":
+        raise http_error(
+            ErrorCode.QUOTA_EXCEEDED,
+            "Burst job rate limited (max 1 per 30 minutes)",
+            status_code=429,
         )
 
-        if not result.get("success") and result.get("error") == "rate_limited":
-            raise http_error(
-                ErrorCode.QUOTA_EXCEEDED,
-                "Burst job rate limited (max 1 per 30 minutes)",
-                status_code=429,
-            )
-
-        return result
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logger.error("admin_trigger_burst_failed", error=str(exc))
-        raise http_error(
-            ErrorCode.DB_ERROR,
-            "Failed to trigger burst job",
-            status_code=500,
-        ) from exc
+    return result

@@ -20,6 +20,11 @@ export type {
 	TrendListResponse,
 	TimelinePoint,
 	TrendTimelineResponse,
+	CompareTimelineItem,
+	CompareTimelineResponse,
+	SentimentDistribution,
+	ForecastPoint,
+	ForecastResponse,
 	DashboardSummaryResponse,
 	NewsItem,
 	NewsListResponse,
@@ -30,5 +35,8 @@ export type {
 	InsightContent,
 	InsightResponse,
 	CursorParams,
-	BehaviorEvent
+	BehaviorEvent,
+	KeywordNode,
+	KeywordEdge,
+	KeywordGraphResponse
 } from './types';

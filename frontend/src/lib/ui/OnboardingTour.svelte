@@ -152,19 +152,19 @@
 	></div>
 
 	<!-- Tooltip -->
-	<div class="fixed z-[52] rounded-lg bg-white p-4 shadow-xl" style={tooltipStyle}>
+	<div class="fixed z-[52] rounded-lg bg-white dark:bg-gray-800 p-4 shadow-xl" style={tooltipStyle}>
 		<button
 			onclick={complete}
-			class="absolute right-2 top-2 text-gray-400 hover:text-gray-600"
+			class="absolute right-2 top-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
 			aria-label={$t('tour.skip')}
 		>
 			<X size={16} />
 		</button>
 
-		<h3 class="pr-6 text-sm font-semibold text-gray-900">
+		<h3 class="pr-6 text-sm font-semibold text-gray-900 dark:text-gray-100">
 			{$t(activeSteps[currentStep].titleKey)}
 		</h3>
-		<p class="mt-1 text-xs leading-relaxed text-gray-600">
+		<p class="mt-1 text-xs leading-relaxed text-gray-600 dark:text-gray-400">
 			{$t(activeSteps[currentStep].descriptionKey)}
 		</p>
 
@@ -174,7 +174,7 @@
 				{#if currentStep > 0}
 					<button
 						onclick={prev}
-						class="flex items-center gap-1 rounded-md border border-gray-300 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
+						class="flex items-center gap-1 rounded-md border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
 					>
 						<ChevronLeft size={14} />
 						{$t('tour.prev')}

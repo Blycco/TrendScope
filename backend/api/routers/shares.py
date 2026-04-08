@@ -10,7 +10,8 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from backend.auth.dependencies import CurrentUser, require_plan
-from backend.common.errors import ErrorCode, error_response
+from backend.common.decorators import handle_errors
+from backend.common.errors import ErrorCode
 from backend.db.queries.shares import create_shared_link, get_shared_link_by_token
 
 router = APIRouter(tags=["shares"])
@@ -37,6 +38,7 @@ class SharedLinkResponse(BaseModel):
 
 
 @router.post("/trends/share", response_model=ShareCreateResponse)
+@handle_errors(log_event="share_link_create_failed")
 async def create_share_link(
     body: ShareCreateRequest,
     request: Request,
@@ -44,22 +46,18 @@ async def create_share_link(
 ) -> JSONResponse:
     """Generate a 24-hour sharing token for a trend snapshot. Requires Business+ plan."""
     token = secrets.token_urlsafe(_TOKEN_BYTES)
-    try:
-        pool = request.app.state.db_pool
-        row = await create_shared_link(
-            pool,
-            token=token,
-            user_id=current_user.user_id,
-            payload=body.payload,
-        )
-        logger.info(
-            "share_link_created",
-            user_id=current_user.user_id,
-            token=token,
-        )
-    except Exception as exc:
-        logger.error("share_link_create_failed", error=str(exc))
-        return error_response(ErrorCode.DB_ERROR, "Failed to create sharing link", status_code=500)
+    pool = request.app.state.db_pool
+    row = await create_shared_link(
+        pool,
+        token=token,
+        user_id=current_user.user_id,
+        payload=body.payload,
+    )
+    logger.info(
+        "share_link_created",
+        user_id=current_user.user_id,
+        token=token,
+    )
 
     return JSONResponse(
         status_code=201,
@@ -72,17 +70,14 @@ async def create_share_link(
 
 
 @router.get("/shared/{token}", response_model=SharedLinkResponse)
+@handle_errors(log_event="get_shared_link_failed")
 async def get_shared_link(
     token: str,
     request: Request,
 ) -> JSONResponse:
     """Retrieve a shared trend snapshot by token. No authentication required. Expires after 24h."""
-    try:
-        pool = request.app.state.db_pool
-        row = await get_shared_link_by_token(pool, token=token)
-    except Exception as exc:
-        logger.error("get_shared_link_failed", error=str(exc))
-        return error_response(ErrorCode.DB_ERROR, "Failed to fetch sharing link", status_code=500)
+    pool = request.app.state.db_pool
+    row = await get_shared_link_by_token(pool, token=token)
 
     if row is None:
         raise HTTPException(

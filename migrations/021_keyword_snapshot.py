@@ -1,4 +1,4 @@
-"""020_keyword_snapshot — keyword_snapshot 테이블 생성."""
+"""021_keyword_snapshot — keyword_snapshot 테이블 생성."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
-VERSION = "020"
+VERSION = "021"
 DESCRIPTION = "Create keyword_snapshot table"
 
 

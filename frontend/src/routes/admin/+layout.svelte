@@ -57,7 +57,7 @@
 		</div>
 	</div>
 {:else}
-	<div class="flex h-screen bg-gray-100">
+	<div class="flex h-screen bg-gray-100 dark:bg-gray-900">
 		<!-- Mobile sidebar overlay -->
 		{#if sidebarOpen}
 			<div
@@ -104,7 +104,7 @@
 		</aside>
 
 		<div class="flex-1 flex flex-col overflow-hidden">
-			<header class="bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between">
+			<header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-4 flex items-center justify-between">
 				<div class="flex items-center gap-3">
 					<button
 						onclick={() => (sidebarOpen = true)}
@@ -113,13 +113,13 @@
 					>
 						<Menu size={22} />
 					</button>
-					<h1 class="text-lg font-semibold text-gray-900">{$t('admin.layout.title')}</h1>
+					<h1 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{$t('admin.layout.title')}</h1>
 				</div>
 				<div class="flex items-center gap-4">
-					<a href="/" class="text-sm text-gray-600 hover:text-gray-900">{$t('admin.layout.back_to_app')}</a>
+					<a href="/" class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100">{$t('admin.layout.back_to_app')}</a>
 					<button
 						onclick={() => authStore.logout()}
-						class="hidden sm:inline text-sm text-gray-600 hover:text-gray-900"
+						class="hidden sm:inline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
 					>
 						{$t('nav.sidebar.logout')}
 					</button>

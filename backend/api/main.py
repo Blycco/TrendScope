@@ -19,12 +19,16 @@ from backend.api.middleware.rate_limit import RateLimitMiddleware
 from backend.api.routers import (
     auth,
     brand,
+    compare,
     content,
     dashboard,
     early_trend,
     events,
+    forecast,
     health,
     insights,
+    keywords,
+    live,
     meta_trends,
     news,
     notifications,
@@ -40,7 +44,12 @@ from backend.api.routers.webhooks import payment as webhooks_payment
 from backend.common.errors import set_error_log_pool
 from backend.common.logging_config import setup_logging
 from backend.jobs.audit_archive import register_archive_job
-from backend.processor.shared.cache_manager import close_redis, init_redis
+from backend.processor.shared.cache_manager import (
+    close_pubsub,
+    close_redis,
+    init_pubsub,
+    init_redis,
+)
 
 # --- Logging setup ---
 setup_logging("api")
@@ -88,6 +97,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.error("redis_init_failed", error=str(exc))
         raise
 
+    try:
+        await init_pubsub(redis_url)
+    except Exception as exc:
+        logger.error("redis_pubsub_init_failed", error=str(exc))
+        raise
+
     scheduler = register_archive_job(app)
     scheduler.start()
     logger.info("audit_archive_scheduler_started")
@@ -99,6 +114,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     await app.state.db_pool.close()
     logger.info("db_pool_closed")
+
+    await close_pubsub()
+    logger.info("redis_pubsub_closed")
 
     await close_redis()
     logger.info("redis_pool_closed")
@@ -130,6 +148,8 @@ def create_app() -> FastAPI:
     app.include_router(auth.router, prefix="/api/v1")
     app.include_router(dashboard.router, prefix="/api/v1")
     app.include_router(meta_trends.router, prefix="/api/v1")
+    app.include_router(compare.router, prefix="/api/v1")
+    app.include_router(keywords.router, prefix="/api/v1")
     app.include_router(trends.router, prefix="/api/v1")
     app.include_router(early_trend.router, prefix="/api/v1")
     app.include_router(insights.router, prefix="/api/v1")
@@ -144,7 +164,9 @@ def create_app() -> FastAPI:
     app.include_router(personalization.router, prefix="/api/v1")
     app.include_router(brand.router, prefix="/api/v1")
     app.include_router(shares.router, prefix="/api/v1")
+    app.include_router(forecast.router, prefix="/api/v1")
     app.include_router(webhooks_payment.router, prefix="/api/v1")
+    app.include_router(live.router, prefix="/api/v1")
 
     # Mount admin sub-application at /admin.
     # All admin router prefixes are /v1, so final paths are /admin/v1/...

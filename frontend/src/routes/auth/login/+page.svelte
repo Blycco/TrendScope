@@ -39,28 +39,28 @@
 </script>
 
 <div class="mx-auto max-w-sm">
-	<h1 class="text-2xl font-bold text-gray-900 mb-6">{$t('page.auth.login.title')}</h1>
+	<h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">{$t('page.auth.login.title')}</h1>
 
 	<form onsubmit={handleSubmit} class="space-y-4">
 		<div>
-			<label for="email" class="block text-sm font-medium text-gray-700">{$t('label.email')}</label>
+			<label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{$t('label.email')}</label>
 			<input
 				id="email"
 				type="email"
 				bind:value={email}
 				required
-				class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+				class="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
 			/>
 		</div>
 
 		<div>
-			<label for="password" class="block text-sm font-medium text-gray-700">{$t('label.password')}</label>
+			<label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{$t('label.password')}</label>
 			<input
 				id="password"
 				type="password"
 				bind:value={password}
 				required
-				class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+				class="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
 			/>
 		</div>
 
@@ -74,8 +74,8 @@
 	</form>
 
 	<div class="mt-4 space-y-2 text-center text-sm">
-		<a href="/auth/forgot-password" class="text-blue-600 hover:underline">{$t('button.forgot_password')}</a>
-		<p class="text-gray-500">
+		<a href="/auth/forgot-password" class="text-blue-600 dark:text-blue-400 hover:underline">{$t('button.forgot_password')}</a>
+		<p class="text-gray-500 dark:text-gray-400">
 			<a href="/auth/register" class="text-blue-600 hover:underline">{$t('button.register')}</a>
 		</p>
 	</div>
@@ -83,13 +83,13 @@
 	<div class="mt-6 space-y-3">
 		<a
 			href="/api/v1/auth/oauth/google/start"
-			class="flex w-full items-center justify-center gap-2 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+			class="flex w-full items-center justify-center gap-2 rounded-md border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
 		>
 			{$t('button.google_login')}
 		</a>
 		<a
 			href="/api/v1/auth/oauth/kakao/start"
-			class="flex w-full items-center justify-center gap-2 rounded-md border border-gray-300 bg-yellow-300 px-4 py-2 text-sm font-medium text-gray-900 hover:bg-yellow-400"
+			class="flex w-full items-center justify-center gap-2 rounded-md border border-gray-300 dark:border-gray-600 bg-yellow-300 px-4 py-2 text-sm font-medium text-gray-900 hover:bg-yellow-400"
 		>
 			{$t('button.kakao_login')}
 		</a>
