@@ -3,12 +3,19 @@
 	import { onMount } from 'svelte';
 	import { apiRequest, ApiRequestError, QuotaExceededRequestError, PlanGateRequestError } from '$lib/api';
 	import type { TrendListResponse, TrendItem } from '$lib/api';
+	import { createPaginationStore } from '$lib/stores/pagination.svelte';
+	import { createFilterStore } from '$lib/stores/filters.svelte';
+	import { createCacheStore } from '$lib/stores/cache.svelte';
+	import type { FetchFn } from '$lib/stores/pagination.svelte';
 	import TrendCard from '../../components/TrendCard.svelte';
 	import SkeletonCard from '../../components/SkeletonCard.svelte';
 	import TrendMap from '$lib/components/TrendMap.svelte';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
 	import QuotaExceededModal from '$lib/ui/QuotaExceededModal.svelte';
 	import PlanGate from '$lib/ui/PlanGate.svelte';
+	import FilterButton from '$lib/ui/FilterButton.svelte';
+	import PageStateWrapper from '$lib/ui/PageStateWrapper.svelte';
+	import LoadMoreButton from '$lib/ui/LoadMoreButton.svelte';
 	import { Download, Share2 } from 'lucide-svelte';
 
 	interface PersonalizationSettings {
@@ -17,7 +24,6 @@
 	}
 
 	const ALL_CATEGORIES = ['tech', 'economy', 'entertainment', 'lifestyle', 'politics', 'sports', 'society'] as const;
-	type Category = (typeof ALL_CATEGORIES)[number];
 
 	const TIME_OPTIONS = [
 		{ label: 'filter.time.1h', value: 1 },
@@ -27,14 +33,15 @@
 		{ label: 'filter.time.30d', value: 720 },
 	] as const;
 
-	let trends = $state<TrendItem[]>([]);
-	let nextCursor = $state<string | null>(null);
-	let isLoading = $state(true);
-	let isLoadingMore = $state(false);
+	const pagination = createPaginationStore<TrendItem>();
+	const filters = createFilterStore({
+		category: null as string | null,
+		locale: null as string | null,
+		since: null as number | null,
+	});
+	const cache = createCacheStore<TrendListResponse>(5 * 60 * 1000);
+
 	let personalization = $state<PersonalizationSettings | null>(null);
-	let selectedCategory = $state<string | null>(null);
-	let selectedTime = $state<number | null>(null);
-	let selectedLocale = $state<string | null>(null);
 
 	let errorOpen = $state(false);
 	let errorCode = $state('');
@@ -52,55 +59,65 @@
 	let isExportingPdf = $state(false);
 	let isSharing = $state(false);
 
-	// ID of the top trend to use for TrendMap
-	const topTrendId = $derived(trends.length > 0 ? trends[0].id : null);
+	const topTrendId = $derived(pagination.items.length > 0 ? pagination.items[0].id : null);
 
 	function getLocaleParam(): string | null {
-		if (selectedLocale) return selectedLocale;
+		const filterLocale = filters.values.locale;
+		if (filterLocale) return filterLocale;
 		if (!personalization) return null;
 		if (personalization.locale_ratio < 0.3) return 'en';
 		if (personalization.locale_ratio > 0.7) return 'ko';
 		return null;
 	}
 
-	function getSortedCategories(): Category[] {
-		if (!personalization) return [...ALL_CATEGORIES];
-		return [...ALL_CATEGORIES].sort(
-			(a, b) => personalization!.category_weights[b] - personalization!.category_weights[a]
-		);
+	function buildCacheKey(cursor?: string): string {
+		return JSON.stringify({
+			cursor,
+			locale: getLocaleParam(),
+			category: filters.values.category,
+			since: filters.values.since,
+		});
 	}
 
-	async function loadTrends(cursor?: string): Promise<void> {
-		try {
-			const params = new URLSearchParams({ limit: '20' });
-			if (cursor) params.set('cursor', cursor);
-			const locale = getLocaleParam();
-			if (locale) params.set('locale', locale);
-			if (selectedCategory) params.set('category', selectedCategory);
-			if (selectedTime) params.set('since', String(selectedTime));
+	const fetchTrends: FetchFn<TrendItem> = async (cursor?: string) => {
+		const cacheKey = buildCacheKey(cursor);
+		const cached = cache.get(cacheKey);
+		if (cached) return cached;
 
-			const data = await apiRequest<TrendListResponse>(`/trends?${params.toString()}`);
-			if (cursor) {
-				trends = [...trends, ...data.items];
-			} else {
-				trends = data.items;
-			}
-			nextCursor = data.next_cursor;
+		const params = new URLSearchParams({ limit: '20' });
+		if (cursor) params.set('cursor', cursor);
+		const locale = getLocaleParam();
+		if (locale) params.set('locale', locale);
+		if (filters.values.category) params.set('category', filters.values.category);
+		if (filters.values.since) params.set('since', String(filters.values.since));
+
+		const data = await apiRequest<TrendListResponse>(`/trends?${params.toString()}`);
+		cache.set(cacheKey, data);
+		return data;
+	};
+
+	async function loadTrends(): Promise<void> {
+		try {
+			await pagination.load(fetchTrends);
 		} catch (error) {
-			if (error instanceof QuotaExceededRequestError) {
-				quotaFeature = error.quotaType;
-				quotaLimit = error.limit;
-				quotaResetTime = error.resetAt;
-				quotaOpen = true;
-			} else if (error instanceof ApiRequestError) {
-				errorCode = error.errorCode;
-				errorMessageKey = 'error.server';
-				errorOpen = true;
-			} else {
-				errorCode = 'ERR_NETWORK';
-				errorMessageKey = 'error.network';
-				errorOpen = true;
-			}
+			handleError(error);
+		}
+	}
+
+	function handleError(error: unknown): void {
+		if (error instanceof QuotaExceededRequestError) {
+			quotaFeature = error.quotaType;
+			quotaLimit = error.limit;
+			quotaResetTime = error.resetAt;
+			quotaOpen = true;
+		} else if (error instanceof ApiRequestError) {
+			errorCode = error.errorCode;
+			errorMessageKey = 'error.server';
+			errorOpen = true;
+		} else {
+			errorCode = 'ERR_NETWORK';
+			errorMessageKey = 'error.network';
+			errorOpen = true;
 		}
 	}
 
@@ -116,7 +133,6 @@
 			isExportingPdf = true;
 		}
 		try {
-			// Fetch as blob for file download
 			const response = await fetch(
 				`${import.meta.env.VITE_API_BASE_URL ?? '/api/v1'}/trends/export?format=${format}`,
 				{
@@ -157,7 +173,7 @@
 		if (isSharing) return;
 		isSharing = true;
 		try {
-			const snapshot = trends.slice(0, 20).map((t) => ({
+			const snapshot = pagination.items.slice(0, 20).map((t) => ({
 				id: t.id,
 				title: t.title,
 				category: t.category,
@@ -173,8 +189,6 @@
 			});
 			const fullUrl = `${window.location.origin}${data.share_url}`;
 			await navigator.clipboard.writeText(fullUrl);
-			// Brief success indicator via error modal (re-using with success message would need a toast,
-			// but UX spec says use modals for all user messages — show inline instead)
 			errorCode = '';
 			errorMessageKey = 'trends.share.copied';
 			errorOpen = true;
@@ -196,10 +210,20 @@
 	}
 
 	async function loadMore(): Promise<void> {
-		if (!nextCursor || isLoadingMore) return;
-		isLoadingMore = true;
-		await loadTrends(nextCursor);
-		isLoadingMore = false;
+		try {
+			await pagination.loadMore(fetchTrends);
+		} catch (error) {
+			handleError(error);
+		}
+	}
+
+	function applyFilter(type: 'category' | 'locale' | 'since', value: string | number | null): void {
+		if (type === 'category') filters.set('category', value as string | null);
+		else if (type === 'locale') filters.set('locale', value as string | null);
+		else if (type === 'since') filters.set('since', value as number | null);
+		pagination.reset();
+		cache.clear();
+		loadTrends();
 	}
 
 	onMount(async () => {
@@ -209,7 +233,6 @@
 			// Non-critical — proceed without personalization
 		}
 		await loadTrends();
-		isLoading = false;
 	});
 </script>
 
@@ -259,82 +282,81 @@
 	<div class="space-y-2 sm:space-y-3">
 		<!-- Locale filter -->
 		<div class="flex gap-1.5 sm:gap-2 flex-wrap">
-			<button
-				onclick={() => { selectedLocale = null; trends = []; nextCursor = null; loadTrends(); }}
-				class="rounded-full px-2.5 py-1 sm:px-3 text-xs font-medium transition-colors {selectedLocale === null ? 'bg-indigo-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
-			>{$t('filter.all')}</button>
-			<button
-				onclick={() => { selectedLocale = 'ko'; trends = []; nextCursor = null; loadTrends(); }}
-				class="rounded-full px-2.5 py-1 sm:px-3 text-xs font-medium transition-colors {selectedLocale === 'ko' ? 'bg-indigo-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
-			>{$t('filter.locale.domestic')}</button>
-			<button
-				onclick={() => { selectedLocale = 'en'; trends = []; nextCursor = null; loadTrends(); }}
-				class="rounded-full px-2.5 py-1 sm:px-3 text-xs font-medium transition-colors {selectedLocale === 'en' ? 'bg-indigo-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
-			>{$t('filter.locale.international')}</button>
+			<FilterButton
+				label={$t('filter.all')}
+				active={filters.values.locale === null}
+				onclick={() => applyFilter('locale', null)}
+			/>
+			<FilterButton
+				label={$t('filter.locale.domestic')}
+				active={filters.values.locale === 'ko'}
+				onclick={() => applyFilter('locale', 'ko')}
+			/>
+			<FilterButton
+				label={$t('filter.locale.international')}
+				active={filters.values.locale === 'en'}
+				onclick={() => applyFilter('locale', 'en')}
+			/>
 		</div>
 
 		<!-- Category filter -->
 		<div class="flex gap-1.5 sm:gap-2 flex-wrap">
-			<button
-				onclick={() => { selectedCategory = null; trends = []; nextCursor = null; loadTrends(); }}
-				class="rounded-full px-2.5 py-1 sm:px-3 text-xs font-medium transition-colors {selectedCategory === null ? 'bg-blue-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
-			>{$t('filter.all')}</button>
+			<FilterButton
+				label={$t('filter.all')}
+				active={filters.values.category === null}
+				activeClass="bg-blue-600 text-white"
+				onclick={() => applyFilter('category', null)}
+			/>
 			{#each ALL_CATEGORIES as cat}
-				<button
-					onclick={() => { selectedCategory = cat; trends = []; nextCursor = null; loadTrends(); }}
-					class="rounded-full px-2.5 py-1 sm:px-3 text-xs font-medium transition-colors {selectedCategory === cat ? 'bg-blue-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
-				>{$t(`filter.category.${cat}`)}</button>
+				<FilterButton
+					label={$t(`filter.category.${cat}`)}
+					active={filters.values.category === cat}
+					activeClass="bg-blue-600 text-white"
+					onclick={() => applyFilter('category', cat)}
+				/>
 			{/each}
 		</div>
 
 		<!-- Time filter -->
 		<div class="flex gap-1.5 sm:gap-2 flex-wrap">
-			<button
-				onclick={() => { selectedTime = null; trends = []; nextCursor = null; loadTrends(); }}
-				class="rounded-full px-2.5 py-1 text-xs font-medium transition-colors {selectedTime === null ? 'bg-gray-800 text-white' : 'border border-gray-200 bg-white text-gray-500 hover:bg-gray-50'}"
-			>{$t('filter.all')}</button>
+			<FilterButton
+				label={$t('filter.all')}
+				active={filters.values.since === null}
+				activeClass="bg-gray-800 text-white"
+				onclick={() => applyFilter('since', null)}
+			/>
 			{#each TIME_OPTIONS as opt}
-				<button
-					onclick={() => { selectedTime = opt.value; trends = []; nextCursor = null; loadTrends(); }}
-					class="rounded-full px-2.5 py-1 text-xs font-medium transition-colors {selectedTime === opt.value ? 'bg-gray-800 text-white' : 'border border-gray-200 bg-white text-gray-500 hover:bg-gray-50'}"
-				>{$t(opt.label)}</button>
+				<FilterButton
+					label={$t(opt.label)}
+					active={filters.values.since === opt.value}
+					activeClass="bg-gray-800 text-white"
+					onclick={() => applyFilter('since', opt.value)}
+				/>
 			{/each}
 		</div>
 	</div>
 
-	{#if isLoading}
-		<div class="space-y-3">
-			{#each Array(5) as _}
-				<SkeletonCard />
-			{/each}
-		</div>
-	{:else if trends.length === 0}
-		<p class="text-gray-500">{$t('status.no_results')}</p>
-	{:else}
-		<div class="space-y-3">
-			{#each trends as trend (trend.id)}
-				<TrendCard {trend} />
-			{/each}
-		</div>
-
-		{#if nextCursor}
-			<div class="flex justify-center pt-4">
-				<button
-					onclick={loadMore}
-					disabled={isLoadingMore}
-					class="rounded-md border border-gray-300 px-6 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-				>
-					{#if isLoadingMore}
-						{$t('status.loading')}
-					{:else}
-						{$t('button.load_more')}
-					{/if}
-				</button>
+	<PageStateWrapper isLoading={pagination.isLoading} isEmpty={pagination.items.length === 0 && !pagination.isLoading}>
+		{#snippet loading()}
+			<div class="space-y-3">
+				{#each Array(5) as _}
+					<SkeletonCard />
+				{/each}
 			</div>
-		{/if}
-	{/if}
+		{/snippet}
 
-	{#if topTrendId && !isLoading}
+		{#snippet children()}
+			<div class="space-y-3">
+				{#each pagination.items as trend (trend.id)}
+					<TrendCard {trend} />
+				{/each}
+			</div>
+
+			<LoadMoreButton hasMore={pagination.hasMore} isLoading={pagination.isLoadingMore} onclick={loadMore} />
+		{/snippet}
+	</PageStateWrapper>
+
+	{#if topTrendId && !pagination.isLoading}
 		<TrendMap trendId={topTrendId} />
 	{/if}
 </div>

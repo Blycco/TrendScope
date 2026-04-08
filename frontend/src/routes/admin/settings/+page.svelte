@@ -3,6 +3,7 @@
 	import { onMount } from 'svelte';
 	import { adminRequest } from '$lib/api/admin';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
+	import PageStateWrapper from '$lib/ui/PageStateWrapper.svelte';
 
 	interface SettingItem {
 		key: string;
@@ -104,31 +105,31 @@
 		</div>
 	</div>
 
-	{#if loading}
-		<p class="text-gray-500">{$t('status.loading')}</p>
-	{:else}
-		<div class="bg-white rounded-lg shadow divide-y divide-gray-200">
-			{#each settings as setting}
-				<div class="p-4">
-					<div class="flex items-start justify-between gap-4">
-						<div class="flex-1">
-							<label class="block text-sm font-medium text-gray-900">{setting.key}</label>
-							<p class="text-xs text-gray-400 mt-1">
-								{$t('admin.settings.default')}: {typeof setting.default_value === 'string' ? setting.default_value : JSON.stringify(setting.default_value)}
-							</p>
-						</div>
-						<div class="w-80">
-							<input
-								type="text"
-								bind:value={editValues[setting.key]}
-								class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-							/>
+	<PageStateWrapper isLoading={loading} isEmpty={!loading && settings.length === 0}>
+		{#snippet children()}
+			<div class="bg-white rounded-lg shadow divide-y divide-gray-200">
+				{#each settings as setting}
+					<div class="p-4">
+						<div class="flex items-start justify-between gap-4">
+							<div class="flex-1">
+								<label class="block text-sm font-medium text-gray-900">{setting.key}</label>
+								<p class="text-xs text-gray-400 mt-1">
+									{$t('admin.settings.default')}: {typeof setting.default_value === 'string' ? setting.default_value : JSON.stringify(setting.default_value)}
+								</p>
+							</div>
+							<div class="w-80">
+								<input
+									type="text"
+									bind:value={editValues[setting.key]}
+									class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+								/>
+							</div>
 						</div>
 					</div>
-				</div>
-			{/each}
-		</div>
-	{/if}
+				{/each}
+			</div>
+		{/snippet}
+	</PageStateWrapper>
 </div>
 
 {#if resetConfirm}

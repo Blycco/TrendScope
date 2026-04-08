@@ -8,6 +8,7 @@
 	import ActionPointCard from '../../../../components/ActionPointCard.svelte';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
 	import PlanGate from '$lib/ui/PlanGate.svelte';
+	import PageStateWrapper from '$lib/ui/PageStateWrapper.svelte';
 
 	let insight = $state<InsightResponse | null>(null);
 	let isLoading = $state(true);
@@ -60,13 +61,13 @@
 		{/if}
 	</div>
 
-	{#if isLoading}
-		<p class="text-gray-500">{$t('status.loading')}</p>
-	{:else if insight}
-		<ActionPointCard {insight} />
-	{:else if !planGateOpen && !errorOpen}
-		<p class="text-gray-500">{$t('status.no_results')}</p>
-	{/if}
+	<PageStateWrapper {isLoading} isEmpty={!isLoading && insight === null && !planGateOpen && !errorOpen}>
+		{#snippet children()}
+			{#if insight}
+				<ActionPointCard {insight} />
+			{/if}
+		{/snippet}
+	</PageStateWrapper>
 </div>
 
 <ErrorModal open={errorOpen} errorCode={errorCode} messageKey={errorMessageKey} onClose={() => (errorOpen = false)} onRetry={() => { errorOpen = false; loadInsight(); }} />

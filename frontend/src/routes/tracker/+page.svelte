@@ -4,6 +4,7 @@
 	import { trackEvent, startAutoFlush, stopAutoFlush } from '$lib/tracker';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
 	import QuotaExceededModal from '$lib/ui/QuotaExceededModal.svelte';
+	import PageStateWrapper from '$lib/ui/PageStateWrapper.svelte';
 	import { apiRequest, ApiRequestError, QuotaExceededRequestError } from '$lib/api';
 
 	let keywords = $state<string[]>([]);
@@ -108,24 +109,24 @@
 
 	<div>
 		<h2 class="text-lg font-semibold text-gray-900 mb-3">{$t('tracker.my_keywords')}</h2>
-		{#if keywords.length === 0}
-			<p class="text-gray-500">{$t('status.no_results')}</p>
-		{:else}
-			<div class="flex flex-wrap gap-2">
-				{#each keywords as keyword}
-					<span class="inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1.5 text-sm text-blue-700">
-						{keyword}
-						<button
-							onclick={() => removeKeyword(keyword)}
-							class="ml-1 text-blue-400 hover:text-blue-600"
-							aria-label="remove"
-						>
-							x
-						</button>
-					</span>
-				{/each}
-			</div>
-		{/if}
+		<PageStateWrapper isLoading={false} isEmpty={keywords.length === 0}>
+			{#snippet children()}
+				<div class="flex flex-wrap gap-2">
+					{#each keywords as keyword}
+						<span class="inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1.5 text-sm text-blue-700">
+							{keyword}
+							<button
+								onclick={() => removeKeyword(keyword)}
+								class="ml-1 text-blue-400 hover:text-blue-600"
+								aria-label="remove"
+							>
+								x
+							</button>
+						</span>
+					{/each}
+				</div>
+			{/snippet}
+		</PageStateWrapper>
 	</div>
 </div>
 

@@ -23,6 +23,7 @@ from backend.api.routers import (
     dashboard,
     early_trend,
     events,
+    forecast,
     health,
     insights,
     keywords,
@@ -144,6 +145,7 @@ def create_app() -> FastAPI:
     app.include_router(personalization.router, prefix="/api/v1")
     app.include_router(brand.router, prefix="/api/v1")
     app.include_router(shares.router, prefix="/api/v1")
+    app.include_router(forecast.router, prefix="/api/v1")
     app.include_router(webhooks_payment.router, prefix="/api/v1")
 
     # Mount admin sub-application at /admin.

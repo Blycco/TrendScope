@@ -4,6 +4,7 @@
 	import { apiRequest, ApiRequestError, PlanGateRequestError } from '$lib/api';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
 	import PlanGate from '$lib/ui/PlanGate.svelte';
+	import PageStateWrapper from '$lib/ui/PageStateWrapper.svelte';
 	import ContentIdeaCard from '$lib/components/ContentIdeaCard.svelte';
 	import { authStore } from '$lib/stores/auth.svelte';
 
@@ -17,6 +18,7 @@
 	let keyword = $state('');
 	let ideas = $state<ContentIdea[]>([]);
 	let isLoading = $state(false);
+	let hasSearched = $state(false);
 	let cached = $state(false);
 	let errorOpen = $state(false);
 	let errorCode = $state('');
@@ -36,6 +38,7 @@
 	async function generateIdeas(): Promise<void> {
 		if (!keyword.trim()) return;
 		isLoading = true;
+		hasSearched = true;
 		try {
 			const res = await apiRequest<{ ideas: ContentIdea[]; cached: boolean }>(
 				'/content/ideas',
@@ -107,18 +110,20 @@
 		</span>
 	{/if}
 
-	{#if ideas.length > 0}
-		<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-			{#each ideas as idea, i (i)}
-				<ContentIdeaCard
-					title={idea.title}
-					hook={idea.hook}
-					platform={idea.platform}
-					difficulty={idea.difficulty}
-				/>
-			{/each}
-		</div>
-	{/if}
+	<PageStateWrapper {isLoading} isEmpty={hasSearched && ideas.length === 0 && !isLoading}>
+		{#snippet children()}
+			<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+				{#each ideas as idea, i (i)}
+					<ContentIdeaCard
+						title={idea.title}
+						hook={idea.hook}
+						platform={idea.platform}
+						difficulty={idea.difficulty}
+					/>
+				{/each}
+			</div>
+		{/snippet}
+	</PageStateWrapper>
 </div>
 
 <PlanGate open={planGateOpen} requiredPlan={planGateRequired} onClose={() => (planGateOpen = false)} />
