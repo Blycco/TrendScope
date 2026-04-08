@@ -406,6 +406,9 @@
 	"trends.share.error": "Failed to generate link.",
 	"trends.map.title": "Trend Map",
 	"trends.map.empty": "No related trend data available.",
+	"trends.keyword_graph.title": "Related Keywords",
+	"trends.keyword_graph.empty": "No related keyword data available.",
+	"trends.keyword_graph.loading": "Loading keyword graph...",
 
 	"admin.layout.quota_alerts": "API Alerts",
 	"admin.quota_alerts.title": "API Rate Limit Alerts",
