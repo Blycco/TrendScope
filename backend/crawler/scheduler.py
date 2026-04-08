@@ -11,6 +11,7 @@ from backend.crawler.sources.community_crawler import crawl_all as community_cra
 from backend.crawler.sources.news_crawler import crawl_all as news_crawl_all
 from backend.crawler.sources.sns_crawler import collect_all as sns_collect_all
 from backend.jobs.burst_job import run_burst_job
+from backend.jobs.digest_job import run_daily_digest
 from backend.jobs.early_trend_update import run_early_trend_update
 
 logger = structlog.get_logger(__name__)
@@ -58,6 +59,15 @@ async def _job_early_trend_update(db_pool: asyncpg.Pool) -> None:
             logger.info("scheduled_burst_triggered", burst_count=burst_count)
     except Exception as exc:
         logger.error("scheduled_burst_job_failed", error=str(exc))
+
+
+async def _job_daily_digest(db_pool: asyncpg.Pool) -> None:
+    """Scheduled job: send daily Reddit question digest emails."""
+    try:
+        sent = await run_daily_digest(db_pool)
+        logger.info("scheduled_daily_digest_done", sent=sent)
+    except Exception as exc:
+        logger.error("scheduled_daily_digest_failed", error=str(exc))
 
 
 async def _job_quota_reset(db_pool: asyncpg.Pool) -> None:
@@ -132,6 +142,16 @@ def create_scheduler(db_pool: asyncpg.Pool) -> AsyncIOScheduler:
         args=[db_pool],
         id="quota_reset",
         name="Daily Quota Reset",
+    )
+
+    scheduler.add_job(
+        _job_daily_digest,
+        "cron",
+        hour=0,
+        minute=0,
+        args=[db_pool],
+        id="daily_digest",
+        name="Daily Reddit Digest",
     )
 
     logger.info("scheduler_created", jobs=len(scheduler.get_jobs()))
