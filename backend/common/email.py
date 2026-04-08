@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import os
 from email.message import EmailMessage
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 import structlog
 
@@ -43,6 +45,42 @@ async def send_email(to: str, subject: str, body: str) -> bool:
         return True
     except Exception as exc:
         logger.error("email_send_failed", to=to, error=str(exc))
+        return False
+
+
+async def send_html_email(to: str, subject: str, html_body: str) -> bool:
+    """Send an HTML email via SMTP. Returns True on success."""
+    smtp_host = os.environ.get("SMTP_HOST", "")
+    smtp_port = int(os.environ.get("SMTP_PORT", "587"))
+    smtp_user = os.environ.get("SMTP_USER", "")
+    smtp_pass = os.environ.get("SMTP_PASS", "")
+    from_addr = os.environ.get("SMTP_FROM", smtp_user)
+
+    if not smtp_host or not smtp_user:
+        logger.warning("html_email_not_configured")
+        return False
+
+    msg = MIMEMultipart("alternative")
+    msg["From"] = from_addr
+    msg["To"] = to
+    msg["Subject"] = subject
+    msg.attach(MIMEText(html_body, "html", "utf-8"))
+
+    try:
+        import aiosmtplib
+
+        await aiosmtplib.send(
+            msg,
+            hostname=smtp_host,
+            port=smtp_port,
+            username=smtp_user,
+            password=smtp_pass,
+            use_tls=True,
+        )
+        logger.info("html_email_sent", to=to, subject=subject)
+        return True
+    except Exception as exc:
+        logger.error("html_email_send_failed", to=to, error=str(exc))
         return False
 
 
