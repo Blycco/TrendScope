@@ -453,5 +453,10 @@
 	"tour.step.hot_trends.title": "핫 트렌드",
 	"tour.step.hot_trends.desc": "지금 가장 인기 있는 트렌드입니다. 카드를 클릭하면 상세 정보를 볼 수 있습니다.",
 	"tour.step.nav.title": "더 탐색하기",
-	"tour.step.nav.desc": "트렌드 피드, 뉴스, 콘텐츠 아이디어를 확인해보세요."
+	"tour.step.nav.desc": "트렌드 피드, 뉴스, 콘텐츠 아이디어를 확인해보세요.",
+
+	"trend.sentiment.aspects.title": "키워드별 감성 분석",
+	"trend.sentiment.aspects.loading": "키워드별 감성 분석 중...",
+	"trend.sentiment.aspects.empty": "분석할 키워드가 없습니다.",
+	"trend.sentiment.aspects.total": "분석 문장 {count}건"
 }

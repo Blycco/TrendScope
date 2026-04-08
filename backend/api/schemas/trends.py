@@ -73,3 +73,21 @@ class TrendTimelineResponse(BaseModel):
     group_id: str
     interval: str
     points: list[TimelinePoint]
+
+
+# ---------------------------------------------------------------------------
+# Aspect-Based Sentiment schemas
+# ---------------------------------------------------------------------------
+
+
+class AspectSentimentItem(BaseModel):
+    aspect: str
+    positive: int
+    neutral: int
+    negative: int
+    total: int
+
+
+class AspectSentimentResponse(BaseModel):
+    group_id: str
+    aspects: list[AspectSentimentItem]
