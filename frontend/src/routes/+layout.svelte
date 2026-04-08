@@ -45,16 +45,22 @@
 	{@render children()}
 {:else}
 	<div class="min-h-screen bg-gray-50 dark:bg-gray-950">
+		<a
+			href="#main-content"
+			class="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-2 focus:left-2 focus:bg-white dark:focus:bg-gray-800 focus:px-4 focus:py-2 focus:rounded-md focus:shadow-lg focus:text-blue-700 dark:focus:text-blue-400 focus:font-medium focus:outline-none"
+		>
+			{$t('a11y.skip_to_main')}
+		</a>
 		<nav class="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
 			<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 				<div class="flex h-16 items-center justify-between">
 					<div class="flex items-center gap-8">
 						<a href="/" class="text-xl font-bold text-gray-900 dark:text-gray-100">TrendScope</a>
 						<div class="hidden sm:flex items-center gap-4" data-tour="nav-links">
-							<a href="/trends" class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100">{$t('nav.sidebar.trends')}</a>
-							<a href="/news" class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100">{$t('nav.sidebar.news')}</a>
-							<a href="/content" class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100">{$t('nav.content')}</a>
-							<a href="/compare" class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100">{$t('nav.compare')}</a>
+							<a href="/trends" class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100" aria-current={$page.url.pathname.startsWith('/trends') ? 'page' : undefined}>{$t('nav.sidebar.trends')}</a>
+							<a href="/news" class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100" aria-current={$page.url.pathname.startsWith('/news') ? 'page' : undefined}>{$t('nav.sidebar.news')}</a>
+							<a href="/content" class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100" aria-current={$page.url.pathname.startsWith('/content') ? 'page' : undefined}>{$t('nav.content')}</a>
+							<a href="/compare" class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100" aria-current={$page.url.pathname.startsWith('/compare') ? 'page' : undefined}>{$t('nav.compare')}</a>
 						</div>
 					</div>
 					<div class="flex items-center gap-4">
@@ -74,6 +80,7 @@
 							onclick={() => (mobileMenuOpen = !mobileMenuOpen)}
 							class="sm:hidden p-1.5 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
 							aria-label={mobileMenuOpen ? $t('nav.mobile.close') : $t('nav.mobile.menu')}
+							aria-expanded={mobileMenuOpen}
 						>
 							{#if mobileMenuOpen}
 								<X size={24} />
@@ -88,10 +95,10 @@
 			{#if mobileMenuOpen}
 				<div class="sm:hidden border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
 					<div class="px-4 py-3 space-y-1">
-						<a href="/trends" class="block rounded-md px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">{$t('nav.sidebar.trends')}</a>
-						<a href="/news" class="block rounded-md px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">{$t('nav.sidebar.news')}</a>
-						<a href="/content" class="block rounded-md px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">{$t('nav.content')}</a>
-						<a href="/compare" class="block rounded-md px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">{$t('nav.compare')}</a>
+						<a href="/trends" class="block rounded-md px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800" aria-current={$page.url.pathname.startsWith('/trends') ? 'page' : undefined}>{$t('nav.sidebar.trends')}</a>
+						<a href="/news" class="block rounded-md px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800" aria-current={$page.url.pathname.startsWith('/news') ? 'page' : undefined}>{$t('nav.sidebar.news')}</a>
+						<a href="/content" class="block rounded-md px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800" aria-current={$page.url.pathname.startsWith('/content') ? 'page' : undefined}>{$t('nav.content')}</a>
+						<a href="/compare" class="block rounded-md px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800" aria-current={$page.url.pathname.startsWith('/compare') ? 'page' : undefined}>{$t('nav.compare')}</a>
 						<a href="/settings" class="block rounded-md px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">{$t('nav.sidebar.settings')}</a>
 					</div>
 					<div class="border-t border-gray-200 dark:border-gray-700 px-4 py-3">
@@ -112,7 +119,7 @@
 			{/if}
 		</nav>
 
-		<main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+		<main id="main-content" class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
 			{@render children()}
 		</main>
 
