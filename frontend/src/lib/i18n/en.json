@@ -490,6 +490,10 @@
 	"tour.step.nav.title": "Explore More",
 	"tour.step.nav.desc": "Visit Trends for the full feed, News for articles, or Content Ideas for AI-powered suggestions.",
 
+	"trend.growth_type.growth": "Sustained Growth",
+	"trend.growth_type.spike": "Spike",
+	"trend.growth_type.unknown": "Analyzing",
+	"trend.growth_type.label": "Growth Type",
 	"live.new_trends": "New {count} trends updated.",
 	"live.refresh": "Refresh",
 	"common.load_more": "Load More",

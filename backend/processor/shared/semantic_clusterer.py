@@ -10,6 +10,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from typing import Any
 
 import structlog
 
@@ -364,6 +365,10 @@ def cluster_items(
             cluster_count=len(clusters),
         )
 
+    # Compute silhouette score for quality monitoring (result discarded — log only)
+    all_embeddings = [item.embedding for item in items if item.embedding is not None]
+    compute_silhouette_score(clusters, all_embeddings if all_embeddings else None)
+
     return clusters
 
 
@@ -482,3 +487,66 @@ def refine_clusters(
         )
 
     return refined
+
+
+def compute_silhouette_score(
+    clusters: list[Any],
+    embeddings: list[list[float]] | None = None,
+) -> float | None:
+    """클러스터링 품질 측정. 결과는 structlog INFO 로그만 기록.
+
+    반환값 변경 없음 — 기존 cluster_items() 시그니처 유지.
+    클러스터 수 < 2 또는 총 아이템 < 4 → None.
+
+    Args:
+        clusters: Cluster 객체 목록.
+        embeddings: 아이템 임베딩 벡터 목록 (없으면 None).
+
+    Returns:
+        Silhouette score (float) or None.
+    """
+    try:
+        if len(clusters) < 2:
+            return None
+
+        # Count total items
+        total_items = sum((c.size if hasattr(c, "size") else 1) for c in clusters)
+        if total_items < 4:
+            return None
+
+        if not embeddings or len(embeddings) < 4:
+            return None
+
+        # Build label array: assign each embedding to a cluster index
+        labels: list[int] = []
+        cluster_idx = 0
+        for cluster in clusters:
+            cluster_size = cluster.size if hasattr(cluster, "size") else 1
+            labels.extend([cluster_idx] * cluster_size)
+            cluster_idx += 1
+
+        # Trim to match embedding count if needed
+        n = min(len(embeddings), len(labels))
+        if n < 4:
+            return None
+
+        X = embeddings[:n]
+        y = labels[:n]
+
+        # Need at least 2 distinct labels
+        if len(set(y)) < 2:
+            return None
+
+        from sklearn.metrics import silhouette_score as sk_sil  # type: ignore[import-untyped]
+
+        score = sk_sil(X, y, metric="cosine")
+        logger.info(
+            "silhouette_score_computed",
+            score=round(float(score), 4),
+            cluster_count=len(clusters),
+        )
+        return float(score)
+
+    except Exception as exc:
+        logger.warning("silhouette_score_failed", error=str(exc))
+        return None

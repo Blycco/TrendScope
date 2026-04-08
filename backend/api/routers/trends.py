@@ -85,6 +85,7 @@ async def list_trends(
             created_at=row["created_at"],
             article_count=row["article_count"],
             direction=row["direction"],
+            growth_type=row.get("growth_type", "unknown") or "unknown",
             status=classify_trend_status(row["score"], None, row["direction"]),
         )
         for row in rows
@@ -129,6 +130,7 @@ async def list_related_trends(
             created_at=row["created_at"],
             article_count=row["article_count"],
             direction=row["direction"],
+            growth_type=row.get("growth_type", "unknown") or "unknown",
             status=classify_trend_status(row["score"], None, row["direction"]),
         )
         for row in rows
@@ -248,6 +250,7 @@ async def list_early_trends(
             created_at=row["created_at"],
             article_count=row["article_count"],
             direction=row["direction"],
+            growth_type=row.get("growth_type", "unknown") or "unknown",
             status=classify_trend_status(row["score"], None, row["direction"]),
         )
         for row in rows
@@ -299,6 +302,7 @@ async def get_trend_detail(
         keywords=list(group["keywords"] or []),
         created_at=group["created_at"],
         direction=group["direction"],
+        growth_type=group.get("growth_type", "unknown") or "unknown",
         articles=articles,
     )
 
