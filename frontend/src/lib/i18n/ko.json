@@ -406,6 +406,9 @@
 	"trends.share.error": "링크 생성에 실패했습니다.",
 	"trends.map.title": "트렌드 맵",
 	"trends.map.empty": "관련 트렌드 데이터가 없습니다.",
+	"trends.keyword_graph.title": "연관 키워드",
+	"trends.keyword_graph.empty": "연관 키워드 데이터가 없습니다.",
+	"trends.keyword_graph.loading": "키워드 그래프 로딩 중...",
 
 	"admin.layout.quota_alerts": "API 알림",
 	"admin.quota_alerts.title": "API Rate Limit 알림",

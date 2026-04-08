@@ -217,3 +217,25 @@ export interface BehaviorEvent {
 	payload: Record<string, unknown>;
 	timestamp?: string;
 }
+
+// ---------------------------------------------------------------------------
+// Keyword Graph types
+// ---------------------------------------------------------------------------
+
+export interface KeywordNode {
+	term: string;
+	score: number;
+	frequency: number;
+}
+
+export interface KeywordEdge {
+	source: string;
+	target: string;
+	weight: number;
+}
+
+export interface KeywordGraphResponse {
+	group_id: string;
+	nodes: KeywordNode[];
+	edges: KeywordEdge[];
+}
