@@ -15,15 +15,15 @@
 
 {#if open}
 	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="dialog" aria-modal="true">
-		<div class="mx-4 w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+		<div class="mx-4 w-full max-w-md rounded-lg bg-white dark:bg-gray-800 p-6 shadow-xl">
 			<div class="flex items-start justify-between">
-				<h2 class="text-lg font-semibold text-gray-900">{$t('modal.error.title')}</h2>
-				<button onclick={onClose} class="text-gray-400 hover:text-gray-600" aria-label="close">
+				<h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{$t('modal.error.title')}</h2>
+				<button onclick={onClose} class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" aria-label="close">
 					<X size={20} />
 				</button>
 			</div>
 
-			<p class="mt-3 text-sm text-gray-600">{$t(messageKey)}</p>
+			<p class="mt-3 text-sm text-gray-600 dark:text-gray-400">{$t(messageKey)}</p>
 
 			{#if errorCode}
 				<p class="mt-2 text-xs text-gray-400">Code: {errorCode}</p>
@@ -40,7 +40,7 @@
 				{/if}
 				<button
 					onclick={onClose}
-					class="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+					class="rounded-md border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
 				>
 					{$t('modal.error.close')}
 				</button>
