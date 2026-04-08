@@ -8,7 +8,8 @@ from fastapi.responses import Response
 
 from backend.api.schemas.trends import TrendItem, TrendListResponse
 from backend.auth.dependencies import CurrentUser, require_plan
-from backend.common.errors import ErrorCode, error_response
+from backend.common.decorators import handle_errors
+from backend.common.errors import ErrorCode
 from backend.db.queries.trends import encode_cursor, fetch_early_trends
 
 router = APIRouter(tags=["trends"])
@@ -16,6 +17,12 @@ logger = structlog.get_logger(__name__)
 
 
 @router.get("/trends/early/pro", response_model=TrendListResponse)
+@handle_errors(
+    error_code=ErrorCode.DB_ERROR,
+    message="Failed to fetch early trends",
+    status_code=500,
+    log_event="early_trends_pro_fetch_failed",
+)
 async def list_early_trends_pro(
     request: Request,
     locale: str | None = Query(default=None),
@@ -24,12 +31,8 @@ async def list_early_trends_pro(
     current_user: CurrentUser = Depends(require_plan("pro", status_code=402)),  # noqa: B008
 ) -> Response:
     """Pro+ gated early trends with full burst_z and sentiment_badge data."""
-    try:
-        pool = request.app.state.db_pool
-        rows = await fetch_early_trends(pool, locale=locale, limit=limit, cursor=cursor)
-    except Exception as exc:
-        logger.error("early_trends_pro_fetch_failed", error=str(exc))
-        return error_response(ErrorCode.DB_ERROR, "Failed to fetch early trends", status_code=500)
+    pool = request.app.state.db_pool
+    rows = await fetch_early_trends(pool, locale=locale, limit=limit, cursor=cursor)
 
     items = [
         TrendItem(

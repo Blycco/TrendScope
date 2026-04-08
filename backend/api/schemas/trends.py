@@ -18,6 +18,8 @@ class TrendItem(BaseModel):
     created_at: datetime
     article_count: int = 0
     direction: str = "steady"
+    growth_type: str = "unknown"
+    status: str = "stable"
 
 
 class TrendListResponse(BaseModel):
@@ -45,6 +47,7 @@ class TrendDetailResponse(BaseModel):
     keywords: list[str]
     created_at: datetime
     direction: str = "steady"
+    growth_type: str = "unknown"
     articles: list[TrendArticleItem]
 
 
@@ -82,6 +85,9 @@ class TrendTimelineResponse(BaseModel):
 
 class AspectSentimentItem(BaseModel):
     aspect: str
+
+
+class SentimentDistributionResponse(BaseModel):
     positive: int
     neutral: int
     negative: int

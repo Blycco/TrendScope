@@ -45,6 +45,59 @@ async def close_redis() -> None:
         _redis_pool = None
 
 
+# --- Pub/sub pool (separate connection: subscribe state is incompatible with commands) ---
+
+_pubsub_redis: aioredis.Redis | None = None
+
+
+async def init_pubsub(redis_url: str) -> None:
+    """Initialize separate Redis client for pub/sub operations."""
+    global _pubsub_redis
+    try:
+        _pubsub_redis = aioredis.from_url(
+            redis_url,
+            encoding="utf-8",
+            decode_responses=True,
+            max_connections=10,
+        )
+        await _pubsub_redis.ping()
+        logger.info("redis_pubsub_initialized")
+    except Exception as exc:
+        logger.error("redis_pubsub_init_failed", error=str(exc))
+        raise
+
+
+async def close_pubsub() -> None:
+    """Close the pub/sub Redis client."""
+    global _pubsub_redis
+    if _pubsub_redis:
+        try:
+            await _pubsub_redis.aclose()
+        except Exception as exc:
+            logger.warning("redis_pubsub_close_error", error=str(exc))
+        _pubsub_redis = None
+    logger.info("redis_pubsub_closed")
+
+
+def get_pubsub_redis() -> aioredis.Redis:
+    """Return the pub/sub Redis client. Raises RuntimeError if not initialized."""
+    if _pubsub_redis is None:
+        raise RuntimeError("PubSub Redis not initialized. Call init_pubsub() first.")
+    return _pubsub_redis
+
+
+async def publish(channel: str, message: str) -> None:
+    """Publish a message to a Redis channel. Skips silently if not initialized."""
+    if _pubsub_redis is None:
+        logger.debug("redis_publish_skipped_not_initialized", channel=channel)
+        return
+    try:
+        await _pubsub_redis.publish(channel, message)
+        logger.debug("redis_published", channel=channel)
+    except Exception as exc:
+        logger.warning("redis_publish_failed", channel=channel, error=str(exc))
+
+
 def get_redis() -> aioredis.Redis:
     if _redis_pool is None:
         raise RuntimeError("Redis pool not initialized. Call init_redis() first.")

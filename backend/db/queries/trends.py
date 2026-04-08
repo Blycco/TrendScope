@@ -105,7 +105,7 @@ async def fetch_trends(
             SELECT ng.id::text, ng.category, ng.locale,
                    ng.title, ng.summary, ng.score,
                    ng.early_trend_score, ng.keywords,
-                   ng.created_at,
+                   ng.created_at, ng.growth_type,
                    (SELECT COUNT(*)
                     FROM news_article
                     WHERE group_id = ng.id
@@ -157,7 +157,7 @@ async def fetch_early_trends(
             SELECT ng.id::text, ng.category, ng.locale,
                    ng.title, ng.summary, ng.score,
                    ng.early_trend_score, ng.keywords,
-                   ng.created_at,
+                   ng.created_at, ng.growth_type,
                    (SELECT COUNT(*)
                     FROM news_article
                     WHERE group_id = ng.id
@@ -195,7 +195,7 @@ async def fetch_trend_detail(
                 SELECT ng.id::text, ng.category, ng.locale,
                        ng.title, ng.summary, ng.score,
                        ng.early_trend_score, ng.keywords,
-                       ng.created_at,
+                       ng.created_at, ng.growth_type,
                        {_DIRECTION_CASE}
                 FROM news_group ng
                 {_DIRECTION_LATERAL}
@@ -242,7 +242,7 @@ async def fetch_related_trends(
                 SELECT ng.id::text, ng.category, ng.locale,
                        ng.title, ng.summary, ng.score,
                        ng.early_trend_score, ng.keywords,
-                       ng.created_at,
+                       ng.created_at, ng.growth_type,
                        (SELECT COUNT(*)
                         FROM news_article
                         WHERE group_id = ng.id
@@ -318,6 +318,37 @@ async def fetch_trend_timeline(
             group_id=group_id,
             error=str(exc),
         )
+        raise
+
+
+# ---------------------------------------------------------------------------
+# Sentiment: fetch article texts for a group
+# ---------------------------------------------------------------------------
+
+
+async def fetch_group_article_texts(
+    pool: asyncpg.Pool,
+    *,
+    group_id: str,
+    limit: int = 200,
+) -> list[str]:
+    """Fetch article title + body snippet texts for sentiment analysis."""
+    try:
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT COALESCE(title, '') || ' ' || COALESCE(LEFT(body, 200), '') AS text
+                FROM news_article
+                WHERE group_id = $1::uuid
+                ORDER BY publish_time DESC
+                LIMIT $2
+                """,
+                group_id,
+                limit,
+            )
+            return [row["text"] for row in rows]
+    except Exception as exc:
+        logger.error("fetch_group_article_texts_failed", group_id=group_id, error=str(exc))
         raise
 
 

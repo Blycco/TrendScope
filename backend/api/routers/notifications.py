@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 
 from backend.api.schemas.notifications import (
     KeywordCreateRequest,
@@ -14,6 +14,7 @@ from backend.api.schemas.notifications import (
     NotificationSettingUpdate,
 )
 from backend.auth.dependencies import PLAN_LEVEL, CurrentUser, require_auth
+from backend.common.decorators import handle_errors
 from backend.common.errors import ErrorCode, http_error
 from backend.db.queries.notification_keywords import (
     count_keywords_for_user,
@@ -33,88 +34,71 @@ logger = structlog.get_logger(__name__)
 
 
 @router.get("/settings", response_model=NotificationSettingsResponse)
+@handle_errors(log_event="get_notification_settings_failed")
 async def get_settings(
     request: Request,
     current_user: CurrentUser = Depends(require_auth),  # noqa: B008
 ) -> NotificationSettingsResponse:
     """Return all notification settings for the authenticated user."""
-    try:
-        pool = request.app.state.db_pool
-        rows = await get_notification_settings(pool, user_id=current_user.user_id)
-        return NotificationSettingsResponse(
-            settings=[
-                NotificationSettingResponse(
-                    id=row["id"],
-                    user_id=row["user_id"],
-                    type=row["type"],
-                    channel=row["channel"],
-                    is_enabled=row["is_enabled"],
-                    created_at=row["created_at"],
-                    updated_at=row["updated_at"],
-                )
-                for row in rows
-            ]
-        )
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logger.error("get_notification_settings_failed", error=str(exc))
-        raise http_error(
-            ErrorCode.DB_ERROR,
-            "Failed to fetch notification settings",
-            status_code=500,
-        ) from exc
+    pool = request.app.state.db_pool
+    rows = await get_notification_settings(pool, user_id=current_user.user_id)
+    return NotificationSettingsResponse(
+        settings=[
+            NotificationSettingResponse(
+                id=row["id"],
+                user_id=row["user_id"],
+                type=row["type"],
+                channel=row["channel"],
+                is_enabled=row["is_enabled"],
+                created_at=row["created_at"],
+                updated_at=row["updated_at"],
+            )
+            for row in rows
+        ]
+    )
 
 
 @router.put("/settings", response_model=NotificationSettingsResponse)
+@handle_errors(log_event="update_notification_settings_failed")
 async def update_settings(
     body: NotificationSettingUpdate,
     request: Request,
     current_user: CurrentUser = Depends(require_auth),  # noqa: B008
 ) -> NotificationSettingsResponse:
     """Create or update a notification setting for the authenticated user."""
-    try:
-        pool = request.app.state.db_pool
-        await upsert_notification_setting(
-            pool,
-            user_id=current_user.user_id,
-            notification_type=body.type,
-            channel=body.channel,
-            is_enabled=body.is_enabled,
-        )
-        rows = await get_notification_settings(pool, user_id=current_user.user_id)
-        logger.info(
-            "notification_setting_updated",
-            user_id=current_user.user_id,
-            type=body.type,
-            channel=body.channel,
-        )
-        return NotificationSettingsResponse(
-            settings=[
-                NotificationSettingResponse(
-                    id=row["id"],
-                    user_id=row["user_id"],
-                    type=row["type"],
-                    channel=row["channel"],
-                    is_enabled=row["is_enabled"],
-                    created_at=row["created_at"],
-                    updated_at=row["updated_at"],
-                )
-                for row in rows
-            ]
-        )
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logger.error("update_notification_settings_failed", error=str(exc))
-        raise http_error(
-            ErrorCode.DB_ERROR,
-            "Failed to update notification setting",
-            status_code=500,
-        ) from exc
+    pool = request.app.state.db_pool
+    await upsert_notification_setting(
+        pool,
+        user_id=current_user.user_id,
+        notification_type=body.type,
+        channel=body.channel,
+        is_enabled=body.is_enabled,
+    )
+    rows = await get_notification_settings(pool, user_id=current_user.user_id)
+    logger.info(
+        "notification_setting_updated",
+        user_id=current_user.user_id,
+        type=body.type,
+        channel=body.channel,
+    )
+    return NotificationSettingsResponse(
+        settings=[
+            NotificationSettingResponse(
+                id=row["id"],
+                user_id=row["user_id"],
+                type=row["type"],
+                channel=row["channel"],
+                is_enabled=row["is_enabled"],
+                created_at=row["created_at"],
+                updated_at=row["updated_at"],
+            )
+            for row in rows
+        ]
+    )
 
 
 @router.get("/keywords", response_model=KeywordsResponse)
+@handle_errors(log_event="list_keywords_failed")
 async def list_keywords(
     request: Request,
     current_user: CurrentUser = Depends(require_auth),  # noqa: B008
@@ -126,28 +110,23 @@ async def list_keywords(
             "Keyword alerts require Pro plan or above",
             status_code=403,
         )
-    try:
-        pool = request.app.state.db_pool
-        rows = await get_keywords_for_user(pool, user_id=current_user.user_id)
-        return KeywordsResponse(
-            keywords=[
-                KeywordResponse(
-                    id=row["id"],
-                    user_id=row["user_id"],
-                    keyword=row["keyword"],
-                    created_at=row["created_at"],
-                )
-                for row in rows
-            ]
-        )
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logger.error("list_keywords_failed", error=str(exc))
-        raise http_error(ErrorCode.DB_ERROR, "Failed to fetch keywords", status_code=500) from exc
+    pool = request.app.state.db_pool
+    rows = await get_keywords_for_user(pool, user_id=current_user.user_id)
+    return KeywordsResponse(
+        keywords=[
+            KeywordResponse(
+                id=row["id"],
+                user_id=row["user_id"],
+                keyword=row["keyword"],
+                created_at=row["created_at"],
+            )
+            for row in rows
+        ]
+    )
 
 
 @router.post("/keywords", response_model=KeywordResponse, status_code=201)
+@handle_errors(log_event="add_keyword_failed")
 async def add_keyword(
     body: KeywordCreateRequest,
     request: Request,
@@ -161,48 +140,37 @@ async def add_keyword(
             "Keyword alerts require Pro plan or above",
             status_code=403,
         )
-    try:
-        pool = request.app.state.db_pool
+    pool = request.app.state.db_pool
 
-        if user_level < PLAN_LEVEL["business"]:
-            count = await count_keywords_for_user(pool, user_id=current_user.user_id)
-            if count >= _PRO_KEYWORD_LIMIT:
-                raise http_error(
-                    ErrorCode.QUOTA_EXCEEDED,
-                    "Pro plan allows up to 5 keyword alerts",
-                    status_code=403,
-                )
+    if user_level < PLAN_LEVEL["business"]:
+        count = await count_keywords_for_user(pool, user_id=current_user.user_id)
+        if count >= _PRO_KEYWORD_LIMIT:
+            raise http_error(
+                ErrorCode.QUOTA_EXCEEDED,
+                "Pro plan allows up to 5 keyword alerts",
+                status_code=403,
+            )
 
-        row = await insert_keyword(pool, user_id=current_user.user_id, keyword=body.keyword)
-        logger.info("keyword_added", user_id=current_user.user_id, keyword=body.keyword)
-        return KeywordResponse(
-            id=row["id"],
-            user_id=row["user_id"],
-            keyword=row["keyword"],
-            created_at=row["created_at"],
-        )
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logger.error("add_keyword_failed", error=str(exc))
-        raise http_error(ErrorCode.DB_ERROR, "Failed to add keyword", status_code=500) from exc
+    row = await insert_keyword(pool, user_id=current_user.user_id, keyword=body.keyword)
+    logger.info("keyword_added", user_id=current_user.user_id, keyword=body.keyword)
+    return KeywordResponse(
+        id=row["id"],
+        user_id=row["user_id"],
+        keyword=row["keyword"],
+        created_at=row["created_at"],
+    )
 
 
 @router.delete("/keywords/{keyword_id}", status_code=204, response_model=None)
+@handle_errors(log_event="remove_keyword_failed")
 async def remove_keyword(
     keyword_id: str,
     request: Request,
     current_user: CurrentUser = Depends(require_auth),  # noqa: B008
 ) -> None:
     """Delete a keyword alert by id. Only the owner may delete their own keywords."""
-    try:
-        pool = request.app.state.db_pool
-        deleted = await delete_keyword(pool, user_id=current_user.user_id, keyword_id=keyword_id)
-        if not deleted:
-            raise http_error(ErrorCode.NOT_FOUND, "Keyword not found", status_code=404)
-        logger.info("keyword_deleted", user_id=current_user.user_id, keyword_id=keyword_id)
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logger.error("remove_keyword_failed", error=str(exc))
-        raise http_error(ErrorCode.DB_ERROR, "Failed to delete keyword", status_code=500) from exc
+    pool = request.app.state.db_pool
+    deleted = await delete_keyword(pool, user_id=current_user.user_id, keyword_id=keyword_id)
+    if not deleted:
+        raise http_error(ErrorCode.NOT_FOUND, "Keyword not found", status_code=404)
+    logger.info("keyword_deleted", user_id=current_user.user_id, keyword_id=keyword_id)

@@ -7,7 +7,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import Response
 
 from backend.api.schemas.dashboard import DashboardSummaryResponse
-from backend.common.errors import ErrorCode, error_response
+from backend.common.decorators import handle_errors
 from backend.db.queries.dashboard import fetch_dashboard_summary
 from backend.processor.shared.cache_manager import get_cached, set_cached
 
@@ -19,22 +19,15 @@ _CACHE_TTL = 180  # 3 minutes
 
 
 @router.get("/dashboard/summary", response_model=DashboardSummaryResponse)
+@handle_errors(log_event="dashboard_summary_failed")
 async def get_dashboard_summary(request: Request) -> Response:
     """Return aggregated dashboard stats for the last 24 hours."""
     cached = await get_cached(_CACHE_KEY)
     if cached is not None:
         return Response(content=cached, media_type="application/json")
 
-    try:
-        pool = request.app.state.db_pool
-        data = await fetch_dashboard_summary(pool)
-    except Exception as exc:
-        logger.error("dashboard_summary_failed", error=str(exc))
-        return error_response(
-            ErrorCode.DB_ERROR,
-            "Failed to fetch dashboard summary",
-            status_code=500,
-        )
+    pool = request.app.state.db_pool
+    data = await fetch_dashboard_summary(pool)
 
     resp = DashboardSummaryResponse(**data)
     body = resp.model_dump_json().encode()
