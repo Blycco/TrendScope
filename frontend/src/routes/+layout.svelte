@@ -49,6 +49,7 @@
 							<a href="/trends" class="text-sm text-gray-600 hover:text-gray-900">{$t('nav.sidebar.trends')}</a>
 							<a href="/news" class="text-sm text-gray-600 hover:text-gray-900">{$t('nav.sidebar.news')}</a>
 							<a href="/content" class="text-sm text-gray-600 hover:text-gray-900">{$t('nav.content')}</a>
+							<a href="/compare" class="text-sm text-gray-600 hover:text-gray-900">{$t('nav.compare')}</a>
 						</div>
 					</div>
 					<div class="flex items-center gap-4">
@@ -84,6 +85,7 @@
 						<a href="/trends" class="block rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">{$t('nav.sidebar.trends')}</a>
 						<a href="/news" class="block rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">{$t('nav.sidebar.news')}</a>
 						<a href="/content" class="block rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">{$t('nav.content')}</a>
+						<a href="/compare" class="block rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">{$t('nav.compare')}</a>
 						<a href="/settings" class="block rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">{$t('nav.sidebar.settings')}</a>
 					</div>
 					<div class="border-t border-gray-200 px-4 py-3">

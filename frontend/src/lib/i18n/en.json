@@ -477,5 +477,14 @@
 
 	"common.load_more": "Load More",
 	"common.no_results": "No Results",
-	"common.no_results_desc": "No results match your filters"
+	"common.no_results_desc": "No results match your filters",
+
+	"nav.compare": "Compare",
+	"page.compare.title": "Trend Comparison",
+	"compare.select_trends": "Select trends to compare (2-5)",
+	"compare.search_placeholder": "Search trends...",
+	"compare.max_reached": "You can compare up to 5 trends.",
+	"compare.empty": "Select at least 2 trends to compare.",
+	"compare.remove": "Remove",
+	"compare.add": "Add to compare"
 }
