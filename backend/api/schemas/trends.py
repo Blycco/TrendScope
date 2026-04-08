@@ -18,6 +18,7 @@ class TrendItem(BaseModel):
     created_at: datetime
     article_count: int = 0
     direction: str = "steady"
+    status: str = "stable"
 
 
 class TrendListResponse(BaseModel):
@@ -73,3 +74,10 @@ class TrendTimelineResponse(BaseModel):
     group_id: str
     interval: str
     points: list[TimelinePoint]
+
+
+class SentimentDistributionResponse(BaseModel):
+    positive: int
+    neutral: int
+    negative: int
+    total: int

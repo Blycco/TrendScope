@@ -19,10 +19,10 @@
 
 	const color = $derived(
 		score >= 0.8
-			? 'bg-red-100 text-red-700'
+			? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
 			: score >= 0.5
-				? 'bg-orange-100 text-orange-700'
-				: 'bg-blue-100 text-blue-700'
+				? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400'
+				: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
 	);
 </script>
 

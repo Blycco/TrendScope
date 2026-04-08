@@ -287,7 +287,7 @@ def ltr_score_or_fallback(
         return ltr_result
 
     result = calculate_score(score_input)
-    return result.total
+    return result.normalized
 
 
 # ---------------------------------------------------------------------------

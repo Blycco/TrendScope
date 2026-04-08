@@ -19,12 +19,15 @@ from backend.api.middleware.rate_limit import RateLimitMiddleware
 from backend.api.routers import (
     auth,
     brand,
+    compare,
     content,
     dashboard,
     early_trend,
     events,
+    forecast,
     health,
     insights,
+    keywords,
     live,
     news,
     notifications,
@@ -143,6 +146,8 @@ def create_app() -> FastAPI:
     app.include_router(health.router)
     app.include_router(auth.router, prefix="/api/v1")
     app.include_router(dashboard.router, prefix="/api/v1")
+    app.include_router(compare.router, prefix="/api/v1")
+    app.include_router(keywords.router, prefix="/api/v1")
     app.include_router(trends.router, prefix="/api/v1")
     app.include_router(early_trend.router, prefix="/api/v1")
     app.include_router(insights.router, prefix="/api/v1")
@@ -157,6 +162,7 @@ def create_app() -> FastAPI:
     app.include_router(personalization.router, prefix="/api/v1")
     app.include_router(brand.router, prefix="/api/v1")
     app.include_router(shares.router, prefix="/api/v1")
+    app.include_router(forecast.router, prefix="/api/v1")
     app.include_router(webhooks_payment.router, prefix="/api/v1")
     app.include_router(live.router, prefix="/api/v1")
 

@@ -149,7 +149,7 @@
 	}
 
 	function truncate(text: string, max: number): string {
-		return text.length > max ? text.slice(0, max - 1) + '…' : text;
+		return text.length > max ? text.slice(0, max - 1) + '...' : text;
 	}
 
 	function edgeCoords(edge: TrendEdge): { x1: number; y1: number; x2: number; y2: number } | null {
@@ -161,18 +161,18 @@
 </script>
 
 <div class="space-y-3">
-	<h2 class="text-base font-semibold text-gray-900">{$t('trends.map.title')}</h2>
+	<h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">{$t('trends.map.title')}</h2>
 
 	{#if isLoading}
-		<div class="flex h-48 items-center justify-center rounded-lg border border-gray-200 bg-white">
-			<p class="text-sm text-gray-500">{$t('status.loading')}</p>
+		<div class="flex h-48 items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+			<p class="text-sm text-gray-500 dark:text-gray-400">{$t('status.loading')}</p>
 		</div>
 	{:else if nodes.length === 0}
-		<div class="flex h-48 items-center justify-center rounded-lg border border-gray-200 bg-white">
-			<p class="text-sm text-gray-500">{$t('trends.map.empty')}</p>
+		<div class="flex h-48 items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+			<p class="text-sm text-gray-500 dark:text-gray-400">{$t('trends.map.empty')}</p>
 		</div>
 	{:else}
-		<div class="overflow-hidden rounded-lg border border-gray-200 bg-white">
+		<div class="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
 			<svg
 				viewBox="0 0 {WIDTH} {HEIGHT}"
 				width="100%"
@@ -188,7 +188,7 @@
 							y1={coords.y1}
 							x2={coords.x2}
 							y2={coords.y2}
-							stroke="#d1d5db"
+							stroke="var(--chart-edge)"
 							stroke-width="1.5"
 						/>
 					{/if}
@@ -209,8 +209,8 @@
 							cx={node.x}
 							cy={node.y}
 							r={r}
-							fill={isCenter ? '#2563eb' : '#eff6ff'}
-							stroke={isCenter ? '#1d4ed8' : '#93c5fd'}
+							fill={isCenter ? 'var(--chart-node-center)' : 'var(--chart-node-fill)'}
+							stroke={isCenter ? 'var(--chart-node-stroke)' : 'var(--chart-node-border)'}
 							stroke-width="2"
 						/>
 						<text
@@ -220,7 +220,7 @@
 							dominant-baseline="middle"
 							font-size={isCenter ? '11' : '10'}
 							font-weight={isCenter ? '600' : '400'}
-							fill={isCenter ? '#ffffff' : '#1e40af'}
+							fill={isCenter ? '#ffffff' : 'var(--chart-node-text)'}
 						>
 							{truncate(node.title, isCenter ? 12 : 10)}
 						</text>
