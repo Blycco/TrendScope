@@ -453,5 +453,8 @@
 	"tour.step.hot_trends.title": "핫 트렌드",
 	"tour.step.hot_trends.desc": "지금 가장 인기 있는 트렌드입니다. 카드를 클릭하면 상세 정보를 볼 수 있습니다.",
 	"tour.step.nav.title": "더 탐색하기",
-	"tour.step.nav.desc": "트렌드 피드, 뉴스, 콘텐츠 아이디어를 확인해보세요."
+	"tour.step.nav.desc": "트렌드 피드, 뉴스, 콘텐츠 아이디어를 확인해보세요.",
+
+	"live.new_trends": "새 트렌드 {count}개가 업데이트되었습니다.",
+	"live.refresh": "새로고침"
 }

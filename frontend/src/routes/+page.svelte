@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { t } from 'svelte-i18n';
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { apiRequest, ApiRequestError } from '$lib/api';
 	import type {
 		TrendListResponse,
@@ -36,6 +36,11 @@
 	let errorOpen = $state(false);
 	let errorCode = $state('');
 	let errorMessageKey = $state('');
+
+	let eventSource: EventSource | null = null;
+	let newTrendCount = $state(0);
+	let showBanner = $state(false);
+	let bannerTimer: ReturnType<typeof setTimeout> | null = null;
 
 	const CATEGORY_COLORS: Record<string, string> = {
 		tech: '#3b82f6',
@@ -93,9 +98,31 @@
 		}
 	}
 
+	function connectSSE(): void {
+		if (typeof EventSource === 'undefined') return; // SSR guard
+		eventSource = new EventSource('/api/v1/live/trends');
+		eventSource.onmessage = () => {
+			newTrendCount += 1;
+			showBanner = true;
+			if (bannerTimer) clearTimeout(bannerTimer);
+			bannerTimer = setTimeout(() => {
+				showBanner = false;
+			}, 5000);
+		};
+		eventSource.onerror = () => {
+			// delegate reconnect to the browser's built-in EventSource retry
+		};
+	}
+
 	onMount(async () => {
 		await loadDashboard();
 		isLoading = false;
+		connectSSE();
+	});
+
+	onDestroy(() => {
+		eventSource?.close();
+		if (bannerTimer) clearTimeout(bannerTimer);
 	});
 </script>
 
@@ -104,6 +131,20 @@
 		<h1 class="text-2xl sm:text-3xl font-bold text-gray-900">{$t('page.home.title')}</h1>
 		<p class="mt-1 text-sm sm:text-base text-gray-600">{$t('page.home.description')}</p>
 	</div>
+
+	{#if showBanner}
+		<div class="mb-4 rounded-md bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 px-4 py-3 flex items-center justify-between">
+			<p class="text-sm text-blue-700 dark:text-blue-400">
+				{$t('live.new_trends', { values: { count: newTrendCount } })}
+			</p>
+			<button
+				onclick={() => { showBanner = false; newTrendCount = 0; loadDashboard(); }}
+				class="text-sm text-blue-600 dark:text-blue-400 hover:underline ml-4"
+			>
+				{$t('live.refresh')}
+			</button>
+		</div>
+	{/if}
 
 	{#if isLoading}
 		<div class="space-y-3">

@@ -453,5 +453,8 @@
 	"tour.step.hot_trends.title": "Hot Trends",
 	"tour.step.hot_trends.desc": "The top-ranked trends right now. Click any card to see full details.",
 	"tour.step.nav.title": "Explore More",
-	"tour.step.nav.desc": "Visit Trends for the full feed, News for articles, or Content Ideas for AI-powered suggestions."
+	"tour.step.nav.desc": "Visit Trends for the full feed, News for articles, or Content Ideas for AI-powered suggestions.",
+
+	"live.new_trends": "New {count} trends updated.",
+	"live.refresh": "Refresh"
 }
