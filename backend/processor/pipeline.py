@@ -13,7 +13,7 @@ import structlog
 
 from backend.processor.shared.ai_config import get_ai_config
 from backend.processor.shared.ai_summarizer import summarize
-from backend.processor.shared.cache_manager import set_cached
+from backend.processor.shared.cache_manager import publish, set_cached
 from backend.processor.shared.dedupe_filter import is_duplicate
 from backend.processor.shared.keyword_extractor import Keyword, extract_keywords
 from backend.processor.shared.score_calculator import ScoreInput, ScoreResult, calculate_score
@@ -537,6 +537,12 @@ async def _stage_save(
                     )
 
             saved += 1
+
+            # Publish new group_id to SSE subscribers (outside save transaction)
+            try:
+                await publish("trends:new", str(group_id))
+            except Exception as pub_exc:
+                logger.warning("publish_after_save_failed", group_id=group_id, error=str(pub_exc))
         except Exception as exc:
             logger.warning(
                 "pipeline_save_error",
