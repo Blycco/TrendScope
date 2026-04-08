@@ -453,5 +453,10 @@
 	"tour.step.hot_trends.title": "핫 트렌드",
 	"tour.step.hot_trends.desc": "지금 가장 인기 있는 트렌드입니다. 카드를 클릭하면 상세 정보를 볼 수 있습니다.",
 	"tour.step.nav.title": "더 탐색하기",
-	"tour.step.nav.desc": "트렌드 피드, 뉴스, 콘텐츠 아이디어를 확인해보세요."
+	"tour.step.nav.desc": "트렌드 피드, 뉴스, 콘텐츠 아이디어를 확인해보세요.",
+
+	"trend.growth_type.growth": "지속 성장",
+	"trend.growth_type.spike": "단기 급등",
+	"trend.growth_type.unknown": "분류 중",
+	"trend.growth_type.label": "성장 유형"
 }

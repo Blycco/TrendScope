@@ -38,6 +38,7 @@ class BurstResult:
     prophet_score: float
     iforest_score: float
     cusum_score: float
+    growth_type: str = "unknown"
 
 
 @dataclass

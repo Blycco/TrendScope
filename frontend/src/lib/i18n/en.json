@@ -453,5 +453,10 @@
 	"tour.step.hot_trends.title": "Hot Trends",
 	"tour.step.hot_trends.desc": "The top-ranked trends right now. Click any card to see full details.",
 	"tour.step.nav.title": "Explore More",
-	"tour.step.nav.desc": "Visit Trends for the full feed, News for articles, or Content Ideas for AI-powered suggestions."
+	"tour.step.nav.desc": "Visit Trends for the full feed, News for articles, or Content Ideas for AI-powered suggestions.",
+
+	"trend.growth_type.growth": "Sustained Growth",
+	"trend.growth_type.spike": "Spike",
+	"trend.growth_type.unknown": "Analyzing",
+	"trend.growth_type.label": "Growth Type"
 }

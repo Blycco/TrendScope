@@ -105,7 +105,7 @@ async def fetch_trends(
             SELECT ng.id::text, ng.category, ng.locale,
                    ng.title, ng.summary, ng.score,
                    ng.early_trend_score, ng.keywords,
-                   ng.created_at,
+                   ng.created_at, ng.growth_type,
                    (SELECT COUNT(*)
                     FROM news_article
                     WHERE group_id = ng.id
@@ -157,7 +157,7 @@ async def fetch_early_trends(
             SELECT ng.id::text, ng.category, ng.locale,
                    ng.title, ng.summary, ng.score,
                    ng.early_trend_score, ng.keywords,
-                   ng.created_at,
+                   ng.created_at, ng.growth_type,
                    (SELECT COUNT(*)
                     FROM news_article
                     WHERE group_id = ng.id
@@ -195,7 +195,7 @@ async def fetch_trend_detail(
                 SELECT ng.id::text, ng.category, ng.locale,
                        ng.title, ng.summary, ng.score,
                        ng.early_trend_score, ng.keywords,
-                       ng.created_at,
+                       ng.created_at, ng.growth_type,
                        {_DIRECTION_CASE}
                 FROM news_group ng
                 {_DIRECTION_LATERAL}
@@ -242,7 +242,7 @@ async def fetch_related_trends(
                 SELECT ng.id::text, ng.category, ng.locale,
                        ng.title, ng.summary, ng.score,
                        ng.early_trend_score, ng.keywords,
-                       ng.created_at,
+                       ng.created_at, ng.growth_type,
                        (SELECT COUNT(*)
                         FROM news_article
                         WHERE group_id = ng.id
