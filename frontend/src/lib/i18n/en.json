@@ -185,6 +185,13 @@
 	"settings.security.2fa_code_label": "Authentication Code",
 	"settings.security.2fa_verify": "Verify Code",
 	"settings.security.2fa_success": "Two-factor authentication has been successfully enabled.",
+	"settings.tab.appearance": "Appearance",
+	"settings.appearance.title": "Theme Settings",
+	"settings.appearance.theme": "Theme",
+	"settings.appearance.light": "Light",
+	"settings.appearance.dark": "Dark",
+	"settings.appearance.system": "System",
+	"theme.toggle": "Toggle theme",
 
 	"nav.content": "Content Ideas",
 

@@ -86,14 +86,14 @@
 </script>
 
 <div>
-	<h2 class="text-2xl font-bold text-gray-900 mb-6">{$t('admin.users.title')}</h2>
+	<h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">{$t('admin.users.title')}</h2>
 
 	<div class="mb-4 flex flex-col sm:flex-row gap-2">
 		<input
 			type="text"
 			bind:value={search}
 			placeholder={$t('admin.users.search')}
-			class="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
+			class="flex-1 rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-3 py-2 text-sm"
 			onkeydown={(e) => { if (e.key === 'Enter') handleSearch(); }}
 		/>
 		<button
@@ -106,27 +106,27 @@
 
 	<PageStateWrapper isLoading={loading} isEmpty={!loading && users.length === 0}>
 		{#snippet children()}
-			<div class="bg-white rounded-lg shadow overflow-x-auto">
-				<table class="min-w-[640px] w-full divide-y divide-gray-200">
-					<thead class="bg-gray-50">
+			<div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-x-auto">
+				<table class="min-w-[640px] w-full divide-y divide-gray-200 dark:divide-gray-700">
+					<thead class="bg-gray-50 dark:bg-gray-700">
 						<tr>
-							<th class="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.users.col_email')}</th>
-							<th class="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.users.col_name')}</th>
-							<th class="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.users.col_role')}</th>
-							<th class="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.users.col_plan')}</th>
-							<th class="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.users.col_status')}</th>
-							<th class="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.users.col_actions')}</th>
+							<th class="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{$t('admin.users.col_email')}</th>
+							<th class="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{$t('admin.users.col_name')}</th>
+							<th class="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{$t('admin.users.col_role')}</th>
+							<th class="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{$t('admin.users.col_plan')}</th>
+							<th class="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{$t('admin.users.col_status')}</th>
+							<th class="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{$t('admin.users.col_actions')}</th>
 						</tr>
 					</thead>
-					<tbody class="divide-y divide-gray-200">
+					<tbody class="divide-y divide-gray-200 dark:divide-gray-700">
 						{#each users as user}
 							<tr>
-								<td class="px-3 py-2 sm:px-4 sm:py-3 text-sm text-gray-900 max-w-[200px] truncate">{user.email}</td>
-								<td class="px-3 py-2 sm:px-4 sm:py-3 text-sm text-gray-600">{user.display_name ?? '-'}</td>
-								<td class="px-3 py-2 sm:px-4 sm:py-3 text-sm text-gray-600">{user.role}</td>
+								<td class="px-3 py-2 sm:px-4 sm:py-3 text-sm text-gray-900 dark:text-gray-100 max-w-[200px] truncate">{user.email}</td>
+								<td class="px-3 py-2 sm:px-4 sm:py-3 text-sm text-gray-600 dark:text-gray-400">{user.display_name ?? '-'}</td>
+								<td class="px-3 py-2 sm:px-4 sm:py-3 text-sm text-gray-600 dark:text-gray-400">{user.role}</td>
 								<td class="px-3 py-2 sm:px-4 sm:py-3">
 									<select
-										class="text-sm border border-gray-300 rounded px-2 py-1"
+										class="text-sm border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded px-2 py-1"
 										value={user.plan}
 										onchange={(e) => updateUser(user.id, 'plan', e.currentTarget.value)}
 									>
@@ -138,7 +138,7 @@
 								</td>
 								<td class="px-3 py-2 sm:px-4 sm:py-3">
 									<button
-										class="text-xs px-2 py-1 rounded {user.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}"
+										class="text-xs px-2 py-1 rounded {user.is_active ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400' : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400'}"
 										onclick={() => updateUser(user.id, 'is_active', !user.is_active)}
 									>
 										{user.is_active ? $t('admin.users.active') : $t('admin.users.suspended')}
@@ -159,7 +159,7 @@
 			</div>
 
 			<div class="mt-4 flex items-center justify-between">
-				<p class="text-sm text-gray-600">
+				<p class="text-sm text-gray-600 dark:text-gray-400">
 					{$t('admin.users.total')}: {total}
 				</p>
 				<div class="flex gap-2">
@@ -185,9 +185,9 @@
 
 {#if deleteConfirmId}
 	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="dialog" aria-modal="true">
-		<div class="bg-white rounded-lg p-6 max-w-sm mx-4 shadow-xl">
-			<h3 class="text-lg font-semibold">{$t('admin.users.delete_confirm_title')}</h3>
-			<p class="mt-2 text-sm text-gray-600">{$t('admin.users.delete_confirm_message')}</p>
+		<div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-sm mx-4 shadow-xl">
+			<h3 class="text-lg font-semibold dark:text-gray-100">{$t('admin.users.delete_confirm_title')}</h3>
+			<p class="mt-2 text-sm text-gray-600 dark:text-gray-400">{$t('admin.users.delete_confirm_message')}</p>
 			<div class="mt-4 flex gap-3 justify-end">
 				<button
 					onclick={() => (deleteConfirmId = null)}

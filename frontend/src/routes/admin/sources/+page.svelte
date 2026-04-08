@@ -348,18 +348,18 @@
 </script>
 
 <div>
-	<h2 class="text-2xl font-bold text-gray-900 mb-4">{$t('admin.sources.title')}</h2>
+	<h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">{$t('admin.sources.title')}</h2>
 
 	<!-- Tabs -->
-	<div class="flex border-b border-gray-200 mb-6">
+	<div class="flex border-b border-gray-200 dark:border-gray-700 mb-6">
 		<button
-			class="px-4 py-2 text-sm font-medium {activeTab === 'groups' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}"
+			class="px-4 py-2 text-sm font-medium {activeTab === 'groups' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}"
 			onclick={() => (activeTab = 'groups')}
 		>
 			{$t('admin.feeds.tab_groups')}
 		</button>
 		<button
-			class="px-4 py-2 text-sm font-medium {activeTab === 'feeds' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}"
+			class="px-4 py-2 text-sm font-medium {activeTab === 'feeds' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}"
 			onclick={() => (activeTab = 'feeds')}
 		>
 			{$t('admin.feeds.tab_feeds')}
@@ -370,39 +370,39 @@
 		<!-- Source Groups Tab (existing) -->
 		<PageStateWrapper isLoading={sourcesLoading} isEmpty={!sourcesLoading && sources.length === 0}>
 			{#snippet children()}
-				<div class="bg-white rounded-lg shadow overflow-x-auto">
-					<table class="min-w-[640px] w-full divide-y divide-gray-200">
-						<thead class="bg-gray-50">
+				<div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-x-auto">
+					<table class="min-w-[640px] w-full divide-y divide-gray-200 dark:divide-gray-700">
+						<thead class="bg-gray-50 dark:bg-gray-700">
 							<tr>
-								<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.sources.col_name')}</th>
-								<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.sources.col_quota_limit')}</th>
-								<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.sources.col_quota_used')}</th>
-								<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.sources.col_status')}</th>
-								<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.users.col_actions')}</th>
+								<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{$t('admin.sources.col_name')}</th>
+								<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{$t('admin.sources.col_quota_limit')}</th>
+								<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{$t('admin.sources.col_quota_used')}</th>
+								<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{$t('admin.sources.col_status')}</th>
+								<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{$t('admin.users.col_actions')}</th>
 							</tr>
 						</thead>
-						<tbody class="divide-y divide-gray-200">
+						<tbody class="divide-y divide-gray-200 dark:divide-gray-700">
 							{#each sources as source}
 								<tr>
-									<td class="px-4 py-3 text-sm font-medium text-gray-900">{source.source_name}</td>
+									<td class="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">{source.source_name}</td>
 									<td class="px-4 py-3">
 										<input
 											type="number"
 											value={source.quota_limit}
-											class="w-24 text-sm border border-gray-300 rounded px-2 py-1"
+											class="w-24 text-sm border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded px-2 py-1"
 											onchange={(e) => updateQuota(source.id, Number(e.currentTarget.value))}
 										/>
 									</td>
-									<td class="px-4 py-3 text-sm text-gray-600">
+									<td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
 										{source.quota_used}
 										{#if source.quota_limit > 0}
-											<span class="text-xs text-gray-400 ml-1">
+											<span class="text-xs text-gray-400 dark:text-gray-500 ml-1">
 												({Math.round((source.quota_used / source.quota_limit) * 100)}%)
 											</span>
 										{/if}
 									</td>
 									<td class="px-4 py-3">
-										<span class="text-xs px-2 py-1 rounded {source.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+										<span class="text-xs px-2 py-1 rounded {source.is_active ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400' : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400'}">
 											{source.is_active ? $t('admin.users.active') : $t('admin.users.suspended')}
 										</span>
 									</td>
@@ -429,15 +429,15 @@
 		{#if healthSummary.length > 0}
 			<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
 				{#each healthSummary as item}
-					<div class="bg-white rounded-lg shadow p-4">
-						<div class="text-sm font-medium text-gray-700 mb-2">{typeLabel($t, item.source_type)}</div>
+					<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+						<div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{typeLabel($t, item.source_type)}</div>
 						<div class="flex items-center gap-2 text-xs">
 							<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-500 inline-block"></span>{item.healthy}</span>
 							<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-yellow-500 inline-block"></span>{item.degraded}</span>
 							<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-500 inline-block"></span>{item.error}</span>
 							<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-gray-400 inline-block"></span>{item.unknown}</span>
 						</div>
-						<div class="text-xs text-gray-400 mt-1">{$t('admin.feeds.health_total', { values: { count: item.total } })}</div>
+						<div class="text-xs text-gray-400 dark:text-gray-500 mt-1">{$t('admin.feeds.health_total', { values: { count: item.total } })}</div>
 					</div>
 				{/each}
 			</div>
@@ -445,20 +445,20 @@
 
 		<!-- Filters + Actions -->
 		<div class="flex flex-wrap items-center gap-3 mb-4">
-			<select class="text-sm border border-gray-300 rounded px-2 py-1" bind:value={filterType}>
+			<select class="text-sm border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded px-2 py-1" bind:value={filterType}>
 				<option value="">{$t('admin.feeds.all_types')}</option>
 				{#each SOURCE_TYPES as st}
 					<option value={st}>{typeLabel($t, st)}</option>
 				{/each}
 			</select>
-			<select class="text-sm border border-gray-300 rounded px-2 py-1" bind:value={filterHealth}>
+			<select class="text-sm border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded px-2 py-1" bind:value={filterHealth}>
 				<option value="">{$t('admin.feeds.all_statuses')}</option>
 				<option value="healthy">{$t('admin.feeds.health_healthy')}</option>
 				<option value="degraded">{$t('admin.feeds.health_degraded')}</option>
 				<option value="error">{$t('admin.feeds.health_error')}</option>
 				<option value="unknown">{$t('admin.feeds.health_unknown')}</option>
 			</select>
-			<select class="text-sm border border-gray-300 rounded px-2 py-1" bind:value={filterLocale}>
+			<select class="text-sm border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded px-2 py-1" bind:value={filterLocale}>
 				<option value="">{$t('admin.feeds.all_locales')}</option>
 				{#each LOCALES as loc}
 					<option value={loc}>{loc.toUpperCase()}</option>
@@ -466,7 +466,7 @@
 			</select>
 			<input
 				type="text"
-				class="text-sm border border-gray-300 rounded px-2 py-1 w-48"
+				class="text-sm border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded px-2 py-1 w-48"
 				placeholder={$t('admin.feeds.filter_search')}
 				bind:value={filterSearch}
 			/>
@@ -490,25 +490,25 @@
 				<p class="text-gray-500">{$t('admin.feeds.no_feeds')}</p>
 			{/snippet}
 			{#snippet children()}
-			<div class="bg-white rounded-lg shadow overflow-x-auto">
-				<table class="min-w-[640px] w-full divide-y divide-gray-200">
-					<thead class="bg-gray-50">
+			<div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-x-auto">
+				<table class="min-w-[640px] w-full divide-y divide-gray-200 dark:divide-gray-700">
+					<thead class="bg-gray-50 dark:bg-gray-700">
 						<tr>
 							<th class="px-3 py-3 w-8">
 								<input type="checkbox" checked={selectedIds.size === feeds.length && feeds.length > 0} onchange={toggleSelectAll} />
 							</th>
-							<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase w-8">{$t('admin.feeds.col_status')}</th>
-							<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.feeds.col_name')}</th>
-							<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.feeds.col_url')}</th>
-							<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.feeds.col_type')}</th>
-							<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.feeds.col_category')}</th>
-							<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.feeds.col_locale')}</th>
-							<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.feeds.col_last_crawled')}</th>
-							<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.feeds.col_latency')}</th>
-							<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.feeds.col_actions')}</th>
+							<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase w-8">{$t('admin.feeds.col_status')}</th>
+							<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{$t('admin.feeds.col_name')}</th>
+							<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{$t('admin.feeds.col_url')}</th>
+							<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{$t('admin.feeds.col_type')}</th>
+							<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{$t('admin.feeds.col_category')}</th>
+							<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{$t('admin.feeds.col_locale')}</th>
+							<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{$t('admin.feeds.col_last_crawled')}</th>
+							<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{$t('admin.feeds.col_latency')}</th>
+							<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{$t('admin.feeds.col_actions')}</th>
 						</tr>
 					</thead>
-					<tbody class="divide-y divide-gray-200">
+					<tbody class="divide-y divide-gray-200 dark:divide-gray-700">
 						{#each feeds as feed}
 							<tr class={healthBg(feed.health_status)}>
 								<td class="px-3 py-2">
@@ -517,18 +517,18 @@
 								<td class="px-3 py-2">
 									<span class="inline-block w-2.5 h-2.5 rounded-full {healthDot(feed.health_status)}" title={feed.health_status}></span>
 								</td>
-								<td class="px-3 py-2 text-sm font-medium text-gray-900">
+								<td class="px-3 py-2 text-sm font-medium text-gray-900 dark:text-gray-100">
 									{feed.name}
 									{#if !feed.is_active}
 										<span class="ml-1 text-xs text-red-500">({$t('admin.feeds.feed_off')})</span>
 									{/if}
 								</td>
-								<td class="px-3 py-2 text-xs text-gray-500 max-w-[200px] truncate" title={feed.url}>{feed.url}</td>
-								<td class="px-3 py-2 text-xs text-gray-600">{typeLabel($t, feed.source_type)}</td>
-								<td class="px-3 py-2 text-xs text-gray-600">{feed.category}</td>
-								<td class="px-3 py-2 text-xs text-gray-600">{feed.locale.toUpperCase()}</td>
-								<td class="px-3 py-2 text-xs text-gray-500" title={feed.last_error ?? ''}>{formatTime(feed.last_crawled_at)}</td>
-								<td class="px-3 py-2 text-xs text-gray-500">
+								<td class="px-3 py-2 text-xs text-gray-500 dark:text-gray-400 max-w-[200px] truncate" title={feed.url}>{feed.url}</td>
+								<td class="px-3 py-2 text-xs text-gray-600 dark:text-gray-400">{typeLabel($t, feed.source_type)}</td>
+								<td class="px-3 py-2 text-xs text-gray-600 dark:text-gray-400">{feed.category}</td>
+								<td class="px-3 py-2 text-xs text-gray-600 dark:text-gray-400">{feed.locale.toUpperCase()}</td>
+								<td class="px-3 py-2 text-xs text-gray-500 dark:text-gray-400" title={feed.last_error ?? ''}>{formatTime(feed.last_crawled_at)}</td>
+								<td class="px-3 py-2 text-xs text-gray-500 dark:text-gray-400">
 									{feed.avg_latency_ms != null ? `${Math.round(feed.avg_latency_ms)}ms` : '-'}
 								</td>
 								<td class="px-3 py-2 text-xs space-x-2">
@@ -548,14 +548,14 @@
 			<!-- Pagination -->
 			{#if feedsTotal > feedsPageSize}
 				<div class="flex items-center justify-between mt-4">
-					<span class="text-sm text-gray-600">{$t('admin.users.total')}: {feedsTotal}</span>
+					<span class="text-sm text-gray-600 dark:text-gray-400">{$t('admin.users.total')}: {feedsTotal}</span>
 					<div class="flex gap-2">
 						<button
 							class="text-sm px-3 py-1 border rounded disabled:opacity-50"
 							disabled={feedsPage <= 1}
 							onclick={() => (feedsPage = feedsPage - 1)}
 						>{$t('admin.users.prev')}</button>
-						<span class="text-sm py-1">{feedsPage} / {Math.ceil(feedsTotal / feedsPageSize)}</span>
+						<span class="text-sm py-1 dark:text-gray-300">{feedsPage} / {Math.ceil(feedsTotal / feedsPageSize)}</span>
 						<button
 							class="text-sm px-3 py-1 border rounded disabled:opacity-50"
 							disabled={feedsPage >= Math.ceil(feedsTotal / feedsPageSize)}
@@ -572,39 +572,39 @@
 <!-- Create/Edit Modal -->
 {#if showModal}
 	<div class="fixed inset-0 z-50 bg-black/40 flex items-center justify-center" onclick={(e) => { if (e.target === e.currentTarget) showModal = false; }}>
-		<div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg">
-			<h3 class="text-lg font-bold mb-4">
+		<div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg">
+			<h3 class="text-lg font-bold mb-4 dark:text-gray-100">
 				{modalMode === 'create' ? $t('admin.feeds.add_feed') : $t('admin.feeds.edit_feed')}
 			</h3>
 			<div class="space-y-3">
 				<div>
-					<label class="block text-sm font-medium text-gray-700 mb-1">{$t('admin.feeds.col_name')}</label>
-					<input type="text" class="w-full text-sm border border-gray-300 rounded px-3 py-2" bind:value={editFeed.name} />
+					<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{$t('admin.feeds.col_name')}</label>
+					<input type="text" class="w-full text-sm border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded px-3 py-2" bind:value={editFeed.name} />
 				</div>
 				<div>
-					<label class="block text-sm font-medium text-gray-700 mb-1">{$t('admin.feeds.col_url')}</label>
-					<input type="text" class="w-full text-sm border border-gray-300 rounded px-3 py-2" bind:value={editFeed.url} />
+					<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{$t('admin.feeds.col_url')}</label>
+					<input type="text" class="w-full text-sm border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded px-3 py-2" bind:value={editFeed.url} />
 				</div>
 				<div class="grid grid-cols-3 gap-3">
 					<div>
-						<label class="block text-sm font-medium text-gray-700 mb-1">{$t('admin.feeds.col_type')}</label>
-						<select class="w-full text-sm border border-gray-300 rounded px-2 py-2" bind:value={editFeed.source_type} disabled={modalMode === 'edit'}>
+						<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{$t('admin.feeds.col_type')}</label>
+						<select class="w-full text-sm border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded px-2 py-2" bind:value={editFeed.source_type} disabled={modalMode === 'edit'}>
 							{#each SOURCE_TYPES as st}
 								<option value={st}>{typeLabel($t, st)}</option>
 							{/each}
 						</select>
 					</div>
 					<div>
-						<label class="block text-sm font-medium text-gray-700 mb-1">{$t('admin.feeds.col_category')}</label>
-						<select class="w-full text-sm border border-gray-300 rounded px-2 py-2" bind:value={editFeed.category}>
+						<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{$t('admin.feeds.col_category')}</label>
+						<select class="w-full text-sm border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded px-2 py-2" bind:value={editFeed.category}>
 							{#each CATEGORIES as cat}
 								<option value={cat}>{cat}</option>
 							{/each}
 						</select>
 					</div>
 					<div>
-						<label class="block text-sm font-medium text-gray-700 mb-1">{$t('admin.feeds.col_locale')}</label>
-						<select class="w-full text-sm border border-gray-300 rounded px-2 py-2" bind:value={editFeed.locale}>
+						<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{$t('admin.feeds.col_locale')}</label>
+						<select class="w-full text-sm border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded px-2 py-2" bind:value={editFeed.locale}>
 							{#each LOCALES as loc}
 								<option value={loc}>{loc.toUpperCase()}</option>
 							{/each}
@@ -612,18 +612,18 @@
 					</div>
 				</div>
 				<div class="flex items-center gap-4">
-					<label class="flex items-center gap-2 text-sm">
+					<label class="flex items-center gap-2 text-sm dark:text-gray-300">
 						<input type="checkbox" bind:checked={editFeed.is_active} />
 						{$t('admin.users.active')}
 					</label>
-					<label class="flex items-center gap-2 text-sm">
+					<label class="flex items-center gap-2 text-sm dark:text-gray-300">
 						{$t('admin.feeds.priority')}:
-						<input type="number" class="w-16 text-sm border border-gray-300 rounded px-2 py-1" bind:value={editFeed.priority} />
+						<input type="number" class="w-16 text-sm border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded px-2 py-1" bind:value={editFeed.priority} />
 					</label>
 				</div>
 			</div>
 			<div class="flex justify-end gap-3 mt-6">
-				<button class="text-sm px-4 py-2 border rounded text-gray-600 hover:bg-gray-50" onclick={() => (showModal = false)}>
+				<button class="text-sm px-4 py-2 border rounded text-gray-600 dark:text-gray-400 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700" onclick={() => (showModal = false)}>
 					{$t('admin.feeds.cancel')}
 				</button>
 				<button class="text-sm px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" onclick={saveFeed}>
@@ -637,11 +637,11 @@
 <!-- Delete Confirm Modal -->
 {#if showDeleteConfirm}
 	<div class="fixed inset-0 z-50 bg-black/40 flex items-center justify-center" onclick={(e) => { if (e.target === e.currentTarget) showDeleteConfirm = false; }}>
-		<div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm">
-			<h3 class="text-lg font-bold mb-2">{$t('admin.feeds.delete_feed')}</h3>
-			<p class="text-sm text-gray-600 mb-4">{$t('admin.feeds.delete_confirm')}</p>
+		<div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm">
+			<h3 class="text-lg font-bold mb-2 dark:text-gray-100">{$t('admin.feeds.delete_feed')}</h3>
+			<p class="text-sm text-gray-600 dark:text-gray-400 mb-4">{$t('admin.feeds.delete_confirm')}</p>
 			<div class="flex justify-end gap-3">
-				<button class="text-sm px-4 py-2 border rounded text-gray-600 hover:bg-gray-50" onclick={() => (showDeleteConfirm = false)}>
+				<button class="text-sm px-4 py-2 border rounded text-gray-600 dark:text-gray-400 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700" onclick={() => (showDeleteConfirm = false)}>
 					{$t('admin.feeds.cancel')}
 				</button>
 				<button class="text-sm px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700" onclick={confirmDelete}>

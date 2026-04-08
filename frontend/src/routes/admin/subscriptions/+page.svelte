@@ -72,34 +72,34 @@
 </script>
 
 <div>
-	<h2 class="text-2xl font-bold text-gray-900 mb-6">{$t('admin.subscriptions.title')}</h2>
+	<h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">{$t('admin.subscriptions.title')}</h2>
 
 	<PageStateWrapper isLoading={loading} isEmpty={!loading && subscriptions.length === 0}>
 		{#snippet children()}
-			<div class="bg-white rounded-lg shadow overflow-x-auto">
-				<table class="min-w-[640px] w-full divide-y divide-gray-200">
-					<thead class="bg-gray-50">
+			<div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-x-auto">
+				<table class="min-w-[640px] w-full divide-y divide-gray-200 dark:divide-gray-700">
+					<thead class="bg-gray-50 dark:bg-gray-700">
 						<tr>
-							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.subscriptions.col_user')}</th>
-							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.subscriptions.col_plan')}</th>
-							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.subscriptions.col_status')}</th>
-							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.subscriptions.col_provider')}</th>
-							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.subscriptions.col_expires')}</th>
-							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.subscriptions.col_actions')}</th>
+							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{$t('admin.subscriptions.col_user')}</th>
+							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{$t('admin.subscriptions.col_plan')}</th>
+							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{$t('admin.subscriptions.col_status')}</th>
+							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{$t('admin.subscriptions.col_provider')}</th>
+							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{$t('admin.subscriptions.col_expires')}</th>
+							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{$t('admin.subscriptions.col_actions')}</th>
 						</tr>
 					</thead>
-					<tbody class="divide-y divide-gray-200">
+					<tbody class="divide-y divide-gray-200 dark:divide-gray-700">
 						{#each subscriptions as sub}
 							<tr>
-								<td class="px-4 py-3 text-sm text-gray-900">{sub.user_id}</td>
-								<td class="px-4 py-3 text-sm text-gray-600">{sub.plan}</td>
+								<td class="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">{sub.user_id}</td>
+								<td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{sub.plan}</td>
 								<td class="px-4 py-3">
-									<span class="text-xs px-2 py-1 rounded {sub.status === 'active' ? 'bg-green-100 text-green-800' : sub.status === 'refunded' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}">
+									<span class="text-xs px-2 py-1 rounded {sub.status === 'active' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400' : sub.status === 'refunded' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400' : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'}">
 										{sub.status}
 									</span>
 								</td>
-								<td class="px-4 py-3 text-sm text-gray-600">{sub.provider ?? '-'}</td>
-								<td class="px-4 py-3 text-sm text-gray-600">{sub.expires_at ?? '-'}</td>
+								<td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{sub.provider ?? '-'}</td>
+								<td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{sub.expires_at ?? '-'}</td>
 								<td class="px-4 py-3">
 									{#if sub.status === 'active' || sub.status === 'cancelled'}
 										<button
@@ -117,7 +117,7 @@
 			</div>
 
 			<div class="mt-4 flex items-center justify-between">
-				<p class="text-sm text-gray-600">{$t('admin.users.total')}: {total}</p>
+				<p class="text-sm text-gray-600 dark:text-gray-400">{$t('admin.users.total')}: {total}</p>
 				<div class="flex gap-2">
 					<button disabled={page <= 1} onclick={() => { page--; fetchSubscriptions(); }}
 						class="rounded border px-3 py-1 text-sm disabled:opacity-50">{$t('admin.users.prev')}</button>
@@ -131,12 +131,12 @@
 
 {#if refundConfirmId}
 	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="dialog" aria-modal="true">
-		<div class="bg-white rounded-lg p-6 max-w-sm mx-4 shadow-xl">
-			<h3 class="text-lg font-semibold">{$t('admin.subscriptions.refund_confirm_title')}</h3>
+		<div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-sm mx-4 shadow-xl">
+			<h3 class="text-lg font-semibold dark:text-gray-100">{$t('admin.subscriptions.refund_confirm_title')}</h3>
 			<textarea
 				bind:value={refundReason}
 				placeholder={$t('admin.subscriptions.refund_reason')}
-				class="mt-3 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+				class="mt-3 w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-3 py-2 text-sm"
 				rows="3"
 			></textarea>
 			<div class="mt-4 flex gap-3 justify-end">

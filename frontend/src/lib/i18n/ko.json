@@ -185,6 +185,13 @@
 	"settings.security.2fa_code_label": "인증 코드",
 	"settings.security.2fa_verify": "인증 확인",
 	"settings.security.2fa_success": "2단계 인증이 성공적으로 활성화되었습니다.",
+	"settings.tab.appearance": "외관",
+	"settings.appearance.title": "테마 설정",
+	"settings.appearance.theme": "테마",
+	"settings.appearance.light": "라이트",
+	"settings.appearance.dark": "다크",
+	"settings.appearance.system": "시스템",
+	"theme.toggle": "테마 전환",
 
 	"nav.content": "콘텐츠 아이디어",
 
