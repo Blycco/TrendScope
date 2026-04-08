@@ -88,16 +88,16 @@
 	let hoveredIndex = $state<number | null>(null);
 </script>
 
-<div class="rounded-lg border border-gray-200 bg-white p-4">
+<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
 	<div class="flex items-center justify-between mb-3">
-		<h3 class="text-sm font-semibold text-gray-700">{$t('forecast.title')}</h3>
-		<div class="flex items-center gap-4 text-xs text-gray-500">
+		<h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300">{$t('forecast.title')}</h3>
+		<div class="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
 			<span class="flex items-center gap-1">
-				<span class="inline-block h-0.5 w-4 bg-emerald-500"></span>
+				<span class="inline-block h-0.5 w-4" style="background-color: var(--chart-forecast)"></span>
 				{$t('forecast.predicted')}
 			</span>
 			<span class="flex items-center gap-1">
-				<span class="inline-block h-2.5 w-4 rounded-sm bg-emerald-100 border border-emerald-200"></span>
+				<span class="inline-block h-2.5 w-4 rounded-sm" style="background-color: var(--chart-forecast-band); border: 1px solid var(--chart-forecast)"></span>
 				{$t('forecast.confidence')}
 			</span>
 		</div>
@@ -118,8 +118,8 @@
 			>
 				<defs>
 					<linearGradient id="forecastGrad" x1="0" y1="0" x2="0" y2="1">
-						<stop offset="0%" stop-color="#10b981" stop-opacity="0.2" />
-						<stop offset="100%" stop-color="#10b981" stop-opacity="0.02" />
+						<stop offset="0%" stop-color="var(--chart-forecast)" stop-opacity="0.2" />
+						<stop offset="100%" stop-color="var(--chart-forecast)" stop-opacity="0.02" />
 					</linearGradient>
 				</defs>
 
@@ -130,7 +130,7 @@
 						y1={y(tick)}
 						x2={chartWidth - PAD_RIGHT}
 						y2={y(tick)}
-						stroke="#e5e7eb"
+						stroke="var(--chart-grid)"
 						stroke-width="1"
 					/>
 					<text x={PAD_LEFT - 6} y={y(tick) + 4} text-anchor="end" class="fill-gray-400" font-size="10">
@@ -145,7 +145,7 @@
 
 				<!-- Predicted line -->
 				{#if predictedLine()}
-					<polyline points={predictedLine()} fill="none" stroke="#10b981" stroke-width="2" />
+					<polyline points={predictedLine()} fill="none" stroke="var(--chart-forecast)" stroke-width="2" />
 				{/if}
 
 				<!-- Hover columns & data points -->
@@ -154,7 +154,7 @@
 						cx={x(i, sampled().length)}
 						cy={y(point.yhat)}
 						r="3"
-						fill="#10b981"
+						fill="var(--chart-forecast)"
 						opacity={hoveredIndex === i ? 1 : 0}
 					/>
 					<rect
@@ -181,14 +181,14 @@
 					{@const pt = sampled()[hoveredIndex]}
 					{@const tx = Math.min(Math.max(x(hoveredIndex, sampled().length), PAD_LEFT + 70), chartWidth - PAD_RIGHT - 70)}
 					<g>
-						<rect x={tx - 66} y={PAD_TOP - 2} width="132" height="50" rx="4" fill="#1f2937" opacity="0.9" />
-						<text x={tx} y={PAD_TOP + 12} text-anchor="middle" fill="white" font-size="10">
+						<rect x={tx - 66} y={PAD_TOP - 2} width="132" height="50" rx="4" fill="var(--chart-tooltip-bg)" opacity="0.9" />
+						<text x={tx} y={PAD_TOP + 12} text-anchor="middle" fill="var(--chart-tooltip-text)" font-size="10">
 							{new Date(pt.date).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' })}
 						</text>
-						<text x={tx} y={PAD_TOP + 26} text-anchor="middle" fill="white" font-size="10">
+						<text x={tx} y={PAD_TOP + 26} text-anchor="middle" fill="var(--chart-tooltip-text)" font-size="10">
 							{$t('forecast.value')}: {pt.yhat.toFixed(1)}
 						</text>
-						<text x={tx} y={PAD_TOP + 39} text-anchor="middle" fill="#9ca3af" font-size="9">
+						<text x={tx} y={PAD_TOP + 39} text-anchor="middle" fill="var(--donut-sub-text)" font-size="9">
 							[{pt.yhat_lower.toFixed(1)} ~ {pt.yhat_upper.toFixed(1)}]
 						</text>
 					</g>

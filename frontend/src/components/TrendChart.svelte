@@ -110,16 +110,16 @@
 	});
 </script>
 
-<div class="rounded-lg border border-gray-200 bg-white p-4">
+<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
 	<div class="flex items-center justify-between mb-3">
-		<h3 class="text-sm font-semibold text-gray-700">{$t('chart.timeline.title')}</h3>
+		<h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300">{$t('chart.timeline.title')}</h3>
 		<div class="flex gap-1">
 			{#each intervals as interval}
 				<button
 					type="button"
 					class="px-2 py-0.5 text-xs rounded-md transition-colors {selectedInterval === interval
 						? 'bg-blue-600 text-white'
-						: 'bg-gray-100 text-gray-600 hover:bg-gray-200'}"
+						: 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'}"
 					onclick={() => selectInterval(interval)}
 				>
 					{$t(intervalLabelKey[interval])}
@@ -147,8 +147,8 @@
 			>
 				<defs>
 					<linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-						<stop offset="0%" stop-color="#3b82f6" stop-opacity="0.3" />
-						<stop offset="100%" stop-color="#3b82f6" stop-opacity="0.02" />
+						<stop offset="0%" stop-color="var(--chart-area-start)" />
+						<stop offset="100%" stop-color="var(--chart-area-end)" />
 					</linearGradient>
 				</defs>
 
@@ -159,7 +159,7 @@
 						y1={y(tick)}
 						x2={chartWidth - PAD_RIGHT}
 						y2={y(tick)}
-						stroke="#e5e7eb"
+						stroke="var(--chart-grid)"
 						stroke-width="1"
 					/>
 					<text x={PAD_LEFT - 6} y={y(tick) + 4} text-anchor="end" class="fill-gray-400" font-size="10">
@@ -173,11 +173,11 @@
 				{/if}
 
 				<!-- Line -->
-				<polyline points={polylinePoints} fill="none" stroke="#3b82f6" stroke-width="2" />
+				<polyline points={polylinePoints} fill="none" stroke="var(--chart-line)" stroke-width="2" />
 
 				<!-- Data points -->
 				{#each points as point, i}
-					<circle cx={x(i)} cy={y(point.article_count)} r="3" fill="#3b82f6" opacity={hoveredIndex === i ? 1 : 0} />
+					<circle cx={x(i)} cy={y(point.article_count)} r="3" fill="var(--chart-line)" opacity={hoveredIndex === i ? 1 : 0} />
 				{/each}
 
 				<!-- Hover columns -->
@@ -206,8 +206,8 @@
 					{@const pt = points[hoveredIndex]}
 					{@const tx = Math.min(Math.max(x(hoveredIndex), PAD_LEFT + 60), chartWidth - PAD_RIGHT - 60)}
 					<g>
-						<rect x={tx - 56} y={PAD_TOP - 2} width="112" height="40" rx="4" fill="#1f2937" opacity="0.9" />
-						<text x={tx} y={PAD_TOP + 13} text-anchor="middle" fill="white" font-size="10">
+						<rect x={tx - 56} y={PAD_TOP - 2} width="112" height="40" rx="4" fill="var(--chart-tooltip-bg)" opacity="0.9" />
+						<text x={tx} y={PAD_TOP + 13} text-anchor="middle" fill="var(--chart-tooltip-text)" font-size="10">
 							{new Date(pt.timestamp).toLocaleString('ko-KR', {
 								month: 'short',
 								day: 'numeric',
@@ -215,7 +215,7 @@
 								minute: '2-digit'
 							})}
 						</text>
-						<text x={tx} y={PAD_TOP + 27} text-anchor="middle" fill="white" font-size="10">
+						<text x={tx} y={PAD_TOP + 27} text-anchor="middle" fill="var(--chart-tooltip-text)" font-size="10">
 							{$t('chart.timeline.article_count')}: {pt.article_count} · {$t('chart.timeline.source_count')}: {pt.source_count}
 						</text>
 					</g>
