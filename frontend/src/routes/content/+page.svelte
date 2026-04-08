@@ -63,23 +63,23 @@
 
 <div class="space-y-6">
 	<div class="flex items-center gap-3">
-		<h1 class="text-2xl font-bold text-gray-900">{$t('content.title')}</h1>
-		<span class="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-700">{$t('content.pro_badge')}</span>
+		<h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{$t('content.title')}</h1>
+		<span class="inline-flex items-center rounded-full bg-purple-100 dark:bg-purple-900/30 px-2.5 py-0.5 text-xs font-medium text-purple-700 dark:text-purple-400">{$t('content.pro_badge')}</span>
 	</div>
 
-	<div class="rounded-md bg-blue-50 border border-blue-200 p-4">
-		<h2 class="text-sm font-semibold text-blue-900">{$t('content.guide_title')}</h2>
-		<p class="mt-1 text-sm text-blue-700">{$t('content.guide_desc')}</p>
-		<div class="mt-2 flex flex-wrap gap-2 text-xs text-blue-600">
-			<span class="rounded bg-blue-100 px-2 py-0.5">{$t('content.example_marketer')}</span>
-			<span class="rounded bg-blue-100 px-2 py-0.5">{$t('content.example_creator')}</span>
-			<span class="rounded bg-blue-100 px-2 py-0.5">{$t('content.example_owner')}</span>
+	<div class="rounded-md bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4">
+		<h2 class="text-sm font-semibold text-blue-900 dark:text-blue-300">{$t('content.guide_title')}</h2>
+		<p class="mt-1 text-sm text-blue-700 dark:text-blue-400">{$t('content.guide_desc')}</p>
+		<div class="mt-2 flex flex-wrap gap-2 text-xs text-blue-600 dark:text-blue-400">
+			<span class="rounded bg-blue-100 dark:bg-blue-800/40 px-2 py-0.5">{$t('content.example_marketer')}</span>
+			<span class="rounded bg-blue-100 dark:bg-blue-800/40 px-2 py-0.5">{$t('content.example_creator')}</span>
+			<span class="rounded bg-blue-100 dark:bg-blue-800/40 px-2 py-0.5">{$t('content.example_owner')}</span>
 		</div>
 	</div>
 
 	{#if isFreePlan}
-		<div class="rounded-md bg-purple-50 border border-purple-200 p-4">
-			<p class="text-sm text-purple-800">{$t('content.pro_only_notice')}</p>
+		<div class="rounded-md bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 p-4">
+			<p class="text-sm text-purple-800 dark:text-purple-400">{$t('content.pro_only_notice')}</p>
 		</div>
 	{/if}
 
@@ -88,7 +88,7 @@
 			type="text"
 			bind:value={keyword}
 			placeholder={$t('content.input_placeholder')}
-			class="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+			class="flex-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
 			onkeydown={(e) => { if (e.key === 'Enter') generateIdeas(); }}
 		/>
 		<button
@@ -105,7 +105,7 @@
 	</div>
 
 	{#if cached && ideas.length > 0}
-		<span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">
+		<span class="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-700 px-2.5 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-400">
 			{$t('content.cached_badge')}
 		</span>
 	{/if}

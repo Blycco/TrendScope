@@ -87,8 +87,8 @@
 
 <div class="space-y-8">
 	<div>
-		<h1 class="text-2xl sm:text-3xl font-bold text-gray-900">{$t('page.home.title')}</h1>
-		<p class="mt-1 text-sm sm:text-base text-gray-600">{$t('page.home.description')}</p>
+		<h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">{$t('page.home.title')}</h1>
+		<p class="mt-1 text-sm sm:text-base text-gray-600 dark:text-gray-400">{$t('page.home.description')}</p>
 	</div>
 
 	<PageStateWrapper {isLoading} isEmpty={isDashboardEmpty}>
@@ -149,29 +149,29 @@
 
 			<!-- Early Trends -->
 			{#if earlyTrends.length > 0}
-				<div data-tour="early-trends" class="rounded-lg border border-gray-200 bg-white p-4 sm:p-5">
+				<div data-tour="early-trends" class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 sm:p-5">
 					<div class="flex items-center gap-2 mb-2">
 						<Zap size={18} class="text-amber-500" />
-						<h3 class="text-sm font-semibold text-gray-900">
+						<h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
 							{$t('dashboard.early_trends')}
 						</h3>
 					</div>
-					<p class="text-xs text-gray-500 mb-3">
+					<p class="text-xs text-gray-500 dark:text-gray-400 mb-3">
 						{$t('dashboard.early_trends.desc')}
 					</p>
 					<div class="space-y-2">
 						{#each earlyTrends as trend (trend.id)}
 							<a
 								href="/trends/{trend.id}"
-								class="block rounded-md border border-gray-100 bg-gray-50 p-3 hover:bg-amber-50 hover:border-amber-200 transition-colors"
+								class="block rounded-md border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 p-3 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:border-amber-200 dark:hover:border-amber-700 transition-colors"
 							>
 								<div class="flex items-center justify-between gap-2">
-									<span class="text-sm font-medium text-gray-900 truncate flex-1">
+									<span class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate flex-1">
 										{trend.title}
 									</span>
 									<EarlyBadge score={trend.early_trend_score} />
 								</div>
-								<div class="mt-2 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+								<div class="mt-2 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
 									<div
 										class="h-full rounded-full transition-all duration-300"
 										class:bg-red-500={trend.early_trend_score >= 0.8}
@@ -188,7 +188,7 @@
 
 			<!-- Trend Map -->
 			{#if topTrends.length > 0}
-				<div class="rounded-lg border border-gray-200 bg-white p-4 sm:p-5">
+				<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 sm:p-5">
 					<TrendMap trendId={topTrends[0].id} />
 				</div>
 			{/if}
@@ -199,7 +199,7 @@
 			<div class="flex items-center justify-between mb-3">
 				<div class="flex items-center gap-2">
 					<TrendingUp size={20} class="text-red-500" />
-					<h2 class="text-lg font-bold text-gray-900">{$t('dashboard.hot_trends')}</h2>
+					<h2 class="text-lg font-bold text-gray-900 dark:text-gray-100">{$t('dashboard.hot_trends')}</h2>
 				</div>
 				<a href="/trends" class="flex items-center gap-1 text-sm text-blue-600 hover:underline">
 					{$t('dashboard.view_all')}
@@ -213,7 +213,7 @@
 				<div class="space-y-3">
 					{#each topTrends as trend, i (trend.id)}
 						<div class="flex items-start gap-3">
-							<span class="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold mt-3 {i < 3 ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-600'}">
+							<span class="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold mt-3 {i < 3 ? 'bg-red-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}">
 								{i + 1}
 							</span>
 							<div class="flex-1 min-w-0">
@@ -227,7 +227,7 @@
 									/>
 								</div>
 								{#if trend.summary}
-									<p class="mt-1 ml-0 text-xs text-gray-500 line-clamp-2">{trend.summary}</p>
+									<p class="mt-1 ml-0 text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{trend.summary}</p>
 								{/if}
 							</div>
 						</div>
@@ -241,7 +241,7 @@
 			<div class="flex items-center justify-between mb-3">
 				<div class="flex items-center gap-2">
 					<Newspaper size={20} class="text-blue-500" />
-					<h2 class="text-lg font-bold text-gray-900">{$t('dashboard.latest_news')}</h2>
+					<h2 class="text-lg font-bold text-gray-900 dark:text-gray-100">{$t('dashboard.latest_news')}</h2>
 				</div>
 				<a href="/news" class="flex items-center gap-1 text-sm text-blue-600 hover:underline">
 					{$t('dashboard.view_all')}

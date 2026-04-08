@@ -65,21 +65,21 @@
 
 <div>
 	{#if alertCount > 0}
-		<div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 flex items-center justify-between">
-			<span class="text-sm text-red-800">{$t('admin.quota_alerts.banner', { values: { count: alertCount } })}</span>
+		<div class="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6 flex items-center justify-between">
+			<span class="text-sm text-red-800 dark:text-red-400">{$t('admin.quota_alerts.banner', { values: { count: alertCount } })}</span>
 			<a href="/admin/quota-alerts" class="text-sm font-medium text-red-600 hover:text-red-800 underline">{$t('admin.quota_alerts.view_all')}</a>
 		</div>
 	{/if}
 
-	<h2 class="text-2xl font-bold text-gray-900 mb-6">{$t('admin.home.title')}</h2>
+	<h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">{$t('admin.home.title')}</h2>
 
 	<PageStateWrapper isLoading={loading} isEmpty={!loading && cards.every((c) => c.value === 0)}>
 		{#snippet children()}
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
 				{#each cards as card}
-					<div class="bg-white rounded-lg shadow p-6">
-						<p class="text-sm text-gray-500">{$t(card.labelKey)}</p>
-						<p class="mt-2 text-3xl font-bold text-gray-900">{card.value}</p>
+					<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+						<p class="text-sm text-gray-500 dark:text-gray-400">{$t(card.labelKey)}</p>
+						<p class="mt-2 text-3xl font-bold text-gray-900 dark:text-gray-100">{card.value}</p>
 					</div>
 				{/each}
 			</div>

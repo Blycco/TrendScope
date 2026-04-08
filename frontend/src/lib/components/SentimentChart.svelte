@@ -84,8 +84,8 @@
 	});
 </script>
 
-<div class="rounded-lg border border-gray-200 bg-white p-4">
-	<h3 class="text-sm font-semibold text-gray-700 mb-3">{$t('trend.sentiment')}</h3>
+<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+	<h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{$t('trend.sentiment')}</h3>
 
 	{#if isLoading}
 		<div class="flex items-center justify-center" style="height: {SIZE}px">
@@ -115,7 +115,7 @@
 					dominant-baseline="middle"
 					font-size="20"
 					font-weight="600"
-					fill="#1f2937"
+					fill="var(--donut-center-text)"
 				>
 					{data.total}
 				</text>
@@ -125,7 +125,7 @@
 					text-anchor="middle"
 					dominant-baseline="middle"
 					font-size="10"
-					fill="#6b7280"
+					fill="var(--donut-sub-text)"
 				>
 					{$t('trend.article_count', { values: { count: data.total } })}
 				</text>
@@ -138,8 +138,8 @@
 							class="inline-block h-3 w-3 rounded-full"
 							style="background-color: {seg.color}"
 						></span>
-						<span class="text-gray-600">{$t(seg.i18nKey)}</span>
-						<span class="font-medium text-gray-900">{seg.count}</span>
+						<span class="text-gray-600 dark:text-gray-400">{$t(seg.i18nKey)}</span>
+						<span class="font-medium text-gray-900 dark:text-gray-100">{seg.count}</span>
 						<span class="text-gray-400">
 							({data.total > 0 ? Math.round((seg.count / data.total) * 100) : 0}%)
 						</span>

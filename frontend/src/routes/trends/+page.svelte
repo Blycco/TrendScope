@@ -239,9 +239,9 @@
 <div class="space-y-6">
 	<div class="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
 		<div class="flex items-center gap-2 sm:gap-3">
-			<h1 class="text-xl sm:text-2xl font-bold text-gray-900">{$t('page.trends.title')}</h1>
+			<h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">{$t('page.trends.title')}</h1>
 			{#if personalization}
-				<span class="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">
+				<span class="inline-flex items-center rounded-full bg-blue-50 dark:bg-blue-900/20 px-2.5 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-400">
 					{$t('trends.personalized_badge')}
 				</span>
 			{/if}
@@ -252,7 +252,7 @@
 			<button
 				onclick={() => exportTrends('csv')}
 				disabled={isExportingCsv}
-				class="flex items-center gap-1 sm:gap-1.5 rounded-md border border-gray-300 px-2 py-1.5 sm:px-3 text-xs sm:text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+				class="flex items-center gap-1 sm:gap-1.5 rounded-md border border-gray-300 dark:border-gray-600 px-2 py-1.5 sm:px-3 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
 			>
 				<Download size={14} />
 				<span class="hidden sm:inline">{$t('trends.export.csv')}</span>
@@ -261,7 +261,7 @@
 			<button
 				onclick={() => exportTrends('pdf')}
 				disabled={isExportingPdf}
-				class="flex items-center gap-1 sm:gap-1.5 rounded-md border border-gray-300 px-2 py-1.5 sm:px-3 text-xs sm:text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+				class="flex items-center gap-1 sm:gap-1.5 rounded-md border border-gray-300 dark:border-gray-600 px-2 py-1.5 sm:px-3 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
 			>
 				<Download size={14} />
 				<span class="hidden sm:inline">{$t('trends.export.pdf')}</span>

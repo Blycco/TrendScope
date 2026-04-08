@@ -88,7 +88,7 @@
 
 <div>
 	<div class="flex items-center justify-between mb-6">
-		<h2 class="text-2xl font-bold text-gray-900">{$t('admin.settings.title')}</h2>
+		<h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{$t('admin.settings.title')}</h2>
 		<div class="flex gap-3">
 			<button
 				onclick={saveSettings}
@@ -107,13 +107,13 @@
 
 	<PageStateWrapper isLoading={loading} isEmpty={!loading && settings.length === 0}>
 		{#snippet children()}
-			<div class="bg-white rounded-lg shadow divide-y divide-gray-200">
+			<div class="bg-white dark:bg-gray-800 rounded-lg shadow divide-y divide-gray-200 dark:divide-gray-700">
 				{#each settings as setting}
 					<div class="p-4">
 						<div class="flex items-start justify-between gap-4">
 							<div class="flex-1">
-								<label class="block text-sm font-medium text-gray-900">{setting.key}</label>
-								<p class="text-xs text-gray-400 mt-1">
+								<label class="block text-sm font-medium text-gray-900 dark:text-gray-100">{setting.key}</label>
+								<p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
 									{$t('admin.settings.default')}: {typeof setting.default_value === 'string' ? setting.default_value : JSON.stringify(setting.default_value)}
 								</p>
 							</div>
@@ -121,7 +121,7 @@
 								<input
 									type="text"
 									bind:value={editValues[setting.key]}
-									class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+									class="w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-3 py-2 text-sm"
 								/>
 							</div>
 						</div>
@@ -134,9 +134,9 @@
 
 {#if resetConfirm}
 	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="dialog" aria-modal="true">
-		<div class="bg-white rounded-lg p-6 max-w-sm mx-4 shadow-xl">
-			<h3 class="text-lg font-semibold">{$t('admin.settings.reset_confirm_title')}</h3>
-			<p class="mt-2 text-sm text-gray-600">{$t('admin.settings.reset_confirm_message')}</p>
+		<div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-sm mx-4 shadow-xl">
+			<h3 class="text-lg font-semibold dark:text-gray-100">{$t('admin.settings.reset_confirm_title')}</h3>
+			<p class="mt-2 text-sm text-gray-600 dark:text-gray-400">{$t('admin.settings.reset_confirm_message')}</p>
 			<div class="mt-4 flex gap-3 justify-end">
 				<button onclick={() => (resetConfirm = false)} class="rounded-md border px-4 py-2 text-sm">{$t('button.cancel')}</button>
 				<button onclick={resetToDefaults} class="rounded-md bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700">{$t('admin.settings.reset_defaults')}</button>

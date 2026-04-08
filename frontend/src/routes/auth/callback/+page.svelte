@@ -21,5 +21,5 @@
 </script>
 
 <div class="flex items-center justify-center py-20">
-	<p class="text-gray-500">...</p>
+	<p class="text-gray-500 dark:text-gray-400">...</p>
 </div>

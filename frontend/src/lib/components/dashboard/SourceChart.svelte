@@ -25,10 +25,10 @@
 </script>
 
 {#if entries.length > 0}
-	<div class="rounded-lg border border-gray-200 bg-white p-4 sm:p-5">
+	<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 sm:p-5">
 		<div class="flex items-center gap-2 mb-4">
 			<Globe size={18} class="text-cyan-500" />
-			<h3 class="text-sm font-semibold text-gray-900">
+			<h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
 				{$t('dashboard.source_distribution')}
 			</h3>
 		</div>
@@ -55,10 +55,10 @@
 							class="w-2.5 h-2.5 rounded-full flex-shrink-0"
 							style="background-color: {SOURCE_COLORS[src] ?? '#9ca3af'}"
 						></span>
-						<span class="text-xs text-gray-600">
+						<span class="text-xs text-gray-600 dark:text-gray-400">
 							{$t(`dashboard.source.${src}`)}
 						</span>
-						<span class="text-xs font-medium text-gray-700">{pct}%</span>
+						<span class="text-xs font-medium text-gray-700 dark:text-gray-300">{pct}%</span>
 					</div>
 				{/each}
 			</div>

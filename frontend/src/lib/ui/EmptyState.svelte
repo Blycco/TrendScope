@@ -12,7 +12,7 @@
 
 <div class="flex flex-col items-center justify-center py-16 text-center">
 	{#if icon !== 'none'}
-		<div class="mb-4 text-gray-300">
+		<div class="mb-4 text-gray-300 dark:text-gray-600">
 			{#if icon === 'search'}
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
@@ -50,7 +50,7 @@
 		</div>
 	{/if}
 
-	<p class="text-sm font-medium text-gray-500">{$t(titleKey)}</p>
+	<p class="text-sm font-medium text-gray-500 dark:text-gray-400">{$t(titleKey)}</p>
 
 	{#if descriptionKey}
 		<p class="mt-1 text-xs text-gray-400">{$t(descriptionKey)}</p>

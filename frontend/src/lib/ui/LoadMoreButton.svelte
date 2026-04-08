@@ -15,7 +15,7 @@
 		<button
 			{onclick}
 			disabled={isLoading}
-			class="flex items-center gap-2 rounded-md border border-gray-300 px-6 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+			class="flex items-center gap-2 rounded-md border border-gray-300 dark:border-gray-600 px-6 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
 		>
 			{#if isLoading}
 				<svg
