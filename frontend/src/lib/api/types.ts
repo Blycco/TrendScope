@@ -66,6 +66,7 @@ export interface TrendItem {
 	article_count: number;
 	direction: 'rising' | 'steady' | 'declining';
 	growth_type?: string;
+	status: 'exploding' | 'rising' | 'stable' | 'declining' | 'peaked';
 }
 
 export interface TrendListResponse {
@@ -84,6 +85,41 @@ export interface TrendTimelineResponse {
 	group_id: string;
 	interval: string;
 	points: TimelinePoint[];
+}
+
+export interface CompareTimelineItem {
+	group_id: string;
+	title: string;
+	points: TimelinePoint[];
+}
+
+export interface CompareTimelineResponse {
+	interval: string;
+	trends: CompareTimelineItem[];
+}
+
+export interface SentimentDistribution {
+	positive: number;
+	neutral: number;
+	negative: number;
+	total: number;
+}
+
+// ---------------------------------------------------------------------------
+// Forecast types
+// ---------------------------------------------------------------------------
+
+export interface ForecastPoint {
+	date: string;
+	yhat: number;
+	yhat_lower: number;
+	yhat_upper: number;
+}
+
+export interface ForecastResponse {
+	group_id: string;
+	horizon_days: number;
+	points: ForecastPoint[];
 }
 
 // ---------------------------------------------------------------------------
@@ -255,4 +291,23 @@ export interface RegionalTrendEntry {
 export interface RegionalTrendResponse {
 	entries: RegionalTrendEntry[];
 	total_locales: number;
+// Keyword Graph types
+// ---------------------------------------------------------------------------
+
+export interface KeywordNode {
+	term: string;
+	score: number;
+	frequency: number;
+}
+
+export interface KeywordEdge {
+	source: string;
+	target: string;
+	weight: number;
+}
+
+export interface KeywordGraphResponse {
+	group_id: string;
+	nodes: KeywordNode[];
+	edges: KeywordEdge[];
 }

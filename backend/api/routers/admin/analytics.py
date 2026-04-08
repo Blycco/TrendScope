@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 
 from backend.api.schemas.admin import AdminAnalyticsResponse
 from backend.auth.dependencies import CurrentUser, require_admin_role
+from backend.common.decorators import handle_errors
 from backend.common.errors import ErrorCode, http_error
 from backend.db.queries.admin import (
     admin_get_analytics_api_usage,
@@ -27,6 +28,12 @@ _METRIC_HANDLERS = {
 
 
 @router.get("/{metric}", response_model=AdminAnalyticsResponse)
+@handle_errors(
+    error_code=ErrorCode.DB_ERROR,
+    message="Failed to get analytics",
+    status_code=500,
+    log_event="admin_get_analytics_failed",
+)
 async def get_analytics(
     metric: str,
     request: Request,
@@ -40,12 +47,6 @@ async def get_analytics(
             f"Invalid metric: {metric}. Valid: {', '.join(_METRIC_HANDLERS.keys())}",
             status_code=400,
         )
-    try:
-        pool = request.app.state.db_pool
-        data = await handler(pool)
-        return AdminAnalyticsResponse(metric=metric, data=data)
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logger.error("admin_get_analytics_failed", metric=metric, error=str(exc))
-        raise http_error(ErrorCode.DB_ERROR, "Failed to get analytics", status_code=500) from exc
+    pool = request.app.state.db_pool
+    data = await handler(pool)
+    return AdminAnalyticsResponse(metric=metric, data=data)

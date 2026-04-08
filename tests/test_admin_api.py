@@ -610,7 +610,7 @@ class TestQuotaAlerts:
                 return_value=dismissed_row,
             ),
             patch(
-                "backend.api.routers.admin.quota_alerts.write_audit_log",
+                "backend.api.routers.admin.quota_alerts.log_audit",
                 new_callable=AsyncMock,
             ),
         ):

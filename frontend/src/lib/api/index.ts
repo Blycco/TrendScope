@@ -20,6 +20,11 @@ export type {
 	TrendListResponse,
 	TimelinePoint,
 	TrendTimelineResponse,
+	CompareTimelineItem,
+	CompareTimelineResponse,
+	SentimentDistribution,
+	ForecastPoint,
+	ForecastResponse,
 	DashboardSummaryResponse,
 	NewsItem,
 	NewsListResponse,
@@ -41,4 +46,7 @@ export type {
 	TrendItemMinimal,
 	RegionalTrendEntry,
 	RegionalTrendResponse
+	KeywordNode,
+	KeywordEdge,
+	KeywordGraphResponse
 } from './types';

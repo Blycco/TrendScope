@@ -3,10 +3,17 @@
 	import { onMount } from 'svelte';
 	import { apiRequest, ApiRequestError, QuotaExceededRequestError } from '$lib/api';
 	import type { NewsListResponse, NewsItem } from '$lib/api';
+	import { createPaginationStore } from '$lib/stores/pagination.svelte';
+	import { createFilterStore } from '$lib/stores/filters.svelte';
+	import { createCacheStore } from '$lib/stores/cache.svelte';
+	import type { FetchFn } from '$lib/stores/pagination.svelte';
 	import NewsCard from '../../components/NewsCard.svelte';
 	import SkeletonCard from '../../components/SkeletonCard.svelte';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
 	import QuotaExceededModal from '$lib/ui/QuotaExceededModal.svelte';
+	import FilterButton from '$lib/ui/FilterButton.svelte';
+	import PageStateWrapper from '$lib/ui/PageStateWrapper.svelte';
+	import LoadMoreButton from '$lib/ui/LoadMoreButton.svelte';
 
 	const ALL_CATEGORIES = ['tech', 'economy', 'entertainment', 'lifestyle', 'politics', 'sports', 'society'] as const;
 	const SOURCE_TYPES = ['news', 'community', 'sns'] as const;
@@ -18,15 +25,14 @@
 		{ label: 'filter.time.30d', value: 720 },
 	] as const;
 
-	let news = $state<NewsItem[]>([]);
-	let nextCursor = $state<string | null>(null);
-	let isLoading = $state(true);
-	let isLoadingMore = $state(false);
-
-	let selectedCategory = $state<string | null>(null);
-	let selectedSourceType = $state<string | null>(null);
-	let selectedTime = $state<number | null>(null);
-	let selectedLocale = $state<string | null>(null);
+	const pagination = createPaginationStore<NewsItem>();
+	const filters = createFilterStore({
+		category: null as string | null,
+		source_type: null as string | null,
+		since: null as number | null,
+		locale: null as string | null,
+	});
+	const cache = createCacheStore<NewsListResponse>(5 * 60 * 1000);
 
 	let errorOpen = $state(false);
 	let errorCode = $state('');
@@ -37,159 +43,177 @@
 	let quotaLimit = $state(0);
 	let quotaResetTime = $state('');
 
-	async function loadNews(cursor?: string): Promise<void> {
-		try {
-			const params = new URLSearchParams({ limit: '20' });
-			if (cursor) params.set('cursor', cursor);
-			if (selectedCategory) params.set('category', selectedCategory);
-			if (selectedSourceType) params.set('source_type', selectedSourceType);
-			if (selectedTime) params.set('since', String(selectedTime));
-			if (selectedLocale) params.set('locale', selectedLocale);
+	function buildCacheKey(cursor?: string): string {
+		return JSON.stringify({
+			cursor,
+			category: filters.values.category,
+			source_type: filters.values.source_type,
+			since: filters.values.since,
+			locale: filters.values.locale,
+		});
+	}
 
-			const data = await apiRequest<NewsListResponse>(`/news?${params.toString()}`);
-			if (cursor) {
-				news = [...news, ...data.items];
-			} else {
-				news = data.items;
-			}
-			nextCursor = data.next_cursor;
-		} catch (error) {
-			if (error instanceof QuotaExceededRequestError) {
-				quotaFeature = error.quotaType;
-				quotaLimit = error.limit;
-				quotaResetTime = error.resetAt;
-				quotaOpen = true;
-			} else if (error instanceof ApiRequestError) {
-				errorCode = error.errorCode;
-				errorMessageKey = 'error.server';
-				errorOpen = true;
-			} else {
-				errorCode = 'ERR_NETWORK';
-				errorMessageKey = 'error.network';
-				errorOpen = true;
-			}
+	const fetchNews: FetchFn<NewsItem> = async (cursor?: string) => {
+		const cacheKey = buildCacheKey(cursor);
+		const cached = cache.get(cacheKey);
+		if (cached) return cached;
+
+		const params = new URLSearchParams({ limit: '20' });
+		if (cursor) params.set('cursor', cursor);
+		if (filters.values.category) params.set('category', filters.values.category);
+		if (filters.values.source_type) params.set('source_type', filters.values.source_type);
+		if (filters.values.since) params.set('since', String(filters.values.since));
+		if (filters.values.locale) params.set('locale', filters.values.locale);
+
+		const data = await apiRequest<NewsListResponse>(`/news?${params.toString()}`);
+		cache.set(cacheKey, data);
+		return data;
+	};
+
+	function handleError(error: unknown): void {
+		if (error instanceof QuotaExceededRequestError) {
+			quotaFeature = error.quotaType;
+			quotaLimit = error.limit;
+			quotaResetTime = error.resetAt;
+			quotaOpen = true;
+		} else if (error instanceof ApiRequestError) {
+			errorCode = error.errorCode;
+			errorMessageKey = 'error.server';
+			errorOpen = true;
+		} else {
+			errorCode = 'ERR_NETWORK';
+			errorMessageKey = 'error.network';
+			errorOpen = true;
 		}
 	}
 
-	function applyFilter(type: 'category' | 'source' | 'time' | 'locale', value: string | number | null): void {
-		if (type === 'category') selectedCategory = value as string | null;
-		else if (type === 'source') selectedSourceType = value as string | null;
-		else if (type === 'time') selectedTime = value as number | null;
-		else if (type === 'locale') selectedLocale = value as string | null;
-		news = [];
-		nextCursor = null;
+	async function loadNews(): Promise<void> {
+		try {
+			await pagination.load(fetchNews);
+		} catch (error) {
+			handleError(error);
+		}
+	}
+
+	function applyFilter(type: 'category' | 'source_type' | 'since' | 'locale', value: string | number | null): void {
+		filters.set(type, value);
+		pagination.reset();
+		cache.clear();
 		loadNews();
 	}
 
 	async function loadMore(): Promise<void> {
-		if (!nextCursor || isLoadingMore) return;
-		isLoadingMore = true;
-		await loadNews(nextCursor);
-		isLoadingMore = false;
+		try {
+			await pagination.loadMore(fetchNews);
+		} catch (error) {
+			handleError(error);
+		}
 	}
 
 	onMount(async () => {
 		await loadNews();
-		isLoading = false;
 	});
 </script>
 
 <div class="space-y-3 sm:space-y-4">
-	<h1 class="text-xl sm:text-2xl font-bold text-gray-900">{$t('page.news.title')}</h1>
+	<h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">{$t('page.news.title')}</h1>
 
 	<!-- Filters -->
 	<div class="space-y-2 sm:space-y-3">
 		<!-- Locale filter -->
 		<div class="flex gap-1.5 sm:gap-2 flex-wrap">
-			<button
+			<FilterButton
+				label={$t('filter.all')}
+				active={filters.values.locale === null}
 				onclick={() => applyFilter('locale', null)}
-				class="rounded-full px-2.5 py-1 sm:px-3 text-xs font-medium transition-colors {selectedLocale === null ? 'bg-indigo-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
-			>{$t('filter.all')}</button>
-			<button
+			/>
+			<FilterButton
+				label={$t('filter.locale.domestic')}
+				active={filters.values.locale === 'ko'}
 				onclick={() => applyFilter('locale', 'ko')}
-				class="rounded-full px-2.5 py-1 sm:px-3 text-xs font-medium transition-colors {selectedLocale === 'ko' ? 'bg-indigo-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
-			>{$t('filter.locale.domestic')}</button>
-			<button
+			/>
+			<FilterButton
+				label={$t('filter.locale.international')}
+				active={filters.values.locale === 'en'}
 				onclick={() => applyFilter('locale', 'en')}
-				class="rounded-full px-2.5 py-1 sm:px-3 text-xs font-medium transition-colors {selectedLocale === 'en' ? 'bg-indigo-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
-			>{$t('filter.locale.international')}</button>
+			/>
 		</div>
 
 		<!-- Category filter -->
 		<div class="flex gap-1.5 sm:gap-2 flex-wrap">
-			<button
+			<FilterButton
+				label={$t('filter.all')}
+				active={filters.values.category === null}
+				activeClass="bg-blue-600 text-white"
 				onclick={() => applyFilter('category', null)}
-				class="rounded-full px-2.5 py-1 sm:px-3 text-xs font-medium transition-colors {selectedCategory === null ? 'bg-blue-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
-			>{$t('filter.all')}</button>
+			/>
 			{#each ALL_CATEGORIES as cat}
-				<button
+				<FilterButton
+					label={$t(`filter.category.${cat}`)}
+					active={filters.values.category === cat}
+					activeClass="bg-blue-600 text-white"
 					onclick={() => applyFilter('category', cat)}
-					class="rounded-full px-2.5 py-1 sm:px-3 text-xs font-medium transition-colors {selectedCategory === cat ? 'bg-blue-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
-				>{$t(`filter.category.${cat}`)}</button>
+				/>
 			{/each}
 		</div>
 
 		<!-- Source type + Time filters -->
 		<div class="flex gap-2 sm:gap-4 flex-wrap">
 			<div class="flex gap-1.5 sm:gap-2 flex-wrap">
-				<button
-					onclick={() => applyFilter('source', null)}
-					class="rounded-full px-2.5 py-1 sm:px-3 text-xs font-medium transition-colors {selectedSourceType === null ? 'bg-green-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
-				>{$t('filter.all')}</button>
+				<FilterButton
+					label={$t('filter.all')}
+					active={filters.values.source_type === null}
+					activeClass="bg-green-600 text-white"
+					onclick={() => applyFilter('source_type', null)}
+				/>
 				{#each SOURCE_TYPES as src}
-					<button
-						onclick={() => applyFilter('source', src)}
-						class="rounded-full px-2.5 py-1 sm:px-3 text-xs font-medium transition-colors {selectedSourceType === src ? 'bg-green-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}"
-					>{$t(`filter.source.${src}`)}</button>
+					<FilterButton
+						label={$t(`filter.source.${src}`)}
+						active={filters.values.source_type === src}
+						activeClass="bg-green-600 text-white"
+						onclick={() => applyFilter('source_type', src)}
+					/>
 				{/each}
 			</div>
 
 			<div class="flex gap-1.5 sm:gap-2 flex-wrap">
-				<button
-					onclick={() => applyFilter('time', null)}
-					class="rounded-full px-2.5 py-1 text-xs font-medium transition-colors {selectedTime === null ? 'bg-gray-800 text-white' : 'border border-gray-200 bg-white text-gray-500 hover:bg-gray-50'}"
-				>{$t('filter.all')}</button>
+				<FilterButton
+					label={$t('filter.all')}
+					active={filters.values.since === null}
+					activeClass="bg-gray-800 text-white"
+					onclick={() => applyFilter('since', null)}
+				/>
 				{#each TIME_OPTIONS as opt}
-					<button
-						onclick={() => applyFilter('time', opt.value)}
-						class="rounded-full px-2.5 py-1 text-xs font-medium transition-colors {selectedTime === opt.value ? 'bg-gray-800 text-white' : 'border border-gray-200 bg-white text-gray-500 hover:bg-gray-50'}"
-					>{$t(opt.label)}</button>
+					<FilterButton
+						label={$t(opt.label)}
+						active={filters.values.since === opt.value}
+						activeClass="bg-gray-800 text-white"
+						onclick={() => applyFilter('since', opt.value)}
+					/>
 				{/each}
 			</div>
 		</div>
 	</div>
 
-	{#if isLoading}
-		<div class="space-y-3">
-			{#each Array(5) as _}
-				<SkeletonCard />
-			{/each}
-		</div>
-	{:else if news.length === 0}
-		<p class="text-gray-500">{$t('status.no_results')}</p>
-	{:else}
-		<div class="space-y-3">
-			{#each news as item (item.id)}
-				<NewsCard news={item} />
-			{/each}
-		</div>
-
-		{#if nextCursor}
-			<div class="flex justify-center pt-4">
-				<button
-					onclick={loadMore}
-					disabled={isLoadingMore}
-					class="rounded-md border border-gray-300 px-6 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-				>
-					{#if isLoadingMore}
-						{$t('status.loading')}
-					{:else}
-						{$t('button.load_more')}
-					{/if}
-				</button>
+	<PageStateWrapper isLoading={pagination.isLoading} isEmpty={pagination.items.length === 0 && !pagination.isLoading}>
+		{#snippet loading()}
+			<div class="space-y-3">
+				{#each Array(5) as _}
+					<SkeletonCard />
+				{/each}
 			</div>
-		{/if}
-	{/if}
+		{/snippet}
+
+		{#snippet children()}
+			<div class="space-y-3">
+				{#each pagination.items as item (item.id)}
+					<NewsCard news={item} />
+				{/each}
+			</div>
+
+			<LoadMoreButton hasMore={pagination.hasMore} isLoading={pagination.isLoadingMore} onclick={loadMore} />
+		{/snippet}
+	</PageStateWrapper>
 </div>
 
 <ErrorModal open={errorOpen} errorCode={errorCode} messageKey={errorMessageKey} onClose={() => (errorOpen = false)} onRetry={() => { errorOpen = false; loadNews(); }} />

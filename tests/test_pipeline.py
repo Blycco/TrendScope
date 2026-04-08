@@ -170,14 +170,14 @@ class TestStageWarmCache:
                 "locale": "ko",
             },
         ]
-        with patch("backend.processor.pipeline.set_cached", AsyncMock()) as mock_set:
+        with patch("backend.processor.stages.cache.set_cached", AsyncMock()) as mock_set:
             await _stage_warm_cache(items)
             mock_set.assert_awaited()
 
     async def test_handles_cache_error_gracefully(self) -> None:
         items = [{"title": "T", "score": 1.0, "keywords": [], "category": "x", "locale": "ko"}]
         with patch(
-            "backend.processor.pipeline.set_cached",
+            "backend.processor.stages.cache.set_cached",
             AsyncMock(side_effect=RuntimeError("Redis down")),
         ):
             await _stage_warm_cache(items)  # should not raise
@@ -191,7 +191,7 @@ class TestProcessArticles:
 
     async def test_all_duplicates_returns_zero(self) -> None:
         articles = [_make_article()]
-        with patch("backend.processor.pipeline.is_duplicate", AsyncMock(return_value=True)):
+        with patch("backend.processor.stages.dedupe.is_duplicate", AsyncMock(return_value=True)):
             pool = _make_db_pool()
             result = await process_articles(articles, pool)
             assert result == 0
@@ -201,8 +201,8 @@ class TestProcessArticles:
             _make_article(title="AI 기술 뉴스", body="인공지능 기술이 빠르게 발전하고 있습니다.")
         ]
         with (
-            patch("backend.processor.pipeline.is_duplicate", AsyncMock(return_value=False)),
-            patch("backend.processor.pipeline.set_cached", AsyncMock()),
+            patch("backend.processor.stages.dedupe.is_duplicate", AsyncMock(return_value=False)),
+            patch("backend.processor.stages.cache.set_cached", AsyncMock()),
         ):
             pool = _make_db_pool(group_id=42)
             result = await process_articles(articles, pool)
@@ -212,7 +212,7 @@ class TestProcessArticles:
     async def test_dedupe_error_passes_article_through(self) -> None:
         articles = [_make_article()]
         with patch(
-            "backend.processor.pipeline.is_duplicate",
+            "backend.processor.stages.dedupe.is_duplicate",
             AsyncMock(side_effect=RuntimeError("Redis error")),
         ):
             result = await _stage_dedupe(articles)
