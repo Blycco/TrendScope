@@ -25,6 +25,7 @@ from backend.api.routers import (
     events,
     health,
     insights,
+    keywords,
     news,
     notifications,
     payments,
@@ -128,6 +129,7 @@ def create_app() -> FastAPI:
     app.include_router(health.router)
     app.include_router(auth.router, prefix="/api/v1")
     app.include_router(dashboard.router, prefix="/api/v1")
+    app.include_router(keywords.router, prefix="/api/v1")
     app.include_router(trends.router, prefix="/api/v1")
     app.include_router(early_trend.router, prefix="/api/v1")
     app.include_router(insights.router, prefix="/api/v1")
