@@ -1,4 +1,4 @@
-"""020_naver_datalab_source — Add naver_datalab to source_config + raw_data to sns_trend."""
+"""022_naver_datalab_source — Add naver_datalab to source_config + raw_data to sns_trend."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
-VERSION = "020"
+VERSION = "022"
 DESCRIPTION = "Add naver_datalab to source_config; add raw_data JSONB to sns_trend; add unique constraint"
 
 
