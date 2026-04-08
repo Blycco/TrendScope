@@ -36,6 +36,7 @@
 	"dashboard.source.google_trends": "Google Trends",
 	"dashboard.source.burst_gnews": "긴급 뉴스",
 	"dashboard.source.burst_reddit": "긴급 Reddit",
+	"source.naver_datalab": "네이버 데이터랩",
 	"dashboard.last_24h": "최근 24시간",
 	"page.trends.title": "트렌드 피드",
 	"page.news.title": "뉴스 피드",
