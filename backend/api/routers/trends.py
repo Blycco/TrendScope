@@ -50,6 +50,9 @@ def _trend_cache_key(category: str | None, locale: str | None) -> str:
     return f"feed:{category or 'all'}:{locale or 'all'}"
 
 
+_ALLOWED_SORT = frozenset({"score", "burst_score", "article_count", "created_at"})
+
+
 @router.get("/trends", response_model=TrendListResponse)
 @handle_errors(log_event="trends_fetch_failed")
 async def list_trends(
@@ -57,24 +60,45 @@ async def list_trends(
     category: str | None = Query(default=None),
     locale: str | None = Query(default=None),
     since: int | None = Query(default=None, description="Filter by hours (e.g. 1, 6, 24)"),
+    sort: str | None = Query(
+        default=None,
+        description="Sort by: score|burst_score|article_count|created_at",
+    ),
     limit: int = Query(default=20, ge=1, le=100),
     cursor: str | None = Query(default=None),
 ) -> Response:
-    """Return trend feed from news_group ordered by score DESC."""
+    """Return trend feed from news_group with configurable sort.
+
+    Supports comma-separated category values (e.g. category=tech,economy).
+    """
+    safe_sort = sort if sort in _ALLOWED_SORT else None
     cache_key = _trend_cache_key(category, locale)
 
-    # Only use cache for first page (no cursor, no time filter)
-    if not cursor and not since:
+    # Only use cache for first page (no cursor, no time filter, default sort)
+    if not cursor and not since and not safe_sort:
         cached = await get_cached(cache_key)
         if cached is not None:
             return Response(content=cached, media_type="application/json")
 
     pool = request.app.state.db_pool
 
-    logger.info("trends_request", category=category, locale=locale, since=since, cursor=cursor)
+    logger.info(
+        "trends_request",
+        category=category,
+        locale=locale,
+        since=since,
+        sort=safe_sort,
+        cursor=cursor,
+    )
 
     rows = await fetch_trends(
-        pool, category=category, locale=locale, since_hours=since, limit=limit, cursor=cursor
+        pool,
+        category=category,
+        locale=locale,
+        since_hours=since,
+        limit=limit,
+        cursor=cursor,
+        sort=safe_sort,
     )
 
     items = [

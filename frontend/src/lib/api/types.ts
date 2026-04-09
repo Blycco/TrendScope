@@ -61,6 +61,7 @@ export interface TrendItem {
 	summary: string | null;
 	score: number;
 	early_trend_score: number;
+	burst_score?: number;
 	keywords: string[];
 	created_at: string;
 	article_count: number;

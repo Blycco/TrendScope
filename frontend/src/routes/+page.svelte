@@ -10,6 +10,7 @@
 		DashboardSummaryResponse,
 	} from '$lib/api';
 	import TrendCard from '../components/TrendCard.svelte';
+	import BentoTrendGrid from '$lib/components/BentoTrendGrid.svelte';
 	import NewsCard from '../components/NewsCard.svelte';
 	import SkeletonCard from '../components/SkeletonCard.svelte';
 	import StatCard from '../components/StatCard.svelte';
@@ -21,13 +22,24 @@
 	import SourceChart from '$lib/components/dashboard/SourceChart.svelte';
 	import KeywordCloud from '$lib/components/dashboard/KeywordCloud.svelte';
 	import Sparkline from '$lib/components/dashboard/Sparkline.svelte';
+	import { authStore } from '$lib/stores/auth.svelte';
 	import {
 		TrendingUp,
 		Newspaper,
 		ArrowRight,
 		Zap,
 		Activity,
+		User,
 	} from 'lucide-svelte';
+
+	const roleSectionTitle = $derived.by(() => {
+		const role = authStore.user?.role;
+		if (role === 'marketer') return $t('dashboard.role_section.title.marketer');
+		if (role === 'creator') return $t('dashboard.role_section.title.creator');
+		if (role === 'business_owner') return $t('dashboard.role_section.title.business_owner');
+		if (role === 'general') return $t('dashboard.role_section.title.general');
+		return null;
+	});
 
 	let topTrends = $state<TrendItem[]>([]);
 	let latestNews = $state<NewsItem[]>([]);
@@ -153,6 +165,12 @@
 					subtext={$t('dashboard.last_24h')}
 				/>
 				<StatCard
+					icon={Zap}
+					iconColor="text-amber-500"
+					label={$t('dashboard.early_signals')}
+					value={summary.early_signal_count}
+				/>
+				<StatCard
 					icon={Newspaper}
 					iconColor="text-blue-500"
 					label={$t('dashboard.total_news')}
@@ -164,12 +182,6 @@
 					iconColor="text-green-500"
 					label={$t('dashboard.avg_score')}
 					value={summary.avg_score}
-				/>
-				<StatCard
-					icon={Zap}
-					iconColor="text-amber-500"
-					label={$t('dashboard.early_signals')}
-					value={summary.early_signal_count}
 				/>
 			</div>
 		{/if}
@@ -197,8 +209,11 @@
 							{$t('dashboard.early_trends')}
 						</h3>
 					</div>
-					<p class="text-xs text-gray-500 dark:text-gray-400 mb-3">
+					<p class="text-xs text-gray-500 dark:text-gray-400 mb-1">
 						{$t('dashboard.early_trends.desc')}
+					</p>
+					<p class="text-xs text-amber-600 dark:text-amber-400 mb-3">
+						{$t('dashboard.early_trends.desc2')}
 					</p>
 					<div class="space-y-2">
 						{#each earlyTrends as trend (trend.id)}
@@ -235,7 +250,35 @@
 			{/if}
 		</div>
 
-		<!-- Hot Trends -->
+		<!-- Role-based recommendation section -->
+		{#if authStore.isAuthenticated && roleSectionTitle}
+			<section>
+				<div class="flex items-center gap-2 mb-3">
+					<User size={18} class="text-purple-500" />
+					<h2 class="text-lg font-bold text-gray-900 dark:text-gray-100">{roleSectionTitle}</h2>
+				</div>
+				{#if topTrends.length > 0}
+					<div class="space-y-3">
+						{#each topTrends.slice(0, 3) as trend (trend.id)}
+							<TrendCard {trend} />
+						{/each}
+					</div>
+				{/if}
+			</section>
+		{:else if !authStore.isAuthenticated}
+			<div class="rounded-lg border border-purple-100 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/20 p-4 flex items-center justify-between gap-4">
+				<div class="flex items-center gap-2">
+					<User size={16} class="text-purple-500 flex-shrink-0" />
+					<p class="text-sm text-purple-700 dark:text-purple-300">{$t('dashboard.role_section.cta')}</p>
+				</div>
+				<a href="/settings" class="text-sm font-medium text-purple-600 dark:text-purple-400 hover:underline flex-shrink-0">
+					{$t('dashboard.role_section.cta_link')}
+					<ArrowRight size={12} class="inline ml-0.5" />
+				</a>
+			</div>
+		{/if}
+
+		<!-- Hot Trends (Bento Grid) -->
 		<section data-tour="hot-trends">
 			<div class="flex items-center justify-between mb-3">
 				<div class="flex items-center gap-2">
@@ -251,29 +294,7 @@
 			{#if topTrends.length === 0}
 				<p class="text-gray-500 text-sm">{$t('status.no_results')}</p>
 			{:else}
-				<div class="space-y-3">
-					{#each topTrends as trend, i (trend.id)}
-						<div class="flex items-start gap-3">
-							<span class="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold mt-3 {i < 3 ? 'bg-red-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}">
-								{i + 1}
-							</span>
-							<div class="flex-1 min-w-0">
-								<div class="flex items-center gap-2">
-									<div class="flex-1 min-w-0">
-										<TrendCard {trend} />
-									</div>
-									<Sparkline
-										values={[trend.score * 0.6, trend.score * 0.75, trend.score * 0.85, trend.score * 0.9, trend.score]}
-										color={trend.direction === 'rising' ? '#22c55e' : trend.direction === 'declining' ? '#ef4444' : '#3b82f6'}
-									/>
-								</div>
-								{#if trend.summary}
-									<p class="mt-1 ml-0 text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{trend.summary}</p>
-								{/if}
-							</div>
-						</div>
-					{/each}
-				</div>
+				<BentoTrendGrid trends={topTrends} />
 			{/if}
 		</section>
 

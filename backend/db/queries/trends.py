@@ -66,6 +66,14 @@ END AS direction"""
 # ---------------------------------------------------------------------------
 
 
+_SAFE_SORT_COLS: dict[str, str] = {
+    "score": "ng.score DESC, ng.id ASC",
+    "burst_score": "ng.burst_score DESC, ng.id ASC",
+    "article_count": "article_count DESC, ng.id ASC",
+    "created_at": "ng.created_at DESC, ng.id ASC",
+}
+
+
 async def fetch_trends(
     pool: asyncpg.Pool,
     *,
@@ -74,15 +82,21 @@ async def fetch_trends(
     since_hours: int | None = None,
     limit: int = 20,
     cursor: str | None = None,
+    sort: str | None = None,
 ) -> list[asyncpg.Record]:
-    """Fetch news_group rows ordered by score DESC with cursor pagination."""
+    """Fetch news_group rows with cursor pagination.
+
+    Supports comma-separated category values and configurable sort order.
+    """
     try:
         params: list[object] = []
         conditions: list[str] = ["ng.score >= 5.0", "ng.is_hidden = FALSE"]
 
         if category:
-            params.append(category)
-            conditions.append(f"ng.category = ${len(params)}")
+            cats = [c.strip() for c in category.split(",") if c.strip()]
+            if cats:
+                params.append(cats)
+                conditions.append(f"ng.category = ANY(${len(params)}::text[])")
         if locale:
             params.append(locale)
             conditions.append(f"ng.locale = ${len(params)}")
@@ -98,6 +112,7 @@ async def fetch_trends(
                 f"(ng.score < ${n - 1} OR (ng.score = ${n - 1} AND ng.id::text > ${n}))"
             )
 
+        order_col = _SAFE_SORT_COLS.get(sort or "score", _SAFE_SORT_COLS["score"])
         where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
         params.append(limit)
 
@@ -114,7 +129,7 @@ async def fetch_trends(
             FROM news_group ng
             {_DIRECTION_LATERAL}
             {where}
-            ORDER BY ng.score DESC, ng.id ASC
+            ORDER BY {order_col}
             LIMIT ${len(params)}
         """  # noqa: S608
 
