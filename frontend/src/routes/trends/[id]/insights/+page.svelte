@@ -55,22 +55,43 @@
 
 	function getSections(content: InsightContent): { key: string; label: string; items: string[] }[] {
 		if ('ad_opportunities' in content) {
-			return [
+			const sections = [
 				{ key: 'ad_opportunities', label: $t('insights.marketer.actions'), items: content.ad_opportunities },
 			];
+			if (content.channel_opportunities?.length) {
+				sections.push({ key: 'channel_opportunities', label: $t('insights.marketer.channels'), items: content.channel_opportunities });
+			}
+			if (content.action_items?.length) {
+				sections.push({ key: 'action_items_marketer', label: $t('insights.common.action_items'), items: content.action_items });
+			}
+			return sections;
 		}
 		if ('title_drafts' in content) {
-			return [
+			const sections = [
 				{ key: 'title_drafts', label: $t('insights.creator.titles'), items: content.title_drafts },
 				{ key: 'seo_keywords', label: $t('insights.creator.hashtags'), items: content.seo_keywords },
 			];
+			if (content.title_suggestions?.length) {
+				sections.push({ key: 'title_suggestions', label: $t('insights.creator.titles'), items: content.title_suggestions });
+			}
+			if (content.hashtag_suggestions?.length) {
+				sections.push({ key: 'hashtag_suggestions', label: $t('insights.creator.hashtags'), items: content.hashtag_suggestions });
+			}
+			if (content.action_items?.length) {
+				sections.push({ key: 'action_items_creator', label: $t('insights.common.action_items'), items: content.action_items });
+			}
+			return sections;
 		}
 		if ('consumer_reactions' in content) {
-			return [
+			const sections = [
 				{ key: 'consumer_reactions', label: $t('insights.owner.sentiment'), items: content.consumer_reactions },
 				{ key: 'product_hints', label: $t('insights.owner.product'), items: content.product_hints },
 				{ key: 'market_ops', label: $t('insights.owner.opportunity'), items: content.market_ops },
 			];
+			if (content.action_items?.length) {
+				sections.push({ key: 'action_items_owner', label: $t('insights.common.action_items'), items: content.action_items });
+			}
+			return sections;
 		}
 		if ('sns_drafts' in content) {
 			return [
@@ -158,11 +179,63 @@
 						</div>
 					{/each}
 
+					<!-- Marketer: timing recommendation -->
+					{#if 'ad_opportunities' in insight.content && insight.content.timing_recommendation}
+						<div class="rounded-lg border border-blue-100 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/20 p-4">
+							<p class="text-xs font-semibold text-blue-700 dark:text-blue-400 mb-1">{$t('insights.marketer.timing')}</p>
+							<p class="text-sm text-blue-700 dark:text-blue-300">{insight.content.timing_recommendation}</p>
+						</div>
+					{/if}
+
+					<!-- Marketer: competitor note -->
+					{#if 'ad_opportunities' in insight.content && insight.content.competitor_note}
+						<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-4">
+							<p class="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">{$t('insights.marketer.competitor')}</p>
+							<p class="text-sm text-gray-700 dark:text-gray-300">{insight.content.competitor_note}</p>
+						</div>
+					{/if}
+
 					<!-- Creator timing info -->
 					{#if 'timing' in insight.content && insight.content.timing}
 						<div class="rounded-lg border border-purple-100 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/20 p-4">
 							<p class="text-xs font-semibold text-purple-700 dark:text-purple-400 mb-1">{$t('insights.creator.timing')}</p>
 							<p class="text-sm text-purple-700 dark:text-purple-300">{insight.content.timing}</p>
+						</div>
+					{/if}
+
+					<!-- Creator: recommended format + best upload time -->
+					{#if 'title_drafts' in insight.content}
+						{#if insight.content.recommended_format}
+							<div class="rounded-lg border border-purple-100 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/20 p-4">
+								<p class="text-xs font-semibold text-purple-700 dark:text-purple-400 mb-1">{$t('insights.creator.format')}</p>
+								<p class="text-sm text-purple-700 dark:text-purple-300">{insight.content.recommended_format}</p>
+								{#if insight.content.best_upload_time}
+									<p class="text-xs text-purple-500 dark:text-purple-400 mt-1">{$t('insights.creator.timing')}: {insight.content.best_upload_time}</p>
+								{/if}
+							</div>
+						{/if}
+					{/if}
+
+					<!-- General: single polished SNS post -->
+					{#if 'sns_drafts' in insight.content && insight.content.sns_post_draft}
+						<div class="rounded-lg border border-green-100 dark:border-green-800 bg-green-50 dark:bg-green-950/20 p-4">
+							<div class="flex items-center justify-between mb-2">
+								<p class="text-xs font-semibold text-green-700 dark:text-green-400">{$t('insights.common.sns_post_draft')}</p>
+								<button
+									type="button"
+									onclick={() => copyText('sns_post_draft', insight!.content && 'sns_post_draft' in insight!.content ? (insight!.content.sns_post_draft ?? '') : '')}
+									class="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 hover:underline"
+								>
+									{#if copiedKey === 'sns_post_draft'}
+										<Check size={12} />
+										{$t('insights.copied')}
+									{:else}
+										<Copy size={12} />
+										{$t('insights.copy')}
+									{/if}
+								</button>
+							</div>
+							<p class="text-sm text-green-800 dark:text-green-200 leading-relaxed">{insight.content.sns_post_draft}</p>
 						</div>
 					{/if}
 
