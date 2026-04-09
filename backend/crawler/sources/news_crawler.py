@@ -153,6 +153,7 @@ async def _process_entries(
 
             published = _parse_published(entry)
             author = entry.get("author", "")
+            category = await _infer_category(title, body, feed["category"], db_pool)
 
             await db_pool.execute(
                 "INSERT INTO news_article "
@@ -169,7 +170,7 @@ async def _process_entries(
                 author,
                 published,
                 feed["locale"],
-                feed["category"],
+                category,
             )
 
             articles.append(
@@ -183,7 +184,7 @@ async def _process_entries(
                     "author": author,
                     "publish_time": published,
                     "locale": feed["locale"],
-                    "category": feed["category"],
+                    "category": category,
                 }
             )
 
@@ -197,6 +198,43 @@ async def _process_entries(
             continue
 
     return articles
+
+
+async def _infer_category(
+    title: str,
+    body: str,
+    feed_category: str,
+    db_pool: asyncpg.Pool,
+) -> str:
+    """키워드 매칭 기반 카테고리 재분류.
+
+    category_keyword 테이블(is_active=TRUE)에서 카테고리별 키워드를 로드해
+    제목 + 본문 앞 200자에서 weight 합산 후, 최고 합산 카테고리를 반환.
+    합계 < 3.0 이면 feed_category 그대로 반환.
+    """
+    try:
+        from backend.processor.shared.config_loader import get_category_keywords
+
+        category_map = await get_category_keywords(db_pool)
+        if not category_map:
+            return feed_category
+
+        text = (title + " " + body[:200]).lower()
+        scores: dict[str, float] = {}
+        for cat, kw_list in category_map.items():
+            total = sum(weight for kw, weight in kw_list if kw.lower() in text)
+            if total > 0:
+                scores[cat] = total
+
+        if not scores:
+            return feed_category
+
+        best_cat, best_score = max(scores.items(), key=lambda x: x[1])
+        return best_cat if best_score >= 3.0 else feed_category
+
+    except Exception as exc:
+        logger.warning("infer_category_failed", error=str(exc))
+        return feed_category
 
 
 def _sanitize_summary(raw: str) -> str:
