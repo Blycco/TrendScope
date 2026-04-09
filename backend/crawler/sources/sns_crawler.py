@@ -14,6 +14,7 @@ import structlog
 
 from backend.common.quota_alert import handle_api_exception
 from backend.crawler.quota_guard import check_quota, increment_quota
+from backend.crawler.sources.naver_datalab_crawler import crawl_naver_datalab
 from backend.db.queries.feed_sources import get_feed_sources_for_crawl, update_feed_health
 
 logger = structlog.get_logger(__name__)
@@ -382,6 +383,10 @@ async def collect_all(db_pool: asyncpg.Pool) -> list[dict[str, Any]]:
 
     youtube_items = await crawl_youtube(db_pool)
     all_items.extend(youtube_items)
+
+    # Naver DataLab는 자체적으로 sns_trend에 INSERT하므로 반환값만 통합
+    naver_items = await crawl_naver_datalab(db_pool)
+    all_items.extend(naver_items)
 
     saved = await _save_sns_trends(all_items, db_pool)
     logger.info("sns_collect_all_complete", collected=len(all_items), saved=saved)

@@ -3,6 +3,7 @@
 	import { onMount } from 'svelte';
 	import { adminRequest, adminDownload } from '$lib/api/admin';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
+	import PageStateWrapper from '$lib/ui/PageStateWrapper.svelte';
 
 	interface AuditItem {
 		id: string | null;
@@ -81,70 +82,70 @@
 
 <div>
 	<div class="flex items-center justify-between mb-6">
-		<h2 class="text-2xl font-bold text-gray-900">{$t('admin.audit.title')}</h2>
+		<h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{$t('admin.audit.title')}</h2>
 		<div class="flex gap-2">
 			<button onclick={() => exportLogs('json')}
-				class="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">{$t('admin.audit.export_json')}</button>
+				class="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">{$t('admin.audit.export_json')}</button>
 			<button onclick={() => exportLogs('csv')}
-				class="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">{$t('admin.audit.export_csv')}</button>
+				class="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">{$t('admin.audit.export_csv')}</button>
 		</div>
 	</div>
 
-	<div class="bg-white rounded-lg shadow p-4 mb-4">
+	<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-4">
 		<div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
 			<input type="text" bind:value={filterUserId} placeholder={$t('admin.audit.filter_user_id')}
-				class="rounded-md border border-gray-300 px-3 py-2 text-sm" />
+				class="rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-3 py-2 text-sm" />
 			<input type="text" bind:value={filterAction} placeholder={$t('admin.audit.filter_action')}
-				class="rounded-md border border-gray-300 px-3 py-2 text-sm" />
+				class="rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-3 py-2 text-sm" />
 			<input type="date" bind:value={filterDateFrom}
-				class="rounded-md border border-gray-300 px-3 py-2 text-sm" />
+				class="rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-3 py-2 text-sm" />
 			<div class="flex gap-2">
 				<input type="date" bind:value={filterDateTo}
-					class="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm" />
+					class="flex-1 rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-3 py-2 text-sm" />
 				<button onclick={applyFilter}
 					class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">{$t('admin.audit.apply_filter')}</button>
 			</div>
 		</div>
 	</div>
 
-	{#if loading}
-		<p class="text-gray-500">{$t('status.loading')}</p>
-	{:else}
-		<div class="bg-white rounded-lg shadow overflow-x-auto">
-			<table class="min-w-[640px] w-full divide-y divide-gray-200">
-				<thead class="bg-gray-50">
-					<tr>
-						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.audit.col_time')}</th>
-						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.audit.col_user')}</th>
-						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.audit.col_action')}</th>
-						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.audit.col_target')}</th>
-						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{$t('admin.audit.col_ip')}</th>
-					</tr>
-				</thead>
-				<tbody class="divide-y divide-gray-200">
-					{#each logs as log}
+	<PageStateWrapper isLoading={loading} isEmpty={!loading && logs.length === 0}>
+		{#snippet children()}
+			<div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-x-auto">
+				<table class="min-w-[640px] w-full divide-y divide-gray-200 dark:divide-gray-700">
+					<thead class="bg-gray-50 dark:bg-gray-700">
 						<tr>
-							<td class="px-4 py-3 text-xs text-gray-600">{log.created_at ?? '-'}</td>
-							<td class="px-4 py-3 text-xs text-gray-600">{log.user_id ?? '-'}</td>
-							<td class="px-4 py-3 text-xs font-medium text-gray-900">{log.action}</td>
-							<td class="px-4 py-3 text-xs text-gray-600">{log.target_type ?? ''} {log.target_id ?? ''}</td>
-							<td class="px-4 py-3 text-xs text-gray-500">{log.ip_address ?? '-'}</td>
+							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{$t('admin.audit.col_time')}</th>
+							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{$t('admin.audit.col_user')}</th>
+							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{$t('admin.audit.col_action')}</th>
+							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{$t('admin.audit.col_target')}</th>
+							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{$t('admin.audit.col_ip')}</th>
 						</tr>
-					{/each}
-				</tbody>
-			</table>
-		</div>
-
-		<div class="mt-4 flex items-center justify-between">
-			<p class="text-sm text-gray-600">{$t('admin.users.total')}: {total}</p>
-			<div class="flex gap-2">
-				<button disabled={page <= 1} onclick={() => { page--; fetchLogs(); }}
-					class="rounded border px-3 py-1 text-sm disabled:opacity-50">{$t('admin.users.prev')}</button>
-				<button disabled={page * 50 >= total} onclick={() => { page++; fetchLogs(); }}
-					class="rounded border px-3 py-1 text-sm disabled:opacity-50">{$t('admin.users.next')}</button>
+					</thead>
+					<tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+						{#each logs as log}
+							<tr>
+								<td class="px-4 py-3 text-xs text-gray-600 dark:text-gray-400">{log.created_at ?? '-'}</td>
+								<td class="px-4 py-3 text-xs text-gray-600 dark:text-gray-400">{log.user_id ?? '-'}</td>
+								<td class="px-4 py-3 text-xs font-medium text-gray-900 dark:text-gray-100">{log.action}</td>
+								<td class="px-4 py-3 text-xs text-gray-600 dark:text-gray-400">{log.target_type ?? ''} {log.target_id ?? ''}</td>
+								<td class="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">{log.ip_address ?? '-'}</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
 			</div>
-		</div>
-	{/if}
+
+			<div class="mt-4 flex items-center justify-between">
+				<p class="text-sm text-gray-600 dark:text-gray-400">{$t('admin.users.total')}: {total}</p>
+				<div class="flex gap-2">
+					<button disabled={page <= 1} onclick={() => { page--; fetchLogs(); }}
+						class="rounded border px-3 py-1 text-sm disabled:opacity-50">{$t('admin.users.prev')}</button>
+					<button disabled={page * 50 >= total} onclick={() => { page++; fetchLogs(); }}
+						class="rounded border px-3 py-1 text-sm disabled:opacity-50">{$t('admin.users.next')}</button>
+				</div>
+			</div>
+		{/snippet}
+	</PageStateWrapper>
 </div>
 
 <ErrorModal open={errorOpen} {errorCode} onClose={() => (errorOpen = false)} onRetry={fetchLogs} />

@@ -49,49 +49,49 @@
 </script>
 
 <div class="mx-auto max-w-sm">
-	<h1 class="text-2xl font-bold text-gray-900 mb-6">{$t('page.auth.register.title')}</h1>
+	<h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">{$t('page.auth.register.title')}</h1>
 
 	<form onsubmit={handleSubmit} class="space-y-4">
 		<div>
-			<label for="displayName" class="block text-sm font-medium text-gray-700">{$t('label.name')}</label>
+			<label for="displayName" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{$t('label.name')}</label>
 			<input
 				id="displayName"
 				type="text"
 				bind:value={displayName}
-				class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+				class="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
 			/>
 		</div>
 
 		<div>
-			<label for="email" class="block text-sm font-medium text-gray-700">{$t('label.email')}</label>
+			<label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{$t('label.email')}</label>
 			<input
 				id="email"
 				type="email"
 				bind:value={email}
 				required
-				class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+				class="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
 			/>
 		</div>
 
 		<div>
-			<label for="password" class="block text-sm font-medium text-gray-700">{$t('label.password')}</label>
+			<label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{$t('label.password')}</label>
 			<input
 				id="password"
 				type="password"
 				bind:value={password}
 				required
-				class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+				class="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
 			/>
 		</div>
 
 		<div>
-			<label for="passwordConfirm" class="block text-sm font-medium text-gray-700">{$t('label.password_confirm')}</label>
+			<label for="passwordConfirm" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{$t('label.password_confirm')}</label>
 			<input
 				id="passwordConfirm"
 				type="password"
 				bind:value={passwordConfirm}
 				required
-				class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+				class="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
 			/>
 		</div>
 
@@ -104,7 +104,7 @@
 		</button>
 	</form>
 
-	<div class="mt-4 text-center text-sm text-gray-500">
+	<div class="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
 		<a href="/auth/login" class="text-blue-600 hover:underline">{$t('button.login')}</a>
 	</div>
 </div>

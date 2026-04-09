@@ -1,1 +1,40 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --chart-line: #3b82f6;
+  --chart-area-start: rgba(59, 130, 246, 0.3);
+  --chart-area-end: rgba(59, 130, 246, 0.02);
+  --chart-grid: #e5e7eb;
+  --chart-tooltip-bg: #1f2937;
+  --chart-tooltip-text: #ffffff;
+  --chart-forecast: #10b981;
+  --chart-forecast-band: rgba(16, 185, 129, 0.15);
+  --chart-node-center: #2563eb;
+  --chart-node-stroke: #1d4ed8;
+  --chart-node-fill: #eff6ff;
+  --chart-node-border: #93c5fd;
+  --chart-node-text: #1e40af;
+  --chart-edge: #d1d5db;
+  --donut-center-text: #1f2937;
+  --donut-sub-text: #6b7280;
+}
+
+.dark {
+  --chart-line: #60a5fa;
+  --chart-area-start: rgba(96, 165, 250, 0.3);
+  --chart-area-end: rgba(96, 165, 250, 0.02);
+  --chart-grid: #374151;
+  --chart-tooltip-bg: #f3f4f6;
+  --chart-tooltip-text: #111827;
+  --chart-forecast: #34d399;
+  --chart-forecast-band: rgba(52, 211, 153, 0.15);
+  --chart-node-center: #3b82f6;
+  --chart-node-stroke: #2563eb;
+  --chart-node-fill: #1e3a5f;
+  --chart-node-border: #1d4ed8;
+  --chart-node-text: #93c5fd;
+  --chart-edge: #4b5563;
+  --donut-center-text: #f9fafb;
+  --donut-sub-text: #9ca3af;
+}

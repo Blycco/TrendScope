@@ -1,0 +1,42 @@
+<script lang="ts">
+	import EmptyState from './EmptyState.svelte';
+	import { t } from 'svelte-i18n';
+	import type { Snippet } from 'svelte';
+
+	interface Props {
+		isLoading: boolean;
+		isEmpty: boolean;
+		error?: string;
+		loading?: Snippet;
+		empty?: Snippet;
+		children?: Snippet;
+	}
+
+	let { isLoading, isEmpty, error, loading, empty, children }: Props = $props();
+</script>
+
+{#if isLoading}
+	<div role="status" aria-live="polite" aria-label={$t('a11y.loading')}>
+		{#if loading}
+			{@render loading()}
+		{:else}
+			<div class="space-y-3">
+				{#each Array(5) as _}
+					<div class="h-24 animate-pulse rounded-lg bg-gray-100 dark:bg-gray-800"></div>
+				{/each}
+			</div>
+		{/if}
+	</div>
+{:else if error}
+	<div class="rounded-md border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-4 py-3">
+		<p class="text-sm text-red-700 dark:text-red-400">{error}</p>
+	</div>
+{:else if isEmpty}
+	{#if empty}
+		{@render empty()}
+	{:else}
+		<EmptyState titleKey="common.no_results" descriptionKey="common.no_results_desc" />
+	{/if}
+{:else if children}
+	{@render children()}
+{/if}

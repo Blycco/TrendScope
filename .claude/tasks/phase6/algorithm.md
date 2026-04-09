@@ -1,4 +1,5 @@
 # Phase 6 / Algorithm Tasks (Weeks 11-12)
+
 > Agent: Algorithm
 
 - [ ] Early Trend Score tuning (based on real collected data) — 데이터 부족으로 보류

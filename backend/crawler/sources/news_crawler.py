@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import time
 from datetime import datetime, timezone
 from typing import Any
@@ -19,22 +18,17 @@ from backend.crawler.sources.extractor import _MIN_BODY_LENGTH, extract_body
 from backend.crawler.sources.rss_feeds import FeedSource
 from backend.db.queries.feed_sources import get_feed_sources_for_crawl, update_feed_health
 from backend.processor.shared.cache_manager import get_cached, set_cached
+from backend.processor.shared.dedupe_filter import (
+    compute_content_fingerprint as _content_fp,
+)
+from backend.processor.shared.dedupe_filter import (
+    compute_url_hash as _url_hash,
+)
 
 logger = structlog.get_logger(__name__)
 
 _ETAG_CACHE_TTL = 86400  # 24 hours
 _HTTP_TIMEOUT = 20.0
-
-
-def _url_hash(url: str) -> str:
-    """SHA-256[:16] of URL for dedup."""
-    return hashlib.sha256(url.encode()).hexdigest()[:16]
-
-
-def _content_fp(title: str, body: str) -> str:
-    """SHA-256(title+body[:200])[:16] for content dedup."""
-    raw = f"{title}{body[:200]}"
-    return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 
 async def crawl_feed(
