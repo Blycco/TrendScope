@@ -4,9 +4,11 @@
 	import { trackEvent, startAutoFlush, stopAutoFlush } from '$lib/tracker';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
 	import QuotaExceededModal from '$lib/ui/QuotaExceededModal.svelte';
+	import PlanGate from '$lib/ui/PlanGate.svelte';
 	import PageStateWrapper from '$lib/ui/PageStateWrapper.svelte';
 	import { apiRequest, ApiRequestError, QuotaExceededRequestError } from '$lib/api';
 	import type { TrendListResponse } from '$lib/api/types';
+	import { authStore } from '$lib/stores/auth.svelte';
 	import { Bell, BellOff, Trash2, TrendingUp } from 'lucide-svelte';
 
 	interface KeywordItem {
@@ -29,6 +31,10 @@
 	let quotaFeature = $state('');
 	let quotaLimit = $state(0);
 	let quotaResetTime = $state('');
+
+	let planGateOpen = $state(false);
+	let planGateRequired = $state('pro');
+	const FREE_KEYWORD_LIMIT = 5;
 
 	async function fetchKeywordStatus(keyword: string): Promise<void> {
 		try {
@@ -61,6 +67,13 @@
 		const trimmed = newKeyword.trim();
 		if (!trimmed) return;
 		if (keywords.some((k) => k.keyword === trimmed)) return;
+
+		// Free plan keyword limit gate
+		if (keywords.length >= FREE_KEYWORD_LIMIT && authStore.user?.plan !== 'pro') {
+			planGateRequired = 'pro';
+			planGateOpen = true;
+			return;
+		}
 
 		try {
 			await apiRequest('/notifications/keywords', {
@@ -260,3 +273,4 @@
 
 <ErrorModal open={errorOpen} errorCode={errorCode} messageKey={errorMessageKey} onClose={() => (errorOpen = false)} />
 <QuotaExceededModal open={quotaOpen} feature={quotaFeature} limit={quotaLimit} resetTime={quotaResetTime} onClose={() => (quotaOpen = false)} />
+<PlanGate open={planGateOpen} requiredPlan={planGateRequired} onClose={() => (planGateOpen = false)} />
