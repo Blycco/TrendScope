@@ -15,6 +15,7 @@
 	import QuotaExceededModal from '$lib/ui/QuotaExceededModal.svelte';
 	import PlanGate from '$lib/ui/PlanGate.svelte';
 	import FilterButton from '$lib/ui/FilterButton.svelte';
+	import MultiSelect from '$lib/components/MultiSelect.svelte';
 	import PageStateWrapper from '$lib/ui/PageStateWrapper.svelte';
 	import LoadMoreButton from '$lib/ui/LoadMoreButton.svelte';
 	import { Download, Share2 } from 'lucide-svelte';
@@ -34,11 +35,16 @@
 		{ label: 'filter.time.30d', value: 720 },
 	] as const;
 
+	const DIRECTION_OPTIONS = ['rising', 'growing', 'steady', 'declining'] as const;
+	const SORT_OPTIONS = ['score', 'burst_score', 'article_count', 'created_at'] as const;
+
 	const pagination = createPaginationStore<TrendItem>();
 	const filters = createFilterStore({
 		category: null as string | null,
 		locale: null as string | null,
 		since: null as number | null,
+		direction: null as string | null,
+		sort: 'score' as string,
 	});
 	const cache = createCacheStore<TrendListResponse>(5 * 60 * 1000);
 
@@ -62,6 +68,22 @@
 
 	const topTrendId = $derived(pagination.items.length > 0 ? pagination.items[0].id : null);
 
+	// Multi-select helpers: comma-sep string ↔ string[]
+	const selectedCategories = $derived(
+		filters.values.category ? filters.values.category.split(',').filter(Boolean) : []
+	);
+	const selectedDirections = $derived(
+		filters.values.direction ? filters.values.direction.split(',').filter(Boolean) : []
+	);
+	const selectedSort = $derived([filters.values.sort]);
+
+	// Client-side direction filter on loaded items
+	const displayedItems = $derived(
+		selectedDirections.length === 0
+			? pagination.items
+			: pagination.items.filter((t) => selectedDirections.includes(t.growth_type ?? ''))
+	);
+
 	function getLocaleParam(): string | null {
 		const filterLocale = filters.values.locale;
 		if (filterLocale) return filterLocale;
@@ -77,6 +99,7 @@
 			locale: getLocaleParam(),
 			category: filters.values.category,
 			since: filters.values.since,
+			sort: filters.values.sort,
 		});
 	}
 
@@ -91,6 +114,7 @@
 		if (locale) params.set('locale', locale);
 		if (filters.values.category) params.set('category', filters.values.category);
 		if (filters.values.since) params.set('since', String(filters.values.since));
+		if (filters.values.sort && filters.values.sort !== 'score') params.set('sort', filters.values.sort);
 
 		const data = await apiRequest<TrendListResponse>(`/trends?${params.toString()}`);
 		cache.set(cacheKey, data);
@@ -218,13 +242,59 @@
 		}
 	}
 
-	function applyFilter(type: 'category' | 'locale' | 'since', value: string | number | null): void {
+	function applyFilter(type: 'category' | 'locale' | 'since' | 'sort', value: string | number | null): void {
 		if (type === 'category') filters.set('category', value as string | null);
 		else if (type === 'locale') filters.set('locale', value as string | null);
 		else if (type === 'since') filters.set('since', value as number | null);
+		else if (type === 'sort') filters.set('sort', (value as string) ?? 'score');
 		pagination.reset();
 		cache.clear();
 		loadTrends();
+	}
+
+	function applyMultiFilter(type: 'category' | 'direction', values: string[]): void {
+		const joined = values.length > 0 ? values.join(',') : null;
+		if (type === 'category') filters.set('category', joined);
+		else if (type === 'direction') filters.set('direction', joined);
+		if (type === 'category') {
+			// Category affects backend query → reload
+			pagination.reset();
+			cache.clear();
+			loadTrends();
+		}
+		// direction is client-side only → no reload needed
+	}
+
+	function resetAllFilters(): void {
+		filters.reset();
+		pagination.reset();
+		cache.clear();
+		loadTrends();
+	}
+
+	// Active filter tags for display
+	interface FilterTag { key: 'category' | 'direction'; value: string; label: string; }
+	const activeTags = $derived<FilterTag[]>([
+		...selectedCategories.map((v) => ({
+			key: 'category' as const,
+			value: v,
+			label: $t(`filter.category.${v}`),
+		})),
+		...selectedDirections.map((v) => ({
+			key: 'direction' as const,
+			value: v,
+			label: $t(`filter.direction.${v}`),
+		})),
+	]);
+
+	function removeTag(tag: FilterTag): void {
+		if (tag.key === 'category') {
+			const next = selectedCategories.filter((v) => v !== tag.value);
+			applyMultiFilter('category', next);
+		} else {
+			const next = selectedDirections.filter((v) => v !== tag.value);
+			applyMultiFilter('direction', next);
+		}
 	}
 
 	onMount(async () => {
@@ -281,8 +351,9 @@
 
 	<!-- Filters -->
 	<div class="space-y-2 sm:space-y-3">
-		<!-- Locale filter -->
-		<div class="flex gap-1.5 sm:gap-2 flex-wrap">
+		<!-- Row 1: Locale (pills) + MultiSelect dropdowns + Sort -->
+		<div class="flex flex-wrap items-center gap-2">
+			<!-- Locale pills -->
 			<FilterButton
 				label={$t('filter.all')}
 				active={filters.values.locale === null}
@@ -298,43 +369,85 @@
 				active={filters.values.locale === 'en'}
 				onclick={() => applyFilter('locale', 'en')}
 			/>
+
+			<span class="h-4 w-px bg-gray-300 dark:bg-gray-600 mx-1"></span>
+
+			<!-- Category MultiSelect -->
+			<MultiSelect
+				options={ALL_CATEGORIES.map((c) => ({ value: c, label: $t(`filter.category.${c}`) }))}
+				bind:selected={
+					() => selectedCategories,
+					(v) => applyMultiFilter('category', v)
+				}
+				placeholder={$t('filter.category.label')}
+				label={$t('filter.category.label')}
+				multiple={true}
+			/>
+
+			<!-- Direction MultiSelect -->
+			<MultiSelect
+				options={DIRECTION_OPTIONS.map((d) => ({ value: d, label: $t(`filter.direction.${d}`) }))}
+				bind:selected={
+					() => selectedDirections,
+					(v) => applyMultiFilter('direction', v)
+				}
+				placeholder={$t('filter.direction.label')}
+				label={$t('filter.direction.label')}
+				multiple={true}
+			/>
+
+			<!-- Period MultiSelect (single) -->
+			<MultiSelect
+				options={TIME_OPTIONS.map((o) => ({ value: String(o.value), label: $t(o.label) }))}
+				bind:selected={
+					() => filters.values.since ? [String(filters.values.since)] : [],
+					(v) => applyFilter('since', v.length > 0 ? Number(v[0]) : null)
+				}
+				placeholder={$t('filter.period.label')}
+				multiple={false}
+			/>
+
+			<!-- Sort MultiSelect (single) -->
+			<MultiSelect
+				options={SORT_OPTIONS.map((s) => ({ value: s, label: $t(`filter.sort.${s}`) }))}
+				bind:selected={
+					() => selectedSort,
+					(v) => applyFilter('sort', v[0] ?? 'score')
+				}
+				placeholder={$t('filter.sort.label')}
+				multiple={false}
+			/>
+
+			<!-- Reset all -->
+			{#if activeTags.length > 0 || filters.values.since || filters.values.sort !== 'score'}
+				<button
+					class="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline"
+					onclick={resetAllFilters}
+				>
+					{$t('filter.reset_all')}
+				</button>
+			{/if}
 		</div>
 
-		<!-- Category filter -->
-		<div class="flex gap-1.5 sm:gap-2 flex-wrap">
-			<FilterButton
-				label={$t('filter.all')}
-				active={filters.values.category === null}
-				activeClass="bg-blue-600 text-white"
-				onclick={() => applyFilter('category', null)}
-			/>
-			{#each ALL_CATEGORIES as cat}
-				<FilterButton
-					label={$t(`filter.category.${cat}`)}
-					active={filters.values.category === cat}
-					activeClass="bg-blue-600 text-white"
-					onclick={() => applyFilter('category', cat)}
-				/>
-			{/each}
-		</div>
-
-		<!-- Time filter -->
-		<div class="flex gap-1.5 sm:gap-2 flex-wrap">
-			<FilterButton
-				label={$t('filter.all')}
-				active={filters.values.since === null}
-				activeClass="bg-gray-800 text-white"
-				onclick={() => applyFilter('since', null)}
-			/>
-			{#each TIME_OPTIONS as opt}
-				<FilterButton
-					label={$t(opt.label)}
-					active={filters.values.since === opt.value}
-					activeClass="bg-gray-800 text-white"
-					onclick={() => applyFilter('since', opt.value)}
-				/>
-			{/each}
-		</div>
+		<!-- Active filter tags -->
+		{#if activeTags.length > 0}
+			<div class="flex flex-wrap gap-1.5">
+				{#each activeTags as tag (tag.key + ':' + tag.value)}
+					<span class="inline-flex items-center gap-1 rounded-full bg-blue-100 dark:bg-blue-900/30 px-2.5 py-1 text-xs font-medium text-blue-700 dark:text-blue-300">
+						{tag.label}
+						<button
+							class="ml-0.5 rounded-full hover:bg-blue-200 dark:hover:bg-blue-800"
+							onclick={() => removeTag(tag)}
+							aria-label="Remove filter"
+						>
+							<svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+								<path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+							</svg>
+						</button>
+					</span>
+				{/each}
+			</div>
+		{/if}
 	</div>
 
 	<PageStateWrapper isLoading={pagination.isLoading} isEmpty={pagination.items.length === 0 && !pagination.isLoading}>
@@ -348,7 +461,7 @@
 
 		{#snippet children()}
 			<div class="space-y-3">
-				{#each pagination.items as trend (trend.id)}
+				{#each displayedItems as trend (trend.id)}
 					<TrendCard {trend} />
 				{/each}
 			</div>
@@ -361,8 +474,8 @@
 		<TrendMap trendId={topTrendId} />
 	{/if}
 
-	{#if !isLoading}
-		<MetaTrendsSection locale={selectedLocale ?? undefined} />
+	{#if !pagination.isLoading}
+		<MetaTrendsSection locale={filters.values.locale ?? undefined} />
 	{/if}
 </div>
 
