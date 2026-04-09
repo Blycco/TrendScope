@@ -97,21 +97,58 @@ class TestStageSpamFilter:
 
 
 class TestStageExtractKeywords:
-    def test_adds_keywords_field(self) -> None:
+    @staticmethod
+    def _mock_pool() -> MagicMock:
+        pool = MagicMock()
+        pool.acquire.return_value.__aenter__ = AsyncMock(return_value=MagicMock())
+        pool.acquire.return_value.__aexit__ = AsyncMock(return_value=None)
+        return pool
+
+    async def test_adds_keywords_field(self) -> None:
         articles = [_make_article(title="Python 기초", body="파이썬은 배우기 쉬운 언어입니다.")]
-        result = _stage_extract_keywords(articles)
+        with (
+            patch(
+                "backend.processor.shared.config_loader.get_stopwords", new_callable=AsyncMock
+            ) as mock_sw,
+            patch(
+                "backend.processor.shared.config_loader.get_setting", new_callable=AsyncMock
+            ) as mock_gs,
+        ):
+            mock_sw.return_value = frozenset()
+            mock_gs.return_value = 2.0
+            result = await _stage_extract_keywords(articles, self._mock_pool())
         assert "keywords" in result[0]
         assert isinstance(result[0]["keywords"], list)
 
-    def test_adds_keyword_importance(self) -> None:
+    async def test_adds_keyword_importance(self) -> None:
         articles = [_make_article()]
-        result = _stage_extract_keywords(articles)
+        with (
+            patch(
+                "backend.processor.shared.config_loader.get_stopwords", new_callable=AsyncMock
+            ) as mock_sw,
+            patch(
+                "backend.processor.shared.config_loader.get_setting", new_callable=AsyncMock
+            ) as mock_gs,
+        ):
+            mock_sw.return_value = frozenset()
+            mock_gs.return_value = 2.0
+            result = await _stage_extract_keywords(articles, self._mock_pool())
         assert "keyword_importance" in result[0]
         assert isinstance(result[0]["keyword_importance"], float)
 
-    def test_handles_empty_text(self) -> None:
+    async def test_handles_empty_text(self) -> None:
         articles = [_make_article(title="", body="")]
-        result = _stage_extract_keywords(articles)
+        with (
+            patch(
+                "backend.processor.shared.config_loader.get_stopwords", new_callable=AsyncMock
+            ) as mock_sw,
+            patch(
+                "backend.processor.shared.config_loader.get_setting", new_callable=AsyncMock
+            ) as mock_gs,
+        ):
+            mock_sw.return_value = frozenset()
+            mock_gs.return_value = 2.0
+            result = await _stage_extract_keywords(articles, self._mock_pool())
         assert result[0]["keywords"] == []
         assert result[0]["keyword_importance"] == 0.0
 

@@ -238,6 +238,13 @@ def _classify_xgboost(text: str) -> SpamResult | None:
         return None
 
 
+async def reload_filter_cache() -> None:
+    """어드민 변경 후 필터 키워드 Redis 캐시 무효화."""
+    from backend.processor.shared.config_loader import invalidate_cache
+
+    await invalidate_cache("filter_kw")
+
+
 def classify_spam(
     text: str,
     *,
