@@ -66,19 +66,33 @@ class TestStageNormalize:
 
 
 class TestStageSpamFilter:
-    def test_passes_clean_article(self) -> None:
+    async def test_passes_clean_article(self) -> None:
         articles = [_make_article(title="정상 뉴스 기사", body="내용이 있는 뉴스 기사입니다.")]
-        result = _stage_spam_filter(articles)
+        pool = MagicMock()
+        _mock_cfg = AsyncMock(side_effect=[0.3, 3, 20, 2])
+        _mock_kw = AsyncMock(return_value=frozenset())
+        with (
+            patch("backend.processor.stages.spam_filter.get_setting", _mock_cfg),
+            patch("backend.processor.stages.spam_filter.get_filter_keywords", _mock_kw),
+        ):
+            result = await _stage_spam_filter(articles, pool)
         assert len(result) == 1
 
-    def test_filters_spam_article(self) -> None:
+    async def test_filters_spam_article(self) -> None:
         articles = [
             _make_article(
                 title="무료 대출 카지노 도박 바카라",
                 body=" ".join(["무료대출카지노도박"] * 20),
             )
         ]
-        result = _stage_spam_filter(articles)
+        pool = MagicMock()
+        _mock_cfg = AsyncMock(side_effect=[0.3, 3, 20, 2])
+        _mock_kw = AsyncMock(return_value=frozenset())
+        with (
+            patch("backend.processor.stages.spam_filter.get_setting", _mock_cfg),
+            patch("backend.processor.stages.spam_filter.get_filter_keywords", _mock_kw),
+        ):
+            result = await _stage_spam_filter(articles, pool)
         assert isinstance(result, list)
 
 
@@ -203,6 +217,14 @@ class TestProcessArticles:
         with (
             patch("backend.processor.stages.dedupe.is_duplicate", AsyncMock(return_value=False)),
             patch("backend.processor.stages.cache.set_cached", AsyncMock()),
+            patch(
+                "backend.processor.stages.spam_filter.get_setting",
+                AsyncMock(side_effect=[0.3, 3, 20, 2]),
+            ),
+            patch(
+                "backend.processor.stages.spam_filter.get_filter_keywords",
+                AsyncMock(return_value=frozenset()),
+            ),
         ):
             pool = _make_db_pool(group_id=42)
             result = await process_articles(articles, pool)

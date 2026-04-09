@@ -68,8 +68,8 @@ async def process_articles(
     # Stage 2: Normalize text
     normalized = stage_normalize(unique_articles)
 
-    # Stage 3: Spam filter
-    clean = stage_spam_filter(normalized)
+    # Stage 3: Spam filter (async — loads config from DB/Redis cache per batch)
+    clean = await stage_spam_filter(normalized, db_pool)
     if not clean:
         logger.info("pipeline_all_spam", input_count=len(normalized))
         return 0
