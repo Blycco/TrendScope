@@ -50,7 +50,7 @@ def _build_louvain_clusters(
 
 def louvain_cluster(
     items: list[ClusterItem],
-    threshold: float = 0.55,
+    threshold: float = 0.70,
 ) -> list[Cluster]:
     """Cluster items using Louvain community detection on a keyword similarity graph.
 
