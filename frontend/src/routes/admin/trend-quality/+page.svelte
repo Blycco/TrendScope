@@ -23,6 +23,8 @@
 		created_at: string;
 	}
 
+	let tooltipId = $state<string | null>(null);
+
 	let stats = $state<PipelineStats | null>(null);
 	let trends = $state<TrendItem[]>([]);
 	let statsLoading = $state(true);
@@ -119,20 +121,35 @@
 				</div>
 			</div>
 
-			<!-- Filter reasons bar -->
+			<!-- Filter reason distribution bar chart -->
 			{#if stats.spam_filtered > 0}
-				<div class="flex gap-2 text-xs">
-					{#each [
-						{ key: 'filter_ad', count: stats.filter_reasons.ad },
-						{ key: 'filter_obituary', count: stats.filter_reasons.obituary },
-						{ key: 'filter_other', count: stats.filter_reasons.other }
-					] as reason}
-						{#if reason.count > 0}
-							<span class="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-gray-600 dark:text-gray-300">
-								{$t('admin.trend_quality.' + reason.key)}: {reason.count}
+				{@const reasons = [
+					{ key: 'filter_ad', count: stats.filter_reasons.ad, cls: 'bg-red-400' },
+					{ key: 'filter_obituary', count: stats.filter_reasons.obituary, cls: 'bg-orange-400' },
+					{ key: 'filter_other', count: stats.filter_reasons.other, cls: 'bg-gray-400' }
+				].filter(r => r.count > 0)}
+				{@const total = reasons.reduce((s, r) => s + r.count, 0)}
+				<div class="mt-3">
+					<p class="text-xs text-gray-500 dark:text-gray-400 mb-1">필터링 이유 분포</p>
+					<div class="flex h-5 rounded overflow-hidden w-full">
+						{#each reasons as r}
+							<div
+								class="{r.cls} flex items-center justify-center text-white text-xs font-medium transition-all"
+								style="width: {(r.count / total * 100).toFixed(1)}%"
+								title="{$t('admin.trend_quality.' + r.key)}: {r.count}"
+							>
+								{#if r.count / total > 0.1}{r.count}{/if}
+							</div>
+						{/each}
+					</div>
+					<div class="flex gap-3 mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+						{#each reasons as r}
+							<span class="flex items-center gap-1">
+								<span class="inline-block w-2.5 h-2.5 rounded-sm {r.cls}"></span>
+								{$t('admin.trend_quality.' + r.key)} ({r.count})
 							</span>
-						{/if}
-					{/each}
+						{/each}
+					</div>
 				</div>
 			{/if}
 		{/if}
@@ -167,8 +184,38 @@
 								<td class="py-2 pr-3 text-gray-800 dark:text-gray-200 max-w-xs truncate" title={trend.title}>
 									{trend.title}
 								</td>
-								<td class="py-2 pr-3 text-right font-semibold text-blue-600 dark:text-blue-400">
-									{trend.score.toFixed(1)}
+								<td class="py-2 pr-3 text-right relative">
+									<button
+										type="button"
+										class="font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-help"
+										onmouseenter={() => { tooltipId = trend.id; }}
+										onmouseleave={() => { tooltipId = null; }}
+									>
+										{trend.score.toFixed(1)}
+									</button>
+									{#if tooltipId === trend.id}
+										<div class="absolute right-0 top-7 z-20 w-48 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-lg p-3 text-left text-xs">
+											<p class="font-semibold text-gray-700 dark:text-gray-200 mb-1.5">{$t('admin.trend_quality.score_breakdown')}</p>
+											<div class="space-y-1">
+												<div class="flex justify-between">
+													<span class="text-gray-500">종합 점수</span>
+													<span class="font-medium text-blue-600 dark:text-blue-400">{trend.score.toFixed(2)}</span>
+												</div>
+												<div class="flex justify-between">
+													<span class="text-gray-500">버스트</span>
+													<span class="font-medium text-orange-500">{trend.burst_score.toFixed(3)}</span>
+												</div>
+												<div class="flex justify-between">
+													<span class="text-gray-500">기사 수</span>
+													<span class="font-medium">{trend.article_count}</span>
+												</div>
+												<div class="flex justify-between">
+													<span class="text-gray-500">생성 시각</span>
+													<span class="font-medium text-gray-400">{new Date(trend.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span>
+												</div>
+											</div>
+										</div>
+									{/if}
 								</td>
 								<td class="py-2 pr-3 text-right text-orange-500 dark:text-orange-400">
 									{trend.burst_score.toFixed(2)}

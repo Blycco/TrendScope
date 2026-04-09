@@ -141,6 +141,17 @@
 		}
 	}
 
+	function sectionUpdatedAt(keys: string[]): string {
+		const timestamps = keys
+			.map(k => allSettings[k]?.updated_at)
+			.filter(Boolean)
+			.map(s => new Date(s!).getTime());
+		if (!timestamps.length) return '';
+		return new Date(Math.max(...timestamps)).toLocaleString('ko-KR', {
+			month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'
+		});
+	}
+
 	onMount(fetchSettings);
 </script>
 
@@ -157,7 +168,12 @@
 	{:else}
 		<!-- Clustering Weights -->
 		<section class="mb-8 bg-white dark:bg-gray-800 rounded-lg shadow p-5">
-			<h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">{$t('admin.algorithm.section_cluster')}</h3>
+			<div class="flex items-center justify-between mb-4">
+				<h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200">{$t('admin.algorithm.section_cluster')}</h3>
+				{#if sectionUpdatedAt(CLUSTER_KEYS)}
+					<span class="text-xs text-gray-400 dark:text-gray-500">{$t('admin.algorithm.updated_at')} {sectionUpdatedAt(CLUSTER_KEYS)}</span>
+				{/if}
+			</div>
 
 			<!-- 4-weight group with sum validator -->
 			<div class="mb-4">
@@ -199,7 +215,12 @@
 
 		<!-- Score Weights -->
 		<section class="mb-8 bg-white dark:bg-gray-800 rounded-lg shadow p-5">
-			<h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">{$t('admin.algorithm.section_score')}</h3>
+			<div class="flex items-center justify-between mb-4">
+				<h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200">{$t('admin.algorithm.section_score')}</h3>
+				{#if sectionUpdatedAt(SCORE_KEYS)}
+					<span class="text-xs text-gray-400 dark:text-gray-500">{$t('admin.algorithm.updated_at')} {sectionUpdatedAt(SCORE_KEYS)}</span>
+				{/if}
+			</div>
 
 			{#each SCORE_KEYS as key}
 				<div class="flex items-center gap-3 mb-2">
@@ -232,7 +253,12 @@
 
 		<!-- Spam Filter -->
 		<section class="mb-8 bg-white dark:bg-gray-800 rounded-lg shadow p-5">
-			<h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">{$t('admin.algorithm.section_spam')}</h3>
+			<div class="flex items-center justify-between mb-4">
+				<h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200">{$t('admin.algorithm.section_spam')}</h3>
+				{#if sectionUpdatedAt(SPAM_KEYS)}
+					<span class="text-xs text-gray-400 dark:text-gray-500">{$t('admin.algorithm.updated_at')} {sectionUpdatedAt(SPAM_KEYS)}</span>
+				{/if}
+			</div>
 			{#each SPAM_KEYS as key}
 				<div class="flex items-center gap-3 mb-2">
 					<span class="w-44 text-sm text-gray-600 dark:text-gray-400">{shortKey(key)}</span>
@@ -254,7 +280,12 @@
 
 		<!-- Decay Lambda -->
 		<section class="mb-8 bg-white dark:bg-gray-800 rounded-lg shadow p-5">
-			<h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">{$t('admin.algorithm.section_decay')}</h3>
+			<div class="flex items-center justify-between mb-4">
+				<h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200">{$t('admin.algorithm.section_decay')}</h3>
+				{#if sectionUpdatedAt(DECAY_KEYS)}
+					<span class="text-xs text-gray-400 dark:text-gray-500">{$t('admin.algorithm.updated_at')} {sectionUpdatedAt(DECAY_KEYS)}</span>
+				{/if}
+			</div>
 			{#each DECAY_KEYS as key}
 				<div class="flex items-center gap-3 mb-2">
 					<span class="w-36 text-sm text-gray-600 dark:text-gray-400">{shortKey(key)}</span>
@@ -277,7 +308,12 @@
 
 		<!-- Keyword Extraction -->
 		<section class="mb-8 bg-white dark:bg-gray-800 rounded-lg shadow p-5">
-			<h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">{$t('admin.algorithm.section_keyword')}</h3>
+			<div class="flex items-center justify-between mb-4">
+				<h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200">{$t('admin.algorithm.section_keyword')}</h3>
+				{#if sectionUpdatedAt(KEYWORD_KEYS)}
+					<span class="text-xs text-gray-400 dark:text-gray-500">{$t('admin.algorithm.updated_at')} {sectionUpdatedAt(KEYWORD_KEYS)}</span>
+				{/if}
+			</div>
 			{#each KEYWORD_KEYS as key}
 				<div class="flex items-center gap-3 mb-2">
 					<span class="w-36 text-sm text-gray-600 dark:text-gray-400">{shortKey(key)}</span>
