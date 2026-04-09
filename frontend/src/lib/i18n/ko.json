@@ -160,6 +160,7 @@
 	"insight.action_points": "액션 포인트",
 	"insight.for_role": "{role}을 위한 인사이트",
 	"insight.summary": "요약",
+	"insight.generated_at": "생성: {date}",
 
 	"tracker.add_keyword": "키워드 추가",
 	"tracker.my_keywords": "내 키워드",

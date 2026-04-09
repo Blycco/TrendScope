@@ -160,6 +160,7 @@
 	"insight.action_points": "Action Points",
 	"insight.for_role": "Insights for {role}",
 	"insight.summary": "Summary",
+	"insight.generated_at": "Generated: {date}",
 
 	"tracker.add_keyword": "Add Keyword",
 	"tracker.my_keywords": "My Keywords",
