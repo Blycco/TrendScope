@@ -41,6 +41,8 @@
 		{ href: '/admin/stopwords', labelKey: 'admin.layout.stopwords' },
 		{ href: '/admin/category-keywords', labelKey: 'admin.layout.category_keywords' },
 		{ href: '/admin/ai-config', labelKey: 'admin.layout.ai_config' },
+		{ href: '/admin/algorithm', labelKey: 'admin.layout.algorithm' },
+		{ href: '/admin/trend-quality', labelKey: 'admin.layout.trend_quality' },
 		{ href: '/admin/settings', labelKey: 'admin.layout.settings' },
 		{ href: '/admin/audit', labelKey: 'admin.layout.audit' },
 		{ href: '/admin/quota-alerts', labelKey: 'admin.layout.quota_alerts' }
