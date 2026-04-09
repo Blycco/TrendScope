@@ -45,7 +45,7 @@ export type {
 	KeywordHistoryResponse,
 	TrendItemMinimal,
 	RegionalTrendEntry,
-	RegionalTrendResponse
+	RegionalTrendResponse,
 	KeywordNode,
 	KeywordEdge,
 	KeywordGraphResponse

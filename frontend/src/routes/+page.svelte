@@ -16,7 +16,7 @@
 	import EarlyBadge from '../components/EarlyBadge.svelte';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
 	import PageStateWrapper from '$lib/ui/PageStateWrapper.svelte';
-	import TrendMap from '../components/TrendMap.svelte';
+	import TrendMap from '$lib/components/TrendMap.svelte';
 	import CategoryChart from '$lib/components/dashboard/CategoryChart.svelte';
 	import SourceChart from '$lib/components/dashboard/SourceChart.svelte';
 	import KeywordCloud from '$lib/components/dashboard/KeywordCloud.svelte';
