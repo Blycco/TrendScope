@@ -4,6 +4,8 @@
 	import { page } from '$app/stores';
 	import { formatDate } from '$lib/utils/locale';
 	import EarlyBadge from '../../../components/EarlyBadge.svelte';
+	import { authStore } from '$lib/stores/auth.svelte';
+	import { TrendingUp, ArrowRight } from 'lucide-svelte';
 
 	interface SharedTrendItem {
 		id: string;
@@ -134,5 +136,35 @@
 		<div class="text-center text-sm text-gray-400">
 			<p>{$t('shared.powered_by')}</p>
 		</div>
+
+		<!-- CTA banner for non-logged-in users -->
+		{#if !authStore.isAuthenticated}
+			<div class="rounded-xl border border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 p-6 text-center">
+				<div class="flex justify-center mb-3">
+					<TrendingUp size={28} class="text-blue-500" />
+				</div>
+				<h3 class="text-base font-bold text-gray-900 dark:text-gray-100 mb-1">
+					{$t('share.cta.title')}
+				</h3>
+				<p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+					{$t('share.cta.desc')}
+				</p>
+				<div class="flex items-center justify-center gap-3">
+					<a
+						href="/auth/register"
+						class="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
+					>
+						{$t('share.cta.start')}
+						<ArrowRight size={14} />
+					</a>
+					<a
+						href="/"
+						class="inline-flex items-center rounded-md border border-gray-300 dark:border-gray-600 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+					>
+						{$t('share.cta.browse')}
+					</a>
+				</div>
+			</div>
+		{/if}
 	{/if}
 </div>
