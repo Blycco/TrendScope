@@ -78,7 +78,7 @@ async def fetch_trends(
     """Fetch news_group rows ordered by score DESC with cursor pagination."""
     try:
         params: list[object] = []
-        conditions: list[str] = ["ng.score >= 5.0"]
+        conditions: list[str] = ["ng.score >= 5.0", "ng.is_hidden = FALSE"]
 
         if category:
             params.append(category)

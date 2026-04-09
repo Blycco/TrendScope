@@ -21,6 +21,7 @@ from backend.api.routers.admin import settings as admin_settings
 from backend.api.routers.admin import sources as admin_sources
 from backend.api.routers.admin import stopwords as admin_stopwords
 from backend.api.routers.admin import subscriptions as admin_subscriptions
+from backend.api.routers.admin import trend_quality as admin_trend_quality
 from backend.api.routers.admin import users as admin_users
 
 logger = structlog.get_logger(__name__)
@@ -55,6 +56,7 @@ def create_admin_app() -> FastAPI:
     admin.include_router(admin_filter_keywords.router, prefix="/v1")
     admin.include_router(admin_stopwords.router, prefix="/v1")
     admin.include_router(admin_category_keywords.router, prefix="/v1")
+    admin.include_router(admin_trend_quality.router, prefix="/v1")
 
     try:
         from backend.api.routers.admin import error_logs as admin_error_logs
