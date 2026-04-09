@@ -20,6 +20,7 @@ class TrendItem(BaseModel):
     direction: str = "steady"
     growth_type: str = "unknown"
     status: str = "stable"
+    burst_score: float = 0.0
 
 
 class TrendListResponse(BaseModel):

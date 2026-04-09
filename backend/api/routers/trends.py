@@ -90,6 +90,7 @@ async def list_trends(
             direction=row["direction"],
             growth_type=row.get("growth_type", "unknown") or "unknown",
             status=classify_trend_status(row["score"], None, row["direction"]),
+            burst_score=float(row.get("burst_score") or 0.0),
         )
         for row in rows
     ]
@@ -135,6 +136,7 @@ async def list_related_trends(
             direction=row["direction"],
             growth_type=row.get("growth_type", "unknown") or "unknown",
             status=classify_trend_status(row["score"], None, row["direction"]),
+            burst_score=float(row.get("burst_score") or 0.0),
         )
         for row in rows
     ]
@@ -255,6 +257,7 @@ async def list_early_trends(
             direction=row["direction"],
             growth_type=row.get("growth_type", "unknown") or "unknown",
             status=classify_trend_status(row["score"], None, row["direction"]),
+            burst_score=float(row.get("burst_score") or 0.0),
         )
         for row in rows
     ]

@@ -105,7 +105,7 @@ async def fetch_trends(
             SELECT ng.id::text, ng.category, ng.locale,
                    ng.title, ng.summary, ng.score,
                    ng.early_trend_score, ng.keywords,
-                   ng.created_at, ng.growth_type,
+                   ng.created_at, ng.growth_type, ng.burst_score,
                    (SELECT COUNT(*)
                     FROM news_article
                     WHERE group_id = ng.id

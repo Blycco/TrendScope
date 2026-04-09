@@ -84,7 +84,7 @@ async def process_articles(
     clusters = await stage_cluster(unmatched, db_pool)
 
     # Stage 6: Score calculation
-    scored_clusters = stage_score(clusters)
+    scored_clusters = await stage_score(clusters, db_pool)
 
     # Stage 6.5: Generate summaries
     await stage_summarize(scored_clusters, db_pool)
