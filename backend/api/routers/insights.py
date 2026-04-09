@@ -48,7 +48,12 @@ def _parse_content(
 ) -> MarketerInsight | CreatorInsight | OwnerInsight | GeneralInsight:
     if role == "marketer":
         return MarketerInsight(
-            **{k: content_dict.get(k, []) for k in ["ad_opportunities", "source_urls"]}
+            ad_opportunities=content_dict.get("ad_opportunities", []),
+            source_urls=content_dict.get("source_urls", []),
+            timing_recommendation=content_dict.get("timing_recommendation", ""),
+            channel_opportunities=content_dict.get("channel_opportunities", []),
+            competitor_note=content_dict.get("competitor_note", ""),
+            action_items=content_dict.get("action_items", []),
         )
     elif role == "creator":
         return CreatorInsight(
@@ -56,17 +61,30 @@ def _parse_content(
             timing=content_dict.get("timing", ""),
             seo_keywords=content_dict.get("seo_keywords", []),
             source_urls=content_dict.get("source_urls", []),
+            recommended_format=content_dict.get("recommended_format", ""),
+            title_suggestions=content_dict.get("title_suggestions", []),
+            hashtag_suggestions=content_dict.get("hashtag_suggestions", []),
+            best_upload_time=content_dict.get("best_upload_time", ""),
+            action_items=content_dict.get("action_items", []),
         )
     elif role == "owner":
         return OwnerInsight(
-            **{
-                k: content_dict.get(k, [])
-                for k in ["consumer_reactions", "product_hints", "market_ops", "source_urls"]
-            }
+            consumer_reactions=content_dict.get("consumer_reactions", []),
+            product_hints=content_dict.get("product_hints", []),
+            market_ops=content_dict.get("market_ops", []),
+            source_urls=content_dict.get("source_urls", []),
+            market_opportunity=content_dict.get("market_opportunity", ""),
+            consumer_sentiment=content_dict.get("consumer_sentiment", ""),
+            product_hint=content_dict.get("product_hint", ""),
+            action_items=content_dict.get("action_items", []),
         )
     else:  # general
-        keys = ["sns_drafts", "engagement_methods", "source_urls"]
-        return GeneralInsight(**{k: content_dict.get(k, []) for k in keys})
+        return GeneralInsight(
+            sns_drafts=content_dict.get("sns_drafts", []),
+            engagement_methods=content_dict.get("engagement_methods", []),
+            source_urls=content_dict.get("source_urls", []),
+            sns_post_draft=content_dict.get("sns_post_draft", ""),
+        )
 
 
 @router.get("/trends/{group_id}/insights", response_model=InsightResponse)
