@@ -133,6 +133,13 @@
 	"trend.sentiment.negative": "Negative",
 	"trend.sentiment.no_data": "No sentiment data available.",
 	"trend.detail.forecast": "Trend Forecast",
+	"trend.detail.why_now": "Why Now?",
+	"trend.detail.why_now.desc": "Analysis of why this trend is gaining attention right now.",
+	"trend.detail.burst_score": "Burst Score",
+	"trend.detail.articles.tab_all": "All",
+	"trend.detail.articles.tab_by_source": "By Source",
+	"trend.detail.share": "Share",
+	"trend.detail.scrap": "Scrap",
 
 	"forecast.title": "Trend Forecast (12 months)",
 	"forecast.actual": "Actual",
