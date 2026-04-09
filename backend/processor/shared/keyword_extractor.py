@@ -327,42 +327,112 @@ def _extract_bigrams(
     return Counter({b: c for b, c in bigrams.items() if c >= min_freq})
 
 
-def extract_keywords(
-    text: str,
+async def reload_stopword_cache() -> None:
+    """어드민 변경 후 불용어 Redis 캐시 무효화."""
+    from backend.processor.shared.config_loader import invalidate_cache
+
+    await invalidate_cache("stopwords")
+
+
+def _filter_tokens(
+    tokens: list[str],
     *,
+    stop_words_ko: frozenset[str] | None = None,
+    stop_words_en: frozenset[str] | None = None,
+) -> list[str]:
+    """Merge DB-loaded and hardcoded stop words, then filter tokens."""
+    ko_set = (stop_words_ko | _KOREAN_STOP_WORDS) if stop_words_ko else _KOREAN_STOP_WORDS
+    en_set = (stop_words_en | _STOP_WORDS) if stop_words_en else _STOP_WORDS
+    return [t for t in tokens if t not in ko_set and t.lower() not in en_set]
+
+
+def extract_keywords(
+    text: str = "",
+    *,
+    title: str = "",
+    body: str = "",
     top_k: int = _DEFAULT_TOP_K,
+    title_boost: float = 2.0,
+    body_max_chars: int = 500,
     use_soynlp: bool = True,
     use_bigrams: bool = True,
     corpus: CorpusStats | None = None,
+    stop_words_ko: frozenset[str] | None = None,
+    stop_words_en: frozenset[str] | None = None,
 ) -> list[Keyword]:
-    """Extract top-k keywords from text using TF-IDF x BM25 scoring.
+    """Extract top-k keywords using TF-IDF x BM25 scoring.
+
+    Accepts either a single ``text`` string (backward compat) or separate
+    ``title`` + ``body`` strings.  When title/body are provided, title tokens
+    are boosted by ``title_boost`` (frequency multiplied before scoring).
 
     Args:
-        text: Input text (should be pre-normalized).
+        text: Combined input text — used when title/body not given.
+        title: Article title (receives title_boost on token frequency).
+        body: Article body — truncated to body_max_chars before tokenizing.
         top_k: Number of keywords to return.
+        title_boost: Multiplier applied to title token frequencies.
+        body_max_chars: Maximum characters to read from body.
         use_soynlp: Attempt soynlp tokenization first.
         use_bigrams: Include co-occurrence bigrams in keywords.
         corpus: Corpus stats for IDF computation. Uses module-level stats if None.
+        stop_words_ko: Additional Korean stop words loaded from DB.
+        stop_words_en: Additional English stop words loaded from DB.
 
     Returns:
         List of Keyword objects sorted by score descending.
     """
-    if not text or not text.strip():
-        return []
+    # Resolve input: title+body mode or legacy text mode
+    use_split = bool(title or body)
 
-    # Tokenize: kiwi (POS) → soynlp → simple regex
-    tokens: list[str] | None = None
-    tokens = _try_kiwi_tokenize(text)
-    if tokens is None and use_soynlp:
-        tokens = _try_soynlp_tokenize(text)
-    if tokens is None:
-        tokens = _tokenize_simple(text)
+    if use_split:
+        title_text = title or ""
+        body_text = (body or "")[:body_max_chars]
+
+        if not title_text.strip() and not body_text.strip():
+            return []
+
+        # Tokenize title and body separately
+        def _tokenize(t: str) -> list[str]:
+            toks: list[str] | None = _try_kiwi_tokenize(t)
+            if toks is None and use_soynlp:
+                toks = _try_soynlp_tokenize(t)
+            if toks is None:
+                toks = _tokenize_simple(t)
+            return _filter_tokens(toks, stop_words_ko=stop_words_ko, stop_words_en=stop_words_en)
+
+        title_tokens = _tokenize(title_text)
+        body_tokens = _tokenize(body_text)
+
+        # Build combined token list: title tokens appear with boosted frequency
+        title_counter = Counter(title_tokens)
+        body_counter = Counter(body_tokens)
+        # Merge: title token count × title_boost + body count
+        merged: Counter[str] = Counter()
+        for term, cnt in title_counter.items():
+            merged[term] += int(cnt * title_boost)
+        for term, cnt in body_counter.items():
+            merged[term] += cnt
+
+        tokens = list(merged.elements())
+    else:
+        raw = text or ""
+        if not raw.strip():
+            return []
+
+        toks: list[str] | None = _try_kiwi_tokenize(raw)
+        if toks is None and use_soynlp:
+            toks = _try_soynlp_tokenize(raw)
+        if toks is None:
+            toks = _tokenize_simple(raw)
+        tokens = _filter_tokens(toks, stop_words_ko=stop_words_ko, stop_words_en=stop_words_en)
+        merged = Counter(tokens)
 
     if not tokens:
         return []
 
     stats = corpus if corpus is not None else _corpus_stats
-    term_counts = Counter(tokens)
+    term_counts = merged if use_split else Counter(tokens)
     doc_length = len(tokens)
 
     # Update corpus stats

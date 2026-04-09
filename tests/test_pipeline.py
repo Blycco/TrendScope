@@ -66,38 +66,89 @@ class TestStageNormalize:
 
 
 class TestStageSpamFilter:
-    def test_passes_clean_article(self) -> None:
+    async def test_passes_clean_article(self) -> None:
         articles = [_make_article(title="정상 뉴스 기사", body="내용이 있는 뉴스 기사입니다.")]
-        result = _stage_spam_filter(articles)
+        pool = MagicMock()
+        _mock_cfg = AsyncMock(side_effect=[0.3, 3, 20, 2])
+        _mock_kw = AsyncMock(return_value=frozenset())
+        with (
+            patch("backend.processor.stages.spam_filter.get_setting", _mock_cfg),
+            patch("backend.processor.stages.spam_filter.get_filter_keywords", _mock_kw),
+        ):
+            result = await _stage_spam_filter(articles, pool)
         assert len(result) == 1
 
-    def test_filters_spam_article(self) -> None:
+    async def test_filters_spam_article(self) -> None:
         articles = [
             _make_article(
                 title="무료 대출 카지노 도박 바카라",
                 body=" ".join(["무료대출카지노도박"] * 20),
             )
         ]
-        result = _stage_spam_filter(articles)
+        pool = MagicMock()
+        _mock_cfg = AsyncMock(side_effect=[0.3, 3, 20, 2])
+        _mock_kw = AsyncMock(return_value=frozenset())
+        with (
+            patch("backend.processor.stages.spam_filter.get_setting", _mock_cfg),
+            patch("backend.processor.stages.spam_filter.get_filter_keywords", _mock_kw),
+        ):
+            result = await _stage_spam_filter(articles, pool)
         assert isinstance(result, list)
 
 
 class TestStageExtractKeywords:
-    def test_adds_keywords_field(self) -> None:
+    @staticmethod
+    def _mock_pool() -> MagicMock:
+        pool = MagicMock()
+        pool.acquire.return_value.__aenter__ = AsyncMock(return_value=MagicMock())
+        pool.acquire.return_value.__aexit__ = AsyncMock(return_value=None)
+        return pool
+
+    async def test_adds_keywords_field(self) -> None:
         articles = [_make_article(title="Python 기초", body="파이썬은 배우기 쉬운 언어입니다.")]
-        result = _stage_extract_keywords(articles)
+        with (
+            patch(
+                "backend.processor.shared.config_loader.get_stopwords", new_callable=AsyncMock
+            ) as mock_sw,
+            patch(
+                "backend.processor.shared.config_loader.get_setting", new_callable=AsyncMock
+            ) as mock_gs,
+        ):
+            mock_sw.return_value = frozenset()
+            mock_gs.return_value = 2.0
+            result = await _stage_extract_keywords(articles, self._mock_pool())
         assert "keywords" in result[0]
         assert isinstance(result[0]["keywords"], list)
 
-    def test_adds_keyword_importance(self) -> None:
+    async def test_adds_keyword_importance(self) -> None:
         articles = [_make_article()]
-        result = _stage_extract_keywords(articles)
+        with (
+            patch(
+                "backend.processor.shared.config_loader.get_stopwords", new_callable=AsyncMock
+            ) as mock_sw,
+            patch(
+                "backend.processor.shared.config_loader.get_setting", new_callable=AsyncMock
+            ) as mock_gs,
+        ):
+            mock_sw.return_value = frozenset()
+            mock_gs.return_value = 2.0
+            result = await _stage_extract_keywords(articles, self._mock_pool())
         assert "keyword_importance" in result[0]
         assert isinstance(result[0]["keyword_importance"], float)
 
-    def test_handles_empty_text(self) -> None:
+    async def test_handles_empty_text(self) -> None:
         articles = [_make_article(title="", body="")]
-        result = _stage_extract_keywords(articles)
+        with (
+            patch(
+                "backend.processor.shared.config_loader.get_stopwords", new_callable=AsyncMock
+            ) as mock_sw,
+            patch(
+                "backend.processor.shared.config_loader.get_setting", new_callable=AsyncMock
+            ) as mock_gs,
+        ):
+            mock_sw.return_value = frozenset()
+            mock_gs.return_value = 2.0
+            result = await _stage_extract_keywords(articles, self._mock_pool())
         assert result[0]["keywords"] == []
         assert result[0]["keyword_importance"] == 0.0
 
@@ -135,7 +186,16 @@ class TestComputeEarlyTrendScore:
 
 
 class TestStageScore:
-    def test_returns_scored_clusters(self) -> None:
+    @staticmethod
+    def _mock_pool() -> MagicMock:
+        pool = MagicMock()
+        conn = AsyncMock()
+        conn.fetchval = AsyncMock(return_value=None)
+        pool.acquire.return_value.__aenter__ = AsyncMock(return_value=conn)
+        pool.acquire.return_value.__aexit__ = AsyncMock(return_value=None)
+        return pool
+
+    async def test_returns_scored_clusters(self) -> None:
         article = _make_article()
         article["keywords"] = ["python", "code"]
         article["keyword_importance"] = 0.5
@@ -150,12 +210,18 @@ class TestStageScore:
         cluster = Cluster(cluster_id="test-cluster-1", representative=item, members=[])
         cluster._articles = [article]  # type: ignore[attr-defined]
 
-        result = _stage_score([cluster])
+        with patch(
+            "backend.processor.shared.config_loader.get_setting",
+            new_callable=AsyncMock,
+            return_value=25.0,
+        ):
+            result = await _stage_score([cluster], self._mock_pool())
         assert len(result) == 1
         assert "score" in result[0]
         assert result[0]["score"] >= 0
         assert "early_trend_score" in result[0]
         assert 0.0 <= result[0]["early_trend_score"] <= 1.0
+        assert "burst_score" in result[0]
 
 
 class TestStageWarmCache:
@@ -203,6 +269,14 @@ class TestProcessArticles:
         with (
             patch("backend.processor.stages.dedupe.is_duplicate", AsyncMock(return_value=False)),
             patch("backend.processor.stages.cache.set_cached", AsyncMock()),
+            patch(
+                "backend.processor.stages.spam_filter.get_setting",
+                AsyncMock(side_effect=[0.3, 3, 20, 2]),
+            ),
+            patch(
+                "backend.processor.stages.spam_filter.get_filter_keywords",
+                AsyncMock(return_value=frozenset()),
+            ),
         ):
             pool = _make_db_pool(group_id=42)
             result = await process_articles(articles, pool)

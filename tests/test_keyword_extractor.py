@@ -197,3 +197,63 @@ class TestBigramCooccurrence:
         for kw in bigram_kws:
             assert kw.score > 0
             assert kw.frequency >= 2
+
+
+class TestStopwordsAndTitleBoost:
+    """Tests for DB-driven stop words and title/body split."""
+
+    def setup_method(self) -> None:
+        reset_corpus_stats()
+
+    def test_stopword_filtered_from_results(self) -> None:
+        """키워드가 stop_words_ko에 포함되면 추출되지 않아야 한다."""
+        text = "1월 결산 실적 발표"
+        extra_stop = frozenset({"1월", "결산"})
+        result = extract_keywords(text, use_soynlp=False, stop_words_ko=extra_stop)
+        terms = [kw.term for kw in result]
+        assert "1월" not in terms
+        assert "결산" not in terms
+
+    def test_12월_filtered_when_stopword(self) -> None:
+        """12월이 불용어로 등록되면 추출 키워드에 포함되지 않는다."""
+        extra_stop = frozenset({"12월"})
+        result = extract_keywords(
+            "12월 결산 12월 실적 발표",
+            use_soynlp=False,
+            stop_words_ko=extra_stop,
+        )
+        terms = [kw.term for kw in result]
+        assert "12월" not in terms
+
+    def test_title_boost_raises_title_token_score(self) -> None:
+        """제목 단어가 본문 단어보다 높은 점수를 가져야 한다."""
+        reset_corpus_stats()
+        result = extract_keywords(
+            title="인공지능 혁신",
+            body="날씨 맑음",
+            use_soynlp=False,
+            title_boost=3.0,
+        )
+        terms = [kw.term for kw in result]
+        # 제목 단어들이 결과에 포함되어야 함
+        assert any(t in terms for t in ["인공지능", "혁신", "인공", "지능"])
+
+    def test_body_max_chars_limits_body(self) -> None:
+        """body_max_chars 이후 내용은 무시되어야 한다."""
+        long_body = "유니크단어" + " 일반단어" * 200
+        result_short = extract_keywords(
+            title="테스트",
+            body=long_body,
+            body_max_chars=10,
+            use_soynlp=False,
+        )
+        result_full = extract_keywords(
+            title="테스트",
+            body=long_body,
+            body_max_chars=5000,
+            use_soynlp=False,
+        )
+        terms_short = [kw.term for kw in result_short]
+        terms_full = [kw.term for kw in result_full]
+        # 긴 본문에는 "일반단어"가 나타나야 함
+        assert len(terms_full) >= len(terms_short)

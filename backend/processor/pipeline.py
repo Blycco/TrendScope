@@ -68,23 +68,23 @@ async def process_articles(
     # Stage 2: Normalize text
     normalized = stage_normalize(unique_articles)
 
-    # Stage 3: Spam filter
-    clean = stage_spam_filter(normalized)
+    # Stage 3: Spam filter (async — loads config from DB/Redis cache per batch)
+    clean = await stage_spam_filter(normalized, db_pool)
     if not clean:
         logger.info("pipeline_all_spam", input_count=len(normalized))
         return 0
 
-    # Stage 4: Extract keywords
-    with_keywords = stage_extract_keywords(clean)
+    # Stage 4: Extract keywords (async — loads stop words & params from DB/Redis per batch)
+    with_keywords = await stage_extract_keywords(clean, db_pool)
 
     # Stage 4.5: Match articles against existing groups (cross-batch grouping)
     unmatched = await stage_match_existing_groups(with_keywords, db_pool)
 
     # Stage 5: Semantic clustering (only unmatched articles form new clusters)
-    clusters = stage_cluster(unmatched)
+    clusters = await stage_cluster(unmatched, db_pool)
 
     # Stage 6: Score calculation
-    scored_clusters = stage_score(clusters)
+    scored_clusters = await stage_score(clusters, db_pool)
 
     # Stage 6.5: Generate summaries
     await stage_summarize(scored_clusters, db_pool)

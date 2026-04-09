@@ -77,7 +77,10 @@ class SpamResult:
     reasons: list[str]
 
 
-def _extract_features(text: str) -> dict[str, float]:
+def _extract_features(
+    text: str,
+    spam_keywords: frozenset[str] | None = None,
+) -> dict[str, float]:
     """Extract features for spam detection."""
     text_len = max(len(text), 1)
 
@@ -87,8 +90,9 @@ def _extract_features(text: str) -> dict[str, float]:
     url_ratio = url_char_count / text_len
 
     # Spam keyword count
+    kw_set = spam_keywords if spam_keywords is not None else _SPAM_KEYWORDS
     text_lower = text.lower()
-    keyword_hits = sum(1 for kw in _SPAM_KEYWORDS if kw in text_lower)
+    keyword_hits = sum(1 for kw in kw_set if kw in text_lower)
 
     # Phone number count
     phone_count = len(_PHONE_PATTERN.findall(text))
@@ -115,21 +119,32 @@ def _extract_features(text: str) -> dict[str, float]:
     }
 
 
-def _classify_rule_based(text: str) -> SpamResult:
+def _classify_rule_based(
+    text: str,
+    *,
+    spam_keywords: frozenset[str] | None = None,
+    url_threshold: float | None = None,
+    kw_threshold: int | None = None,
+    min_length: int | None = None,
+) -> SpamResult:
     """Rule-based spam classification (cold start fallback)."""
-    features = _extract_features(text)
+    _url_thr = url_threshold if url_threshold is not None else _SPAM_URL_RATIO_THRESHOLD
+    _kw_thr = kw_threshold if kw_threshold is not None else _SPAM_KEYWORD_THRESHOLD
+    _min_len = min_length if min_length is not None else _MIN_CONTENT_LENGTH
+
+    features = _extract_features(text, spam_keywords)
     reasons: list[str] = []
     score = 0.0
 
-    if features["content_length"] < _MIN_CONTENT_LENGTH:
+    if features["content_length"] < _min_len:
         reasons.append("content_too_short")
         score += 0.3
 
-    if features["url_ratio"] > _SPAM_URL_RATIO_THRESHOLD:
+    if features["url_ratio"] > _url_thr:
         reasons.append("high_url_ratio")
         score += 0.3
 
-    if features["keyword_hits"] >= _SPAM_KEYWORD_THRESHOLD:
+    if features["keyword_hits"] >= _kw_thr:
         reasons.append("spam_keywords")
         score += 0.3
 
@@ -223,13 +238,33 @@ def _classify_xgboost(text: str) -> SpamResult | None:
         return None
 
 
-def classify_spam(text: str, *, model_path: Path | None = None) -> SpamResult:
+async def reload_filter_cache() -> None:
+    """어드민 변경 후 필터 키워드 Redis 캐시 무효화."""
+    from backend.processor.shared.config_loader import invalidate_cache
+
+    await invalidate_cache("filter_kw")
+
+
+def classify_spam(
+    text: str,
+    *,
+    spam_keywords: frozenset[str] | None = None,
+    url_threshold: float | None = None,
+    kw_threshold: int | None = None,
+    min_length: int | None = None,
+    model_path: Path | None = None,
+) -> SpamResult:
     """Classify text as spam or not.
 
     Uses XGBoost model if available, falls back to rule-based heuristics.
+    Optional keyword/threshold overrides are used when provided (DB-loaded values).
 
     Args:
         text: Input text to classify.
+        spam_keywords: Override spam keyword set (from DB). Falls back to hardcoded set.
+        url_threshold: Override URL ratio threshold (from DB).
+        kw_threshold: Override spam keyword count threshold (from DB).
+        min_length: Override minimum content length (from DB).
         model_path: Optional path to trained XGBoost model file.
 
     Returns:
@@ -251,5 +286,11 @@ def classify_spam(text: str, *, model_path: Path | None = None) -> SpamResult:
     if xgb_result is not None:
         return xgb_result
 
-    # Fallback to rule-based
-    return _classify_rule_based(text)
+    # Fallback to rule-based with optional DB-loaded overrides
+    return _classify_rule_based(
+        text,
+        spam_keywords=spam_keywords,
+        url_threshold=url_threshold,
+        kw_threshold=kw_threshold,
+        min_length=min_length,
+    )

@@ -14,6 +14,7 @@ from backend.crawler.sources.sns_crawler import collect_all as sns_collect_all
 from backend.jobs.burst_job import run_burst_job
 from backend.jobs.digest_job import run_daily_digest
 from backend.jobs.early_trend_update import run_early_trend_update
+from backend.jobs.keyword_review_job import run_keyword_review_job
 from backend.jobs.keyword_snapshot_job import run_keyword_snapshot
 
 logger = structlog.get_logger(__name__)
@@ -79,6 +80,15 @@ async def _job_keyword_snapshot(db_pool: asyncpg.Pool) -> None:
         logger.info("scheduled_keyword_snapshot_done")
     except Exception as exc:
         logger.error("scheduled_keyword_snapshot_failed", error=str(exc))
+
+
+async def _job_keyword_review(db_pool: asyncpg.Pool) -> None:
+    """Scheduled job: AI-based non-trend keyword suggestion."""
+    try:
+        inserted = await run_keyword_review_job(db_pool)
+        logger.info("scheduled_keyword_review_done", inserted=inserted)
+    except Exception as exc:
+        logger.error("scheduled_keyword_review_failed", error=str(exc))
 
 
 async def _job_daily_digest(db_pool: asyncpg.Pool) -> None:
@@ -194,6 +204,17 @@ def create_scheduler(db_pool: asyncpg.Pool) -> AsyncIOScheduler:
         args=[db_pool],
         id="daily_digest",
         name="Daily Reddit Digest",
+    )
+
+    scheduler.add_job(
+        _job_keyword_review,
+        "cron",
+        hour="*/24",
+        args=[db_pool],
+        id="keyword_review",
+        name="AI Keyword Review (24h)",
+        max_instances=1,
+        coalesce=True,
     )
 
     logger.info("scheduler_created", jobs=len(scheduler.get_jobs()))

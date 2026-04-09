@@ -61,6 +61,7 @@ export interface TrendItem {
 	summary: string | null;
 	score: number;
 	early_trend_score: number;
+	burst_score?: number;
 	keywords: string[];
 	created_at: string;
 	article_count: number;
@@ -162,6 +163,10 @@ export interface NewsListResponse {
 export interface MarketerInsight {
 	ad_opportunities: string[];
 	source_urls: string[];
+	timing_recommendation?: string;
+	channel_opportunities?: string[];
+	competitor_note?: string;
+	action_items?: string[];
 }
 
 export interface CreatorInsight {
@@ -169,6 +174,11 @@ export interface CreatorInsight {
 	timing: string;
 	seo_keywords: string[];
 	source_urls: string[];
+	recommended_format?: string;
+	title_suggestions?: string[];
+	hashtag_suggestions?: string[];
+	best_upload_time?: string;
+	action_items?: string[];
 }
 
 export interface OwnerInsight {
@@ -176,12 +186,17 @@ export interface OwnerInsight {
 	product_hints: string[];
 	market_ops: string[];
 	source_urls: string[];
+	market_opportunity?: string;
+	consumer_sentiment?: string;
+	product_hint?: string;
+	action_items?: string[];
 }
 
 export interface GeneralInsight {
 	sns_drafts: string[];
 	engagement_methods: string[];
 	source_urls: string[];
+	sns_post_draft?: string;
 }
 
 export type InsightContent =

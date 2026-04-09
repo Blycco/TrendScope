@@ -34,6 +34,9 @@ MIGRATIONS: list[str] = [
     "migrations.020_growth_type",
     "migrations.021_keyword_snapshot",
     "migrations.022_naver_datalab_source",
+    "migrations.023_config_tables",
+    "migrations.024_burst_score",
+    "migrations.025_seed_config_data",
 ]
 
 
