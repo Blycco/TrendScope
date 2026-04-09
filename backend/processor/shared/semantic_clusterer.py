@@ -16,7 +16,7 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
-# --- Similarity weights (from algorithms.md) ---
+# --- Similarity weights (from algorithms.md) — used as defaults ---
 _COSINE_WEIGHT: float = 0.50
 _JACCARD_WEIGHT: float = 0.25
 _TEMPORAL_WEIGHT: float = 0.15
@@ -26,6 +26,21 @@ _SOURCE_WEIGHT: float = 0.10
 _JACCARD_EARLY_FILTER: float = 0.10  # Skip cosine if Jaccard < this
 _DEFAULT_CLUSTER_THRESHOLD: float = 0.55
 _TEMPORAL_DECAY_HOURS: float = 24.0  # Time window for temporal similarity
+
+
+@dataclass
+class ClusterConfig:
+    """Clustering algorithm configuration — loaded from DB admin_settings."""
+
+    cosine_weight: float = _COSINE_WEIGHT
+    jaccard_weight: float = _JACCARD_WEIGHT
+    temporal_weight: float = _TEMPORAL_WEIGHT
+    source_weight: float = _SOURCE_WEIGHT
+    jaccard_early_filter: float = _JACCARD_EARLY_FILTER
+    threshold: float = _DEFAULT_CLUSTER_THRESHOLD
+    outlier_sigma: float = 1.0
+    temporal_decay_hours: float = _TEMPORAL_DECAY_HOURS
+
 
 # Sentence transformer model (loaded lazily)
 _embedding_model: object | None = None
@@ -73,7 +88,7 @@ def compute_temporal_similarity(
 ) -> float:
     """Temporal proximity score (exponential decay by hour difference)."""
     if a is None or b is None:
-        return 0.5  # Neutral score when timestamps unknown
+        return 0.0  # No time data → treat as dissimilar
 
     if a.tzinfo is None:
         a = a.replace(tzinfo=timezone.utc)  # noqa: UP017
@@ -165,18 +180,25 @@ def encode_texts(texts: list[str]) -> list[list[float]]:
         return [[] for _ in texts]
 
 
-def compute_similarity(a: ClusterItem, b: ClusterItem) -> float:
+def compute_similarity(
+    a: ClusterItem,
+    b: ClusterItem,
+    config: ClusterConfig | None = None,
+) -> float:
     """Compute composite similarity between two items.
 
-    sim(A,B) = 0.50*cosine + 0.25*jaccard + 0.15*temporal + 0.10*source
+    sim(A,B) = cosine_weight*cosine + jaccard_weight*jaccard
+             + temporal_weight*temporal + source_weight*source
 
     Uses Jaccard as early filter (Stage 1) before computing cosine (Stage 2).
     """
+    cfg = config or ClusterConfig()
+
     # Stage 1: Jaccard early filter
     jaccard = compute_jaccard(a.keywords, b.keywords)
-    if jaccard < _JACCARD_EARLY_FILTER and (a.embedding is None or b.embedding is None):
+    if jaccard < cfg.jaccard_early_filter and (a.embedding is None or b.embedding is None):
         # Very low keyword overlap and no embeddings → skip
-        return jaccard * _JACCARD_WEIGHT
+        return jaccard * cfg.jaccard_weight
 
     # Stage 2: Cosine similarity
     cosine = 0.0
@@ -191,14 +213,16 @@ def compute_similarity(a: ClusterItem, b: ClusterItem) -> float:
         if a.embedding is not None and b.embedding is not None:
             cosine = compute_cosine_similarity(a.embedding, b.embedding)
 
-    temporal = compute_temporal_similarity(a.published_at, b.published_at)
+    temporal = compute_temporal_similarity(
+        a.published_at, b.published_at, decay_hours=cfg.temporal_decay_hours
+    )
     source = compute_source_similarity(a.source_type, b.source_type)
 
     return (
-        _COSINE_WEIGHT * cosine
-        + _JACCARD_WEIGHT * jaccard
-        + _TEMPORAL_WEIGHT * temporal
-        + _SOURCE_WEIGHT * source
+        cfg.cosine_weight * cosine
+        + cfg.jaccard_weight * jaccard
+        + cfg.temporal_weight * temporal
+        + cfg.source_weight * source
     )
 
 
@@ -233,6 +257,7 @@ def _pick_representative(
 def _cluster_greedy(
     items: list[ClusterItem],
     threshold: float,
+    config: ClusterConfig | None = None,
 ) -> list[Cluster]:
     """Original greedy single-linkage clustering (fallback)."""
     clusters: list[Cluster] = []
@@ -242,7 +267,7 @@ def _cluster_greedy(
         best_sim: float = 0.0
 
         for cluster in clusters:
-            sim = compute_similarity(item, cluster.representative)
+            sim = compute_similarity(item, cluster.representative, config)
             if sim > best_sim:
                 best_sim = sim
                 best_cluster = cluster
@@ -265,7 +290,10 @@ def _cluster_greedy(
     return clusters
 
 
-def _cluster_hdbscan(items: list[ClusterItem]) -> list[Cluster] | None:
+def _cluster_hdbscan(
+    items: list[ClusterItem],
+    config: ClusterConfig | None = None,
+) -> list[Cluster] | None:
     """HDBSCAN density-based clustering. Returns None if unavailable."""
     if len(items) < _HDBSCAN_MIN_ITEMS:
         return None
@@ -282,7 +310,7 @@ def _cluster_hdbscan(items: list[ClusterItem]) -> list[Cluster] | None:
         dist_matrix = [[0.0] * n for _ in range(n)]
         for i in range(n):
             for j in range(i + 1, n):
-                sim = compute_similarity(items[i], items[j])
+                sim = compute_similarity(items[i], items[j], config)
                 dist = max(0.0, 1.0 - sim)
                 dist_matrix[i][j] = dist
                 dist_matrix[j][i] = dist
@@ -334,12 +362,14 @@ def cluster_items(
     items: list[ClusterItem],
     *,
     threshold: float = _DEFAULT_CLUSTER_THRESHOLD,
+    config: ClusterConfig | None = None,
 ) -> list[Cluster]:
     """Cluster items using HDBSCAN with greedy single-linkage fallback.
 
     Args:
         items: Items to cluster.
-        threshold: Minimum similarity for greedy fallback.
+        threshold: Minimum similarity for greedy fallback (overridden by config.threshold if given).
+        config: Clustering config loaded from DB. If provided, config.threshold is used.
 
     Returns:
         List of Cluster objects.
@@ -347,10 +377,12 @@ def cluster_items(
     if not items:
         return []
 
+    effective_threshold = config.threshold if config is not None else threshold
+
     # Try HDBSCAN first
-    clusters = _cluster_hdbscan(items)
+    clusters = _cluster_hdbscan(items, config)
     if clusters is None:
-        clusters = _cluster_greedy(items, threshold)
+        clusters = _cluster_greedy(items, effective_threshold, config)
         logger.info(
             "clustering_complete",
             method="greedy",

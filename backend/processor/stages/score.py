@@ -6,13 +6,22 @@ from collections import Counter
 from datetime import datetime, timezone
 from typing import Any
 
+import asyncpg
 import structlog
 
+from backend.processor.algorithms.burst import TimeSeriesPoint, detect_burst
 from backend.processor.algorithms.cross_platform import verify_cross_platform
-from backend.processor.shared.score_calculator import ScoreInput, ScoreResult, calculate_score
+from backend.processor.shared.score_calculator import (
+    ScoreInput,
+    ScoreResult,
+    ScoreWeights,
+    calculate_score,
+)
 from backend.processor.shared.semantic_clusterer import Cluster
 
 logger = structlog.get_logger(__name__)
+
+_DEFAULT_WEIGHTS = ScoreWeights()
 
 
 def compute_early_trend_score(articles: list[dict[str, Any]]) -> float:
@@ -50,8 +59,60 @@ def compute_early_trend_score(articles: list[dict[str, Any]]) -> float:
     return round(0.4 * velocity + 0.3 * source_diversity + 0.3 * recency, 4)
 
 
-def stage_score(clusters: list[Cluster]) -> list[dict[str, Any]]:
+def _build_burst_series(articles: list[dict[str, Any]]) -> list[TimeSeriesPoint]:
+    """Build a time series from article publish times for burst detection."""
+    from collections import Counter
+
+    hour_counts: Counter[float] = Counter()
+    for a in articles:
+        pub_time = a.get("publish_time")
+        if isinstance(pub_time, str):
+            pub_time = datetime.fromisoformat(pub_time)
+        if isinstance(pub_time, datetime):
+            if pub_time.tzinfo is None:
+                pub_time = pub_time.replace(tzinfo=timezone.utc)
+            # Bucket by hour
+            bucket = float(int(pub_time.timestamp() / 3600) * 3600)
+            hour_counts[bucket] += 1
+
+    return [
+        TimeSeriesPoint(timestamp=ts, value=float(cnt)) for ts, cnt in sorted(hour_counts.items())
+    ]
+
+
+async def _load_weights(db_pool: asyncpg.Pool) -> ScoreWeights:
+    """Load score weights from DB/Redis; falls back to defaults on error."""
+    from backend.processor.shared.config_loader import get_setting
+
+    d = _DEFAULT_WEIGHTS
+    return ScoreWeights(
+        freshness=float(await get_setting(db_pool, "score.weight_freshness", d.freshness)),
+        burst=float(await get_setting(db_pool, "score.weight_burst", d.burst)),
+        article_count=float(
+            await get_setting(db_pool, "score.weight_article_count", d.article_count)
+        ),
+        source_diversity=float(
+            await get_setting(db_pool, "score.weight_source_diversity", d.source_diversity)
+        ),
+        social_signal=float(await get_setting(db_pool, "score.weight_social", d.social_signal)),
+        keyword_importance=float(
+            await get_setting(db_pool, "score.weight_keyword", d.keyword_importance)
+        ),
+        velocity=float(await get_setting(db_pool, "score.weight_velocity", d.velocity)),
+    )
+
+
+async def stage_score(
+    clusters: list[Cluster],
+    db_pool: asyncpg.Pool,
+) -> list[dict[str, Any]]:
     """Stage 6: Calculate score for each cluster."""
+    try:
+        weights = await _load_weights(db_pool)
+    except Exception as exc:
+        logger.warning("score_weights_load_failed", error=str(exc))
+        weights = _DEFAULT_WEIGHTS
+
     scored: list[dict[str, Any]] = []
     for cluster in clusters:
         try:
@@ -66,6 +127,11 @@ def stage_score(clusters: list[Cluster]) -> list[dict[str, Any]]:
             sources = {a.get("source", "") for a in articles if a.get("source")}
             source_count = max(1, len(sources))
 
+            # Burst detection
+            series = _build_burst_series(articles)
+            burst_result = detect_burst(series)
+            early_velocity = min(1.0, len(articles) / 10.0)
+
             score_input = ScoreInput(
                 published_at=pub_time,
                 category=rep_article.get("category", "default"),
@@ -73,8 +139,10 @@ def stage_score(clusters: list[Cluster]) -> list[dict[str, Any]]:
                 article_count=len(articles),
                 source_count=source_count,
                 keyword_importance=rep_article.get("keyword_importance", 0.0),
+                burst_score=burst_result.score,
+                velocity=early_velocity,
             )
-            result: ScoreResult = calculate_score(score_input)
+            result: ScoreResult = calculate_score(score_input, weights=weights)
 
             keyword_counter: Counter[str] = Counter()
             for a in articles:
@@ -83,11 +151,14 @@ def stage_score(clusters: list[Cluster]) -> list[dict[str, Any]]:
                         keyword_counter[kw] += 1
             unique_keywords = [kw for kw, _ in keyword_counter.most_common(20)]
 
-            top_keywords = unique_keywords[:3]
-            group_title = " · ".join(top_keywords) if top_keywords else rep_article.get("title", "")
+            # Group title: prefer rep article's original title
+            raw_title = rep_article.get("title", "")
+            if raw_title:
+                group_title = raw_title if len(raw_title) <= 50 else raw_title[:45] + "…"
+            else:
+                group_title = " · ".join(unique_keywords[:3])
 
             early_score = compute_early_trend_score(articles)
-
             cross_platform_multiplier = verify_cross_platform(articles)
 
             scored.append(
@@ -101,6 +172,8 @@ def stage_score(clusters: list[Cluster]) -> list[dict[str, Any]]:
                     "category": rep_article.get("category", "general"),
                     "locale": rep_article.get("locale", "ko"),
                     "keywords": unique_keywords,
+                    "burst_score": burst_result.score,
+                    "growth_type": burst_result.growth_type,
                 }
             )
         except Exception as exc:

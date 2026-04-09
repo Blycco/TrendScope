@@ -186,7 +186,16 @@ class TestComputeEarlyTrendScore:
 
 
 class TestStageScore:
-    def test_returns_scored_clusters(self) -> None:
+    @staticmethod
+    def _mock_pool() -> MagicMock:
+        pool = MagicMock()
+        conn = AsyncMock()
+        conn.fetchval = AsyncMock(return_value=None)
+        pool.acquire.return_value.__aenter__ = AsyncMock(return_value=conn)
+        pool.acquire.return_value.__aexit__ = AsyncMock(return_value=None)
+        return pool
+
+    async def test_returns_scored_clusters(self) -> None:
         article = _make_article()
         article["keywords"] = ["python", "code"]
         article["keyword_importance"] = 0.5
@@ -201,12 +210,18 @@ class TestStageScore:
         cluster = Cluster(cluster_id="test-cluster-1", representative=item, members=[])
         cluster._articles = [article]  # type: ignore[attr-defined]
 
-        result = _stage_score([cluster])
+        with patch(
+            "backend.processor.shared.config_loader.get_setting",
+            new_callable=AsyncMock,
+            return_value=25.0,
+        ):
+            result = await _stage_score([cluster], self._mock_pool())
         assert len(result) == 1
         assert "score" in result[0]
         assert result[0]["score"] >= 0
         assert "early_trend_score" in result[0]
         assert 0.0 <= result[0]["early_trend_score"] <= 1.0
+        assert "burst_score" in result[0]
 
 
 class TestStageWarmCache:

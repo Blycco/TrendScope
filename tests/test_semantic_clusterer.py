@@ -81,9 +81,9 @@ class TestTemporalSimilarity:
 
     def test_none_timestamps(self) -> None:
         now = datetime.now(timezone.utc)
-        assert compute_temporal_similarity(None, now) == 0.5
-        assert compute_temporal_similarity(now, None) == 0.5
-        assert compute_temporal_similarity(None, None) == 0.5
+        assert compute_temporal_similarity(None, now) == 0.0
+        assert compute_temporal_similarity(now, None) == 0.0
+        assert compute_temporal_similarity(None, None) == 0.0
 
 
 class TestSourceSimilarity:
@@ -504,3 +504,49 @@ class TestRefineClusters:
         # outlier has zero keyword overlap → should be separated
         singleton_ids = {c.representative.item_id for c in result if c.size == 1}
         assert "outlier" in singleton_ids
+
+
+class TestClusterConfigAndTemporalFix:
+    """T-05: ClusterConfig 전달 + temporal None=0.0 수정 검증."""
+
+    def test_temporal_similarity_none_returns_zero(self) -> None:
+        """None 타임스탬프 → 0.0 반환 (기존 0.5에서 변경)."""
+        from backend.processor.shared.semantic_clusterer import compute_temporal_similarity
+
+        assert compute_temporal_similarity(None, None) == 0.0
+        assert compute_temporal_similarity(None, datetime.now(timezone.utc)) == 0.0
+
+    def test_cluster_config_defaults(self) -> None:
+        """ClusterConfig 기본값 확인."""
+        from backend.processor.shared.semantic_clusterer import ClusterConfig
+
+        cfg = ClusterConfig()
+        assert cfg.cosine_weight == 0.50
+        assert cfg.jaccard_weight == 0.25
+        assert cfg.threshold == 0.55
+        assert cfg.outlier_sigma == 1.0
+
+    def test_compute_similarity_with_config(self) -> None:
+        """config 파라미터 없이도 기본 동작 유지."""
+        from backend.processor.shared.semantic_clusterer import (
+            ClusterConfig,
+            ClusterItem,
+            compute_similarity,
+        )
+
+        a = ClusterItem(item_id="a", text="축구 경기 리그", keywords={"축구", "경기"})
+        b = ClusterItem(item_id="b", text="축구 월드컵 선수", keywords={"축구", "월드컵"})
+        sim_default = compute_similarity(a, b)
+        sim_config = compute_similarity(a, b, ClusterConfig())
+        # Jaccard("축구") overlap → sim > 0
+        assert sim_default > 0.0
+        assert abs(sim_default - sim_config) < 1e-9
+
+    def test_different_topic_low_jaccard(self) -> None:
+        """다른 주제 기사 → Jaccard < 0.25."""
+        from backend.processor.shared.semantic_clusterer import compute_jaccard
+
+        kws_a = {"12월", "실적", "매출", "영업이익", "기업"}
+        kws_b = {"12월", "날씨", "기온", "한파", "겨울"}
+        # 공통 키워드 "12월" 1개, 합집합 9개 → Jaccard ≈ 0.11
+        assert compute_jaccard(kws_a, kws_b) < 0.25

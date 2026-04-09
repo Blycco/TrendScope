@@ -81,10 +81,10 @@ async def process_articles(
     unmatched = await stage_match_existing_groups(with_keywords, db_pool)
 
     # Stage 5: Semantic clustering (only unmatched articles form new clusters)
-    clusters = stage_cluster(unmatched)
+    clusters = await stage_cluster(unmatched, db_pool)
 
     # Stage 6: Score calculation
-    scored_clusters = stage_score(clusters)
+    scored_clusters = await stage_score(clusters, db_pool)
 
     # Stage 6.5: Generate summaries
     await stage_summarize(scored_clusters, db_pool)
