@@ -6,10 +6,11 @@
 	import QuotaExceededModal from '$lib/ui/QuotaExceededModal.svelte';
 	import PlanGate from '$lib/ui/PlanGate.svelte';
 	import PageStateWrapper from '$lib/ui/PageStateWrapper.svelte';
+	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import { apiRequest, ApiRequestError, QuotaExceededRequestError } from '$lib/api';
 	import type { TrendListResponse } from '$lib/api/types';
 	import { authStore } from '$lib/stores/auth.svelte';
-	import { Bell, BellOff, Trash2, TrendingUp } from 'lucide-svelte';
+	import { Bell, BellOff, Trash2 } from 'lucide-svelte';
 
 	interface KeywordItem {
 		keyword: string;
@@ -184,11 +185,7 @@
 		<h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">{$t('tracker.my_keywords')}</h2>
 		<PageStateWrapper {isLoading} isEmpty={!isLoading && keywords.length === 0}>
 			{#snippet empty()}
-				<div class="rounded-lg border border-dashed border-gray-300 dark:border-gray-600 p-10 text-center">
-					<TrendingUp size={32} class="text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-					<p class="text-sm font-medium text-gray-600 dark:text-gray-400">{$t('tracker.empty.title')}</p>
-					<p class="text-xs text-gray-400 dark:text-gray-500 mt-1">{$t('tracker.empty.desc')}</p>
-				</div>
+				<EmptyState variant="no_tracker" />
 			{/snippet}
 			{#snippet children()}
 				<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
