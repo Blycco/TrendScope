@@ -45,6 +45,11 @@ _ROLE_PROMPTS: dict[str, str] = {
         "You are a marketing strategist. Based on the provided trend sources, "
         "generate a JSON response with:\n"
         '- "ad_opportunities": list of 3 specific advertising opportunities (string each)\n'
+        '- "timing_recommendation": string — best timing to launch a campaign for this trend\n'
+        '- "channel_opportunities": list of 3 recommended marketing channels'
+        " (e.g. YouTube Shorts, Instagram, Naver Blog)\n"
+        '- "competitor_note": string — brief note on competitor landscape related to this trend\n'
+        '- "action_items": list of 3 concrete immediate next steps for a marketer\n'
         '- "source_urls": list of URLs from the source material that support your suggestions\n\n'
         "Respond ONLY with valid JSON. Do not include any text outside the JSON."
     ),
@@ -54,6 +59,13 @@ _ROLE_PROMPTS: dict[str, str] = {
         '- "title_drafts": list of 3 compelling content title drafts\n'
         '- "timing": best posting time recommendation (string)\n'
         '- "seo_keywords": list of 5 SEO keywords to target\n'
+        '- "recommended_format": string — best content format'
+        ' (e.g. "Short-form video", "Long-form blog")\n'
+        '- "title_suggestions": list of 3 alternative catchy title ideas\n'
+        '- "hashtag_suggestions": list of 5 recommended hashtags (with # prefix)\n'
+        '- "best_upload_time": string — specific day and time recommendation'
+        ' (e.g. "Tuesday 7-9pm KST")\n'
+        '- "action_items": list of 3 concrete immediate next steps for a creator\n'
         '- "source_urls": list of supporting URLs from the sources\n\n'
         "Respond ONLY with valid JSON. Do not include any text outside the JSON."
     ),
@@ -63,6 +75,10 @@ _ROLE_PROMPTS: dict[str, str] = {
         '- "consumer_reactions": list of 3 consumer sentiment observations\n'
         '- "product_hints": list of 2 product improvement hints\n'
         '- "market_ops": list of 2 market opportunity observations\n'
+        '- "market_opportunity": string — concise summary of the main market opportunity\n'
+        '- "consumer_sentiment": string — overall consumer sentiment in one sentence\n'
+        '- "product_hint": string — top single product or service suggestion\n'
+        '- "action_items": list of 3 concrete immediate next steps for a business owner\n'
         '- "source_urls": list of supporting URLs from the sources\n\n'
         "Respond ONLY with valid JSON. Do not include any text outside the JSON."
     ),
@@ -70,6 +86,7 @@ _ROLE_PROMPTS: dict[str, str] = {
         "You are a social media assistant. Based on the provided trend sources, "
         "generate a JSON response with:\n"
         '- "sns_drafts": list of 3 SNS post drafts (short, engaging)\n'
+        '- "sns_post_draft": string — one polished SNS post ready to publish (150 chars max)\n'
         '- "engagement_methods": list of 3 engagement tips\n'
         '- "source_urls": list of supporting URLs from the sources\n\n'
         "Respond ONLY with valid JSON. Do not include any text outside the JSON."
@@ -250,6 +267,10 @@ class ActionInsightEngine:
         if role == "marketer":
             return {
                 "ad_opportunities": ["트렌드 기반 광고 기회 분석 중"],
+                "timing_recommendation": "",
+                "channel_opportunities": [],
+                "competitor_note": "",
+                "action_items": [],
                 "source_urls": urls,
             }
         if role == "creator":
@@ -257,6 +278,11 @@ class ActionInsightEngine:
                 "title_drafts": ["트렌드 콘텐츠 제안"],
                 "timing": "오전 9시-11시",
                 "seo_keywords": [],
+                "recommended_format": "",
+                "title_suggestions": [],
+                "hashtag_suggestions": [],
+                "best_upload_time": "",
+                "action_items": [],
                 "source_urls": urls,
             }
         if role == "owner":
@@ -264,11 +290,16 @@ class ActionInsightEngine:
                 "consumer_reactions": ["소비자 반응 분석 중"],
                 "product_hints": [],
                 "market_ops": [],
+                "market_opportunity": "",
+                "consumer_sentiment": "",
+                "product_hint": "",
+                "action_items": [],
                 "source_urls": urls,
             }
         # general (default)
         return {
             "sns_drafts": ["트렌드 관련 SNS 포스트"],
+            "sns_post_draft": "",
             "engagement_methods": [],
             "source_urls": urls,
         }

@@ -18,6 +18,7 @@
 	import MultiSelect from '$lib/components/MultiSelect.svelte';
 	import PageStateWrapper from '$lib/ui/PageStateWrapper.svelte';
 	import LoadMoreButton from '$lib/ui/LoadMoreButton.svelte';
+	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import { Download, Share2 } from 'lucide-svelte';
 
 	interface PersonalizationSettings {
@@ -457,6 +458,10 @@
 					<SkeletonCard />
 				{/each}
 			</div>
+		{/snippet}
+
+		{#snippet empty()}
+			<EmptyState variant="no_results" onResetFilters={resetAllFilters} />
 		{/snippet}
 
 		{#snippet children()}
