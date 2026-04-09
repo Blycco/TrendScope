@@ -72,6 +72,27 @@
 			.slice(0, 20);
 	});
 
+	let hotKeywords = $derived.by(() => {
+		const hot = new Set<string>();
+		for (const trend of topTrends) {
+			if ((trend.burst_score ?? 0) > 0.7) {
+				for (const kw of trend.keywords) hot.add(kw);
+			}
+		}
+		return hot;
+	});
+
+	let newKeywords = $derived.by(() => {
+		const threshold = Date.now() - 24 * 60 * 60 * 1000;
+		const newKws = new Set<string>();
+		for (const trend of topTrends) {
+			if (new Date(trend.created_at).getTime() > threshold) {
+				for (const kw of trend.keywords) newKws.add(kw);
+			}
+		}
+		return newKws;
+	});
+
 	async function loadDashboard(): Promise<void> {
 		try {
 			const [trendsData, newsData, earlyData, summaryData] = await Promise.all([
@@ -197,7 +218,7 @@
 			{/if}
 
 			{#if keywordCounts.length > 0}
-				<KeywordCloud keywords={keywordCounts} />
+				<KeywordCloud keywords={keywordCounts} {hotKeywords} {newKeywords} />
 			{/if}
 
 			<!-- Early Trends -->

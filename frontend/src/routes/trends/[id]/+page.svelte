@@ -54,6 +54,7 @@
 	let planGateRequired = $state('pro');
 
 	let articleTab = $state<'all' | 'by_source'>('all');
+	let expandedSources = $state<Set<string>>(new Set());
 
 	const burstScore = $derived(detail ? (detail.burst_score ?? detail.score / 100) : 0);
 
@@ -251,6 +252,30 @@
 			<ForecastChart data={forecastData} />
 		{/if}
 
+		<!-- Inline Insights preview -->
+		<div class="rounded-lg border border-blue-100 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/20 p-5">
+			<div class="flex items-center justify-between mb-3">
+				<div class="flex items-center gap-2">
+					<Lightbulb size={16} class="text-blue-600 dark:text-blue-400" />
+					<h2 class="text-sm font-semibold text-blue-800 dark:text-blue-200">{$t('trend.detail.insights')}</h2>
+				</div>
+				<a
+					href="/trends/{detail.id}/insights"
+					class="text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium"
+				>
+					{$t('trend.detail.insights')} 전체 보기 →
+				</a>
+			</div>
+			<p class="text-xs text-blue-600 dark:text-blue-400 mb-3">AI가 역할에 맞는 액션 인사이트를 제공합니다. Pro 플랜에서 이용 가능합니다.</p>
+			<a
+				href="/trends/{detail.id}/insights"
+				class="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+			>
+				<Lightbulb size={14} />
+				{$t('trend.detail.insights')} 보기
+			</a>
+		</div>
+
 		<!-- Articles section with tabs -->
 		<div>
 			<div class="flex items-center justify-between mb-3">
@@ -307,13 +332,17 @@
 			{:else}
 				<div class="space-y-4">
 					{#each [...articlesBySource.entries()] as [source, articles]}
+						{@const isExpanded = expandedSources.has(source)}
+						{@const COLLAPSE_THRESHOLD = 3}
+						{@const shouldCollapse = articles.length > COLLAPSE_THRESHOLD && !isExpanded}
+						{@const visibleArticles = shouldCollapse ? articles.slice(0, 1) : articles}
 						<div>
 							<h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
 								<span class="w-2 h-2 rounded-full bg-blue-500 inline-block"></span>
 								{source} ({articles.length})
 							</h3>
 							<div class="space-y-2">
-								{#each articles as article (article.id)}
+								{#each visibleArticles as article (article.id)}
 									<a
 										href={article.url}
 										target="_blank"
@@ -324,6 +353,19 @@
 										<ExternalLink size={12} class="text-gray-400 shrink-0" />
 									</a>
 								{/each}
+								{#if shouldCollapse}
+									<button
+										type="button"
+										onclick={() => {
+											const next = new Set(expandedSources);
+											next.add(source);
+											expandedSources = next;
+										}}
+										class="w-full text-xs text-blue-500 dark:text-blue-400 hover:underline py-1 text-left px-1"
+									>
+										외 {articles.length - 1}건 더보기
+									</button>
+								{/if}
 							</div>
 						</div>
 					{/each}
