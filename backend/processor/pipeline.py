@@ -74,8 +74,8 @@ async def process_articles(
         logger.info("pipeline_all_spam", input_count=len(normalized))
         return 0
 
-    # Stage 4: Extract keywords
-    with_keywords = stage_extract_keywords(clean)
+    # Stage 4: Extract keywords (async — loads stop words & params from DB/Redis per batch)
+    with_keywords = await stage_extract_keywords(clean, db_pool)
 
     # Stage 4.5: Match articles against existing groups (cross-batch grouping)
     unmatched = await stage_match_existing_groups(with_keywords, db_pool)
