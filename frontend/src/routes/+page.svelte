@@ -165,6 +165,12 @@
 					subtext={$t('dashboard.last_24h')}
 				/>
 				<StatCard
+					icon={Zap}
+					iconColor="text-amber-500"
+					label={$t('dashboard.early_signals')}
+					value={summary.early_signal_count}
+				/>
+				<StatCard
 					icon={Newspaper}
 					iconColor="text-blue-500"
 					label={$t('dashboard.total_news')}
@@ -176,12 +182,6 @@
 					iconColor="text-green-500"
 					label={$t('dashboard.avg_score')}
 					value={summary.avg_score}
-				/>
-				<StatCard
-					icon={Zap}
-					iconColor="text-amber-500"
-					label={$t('dashboard.early_signals')}
-					value={summary.early_signal_count}
 				/>
 			</div>
 		{/if}
