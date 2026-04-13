@@ -9,7 +9,12 @@ from typing import Any
 import asyncpg
 import structlog
 
-from backend.processor.algorithms.burst import TimeSeriesPoint, detect_burst
+from backend.processor.algorithms.burst import (
+    BurstLevel,
+    BurstResult,
+    TimeSeriesPoint,
+    detect_burst,
+)
 from backend.processor.algorithms.cross_platform import verify_cross_platform
 from backend.processor.shared.score_calculator import (
     ScoreInput,
@@ -37,11 +42,13 @@ def compute_early_trend_score(articles: list[dict[str, Any]]) -> float:
     if not articles:
         return 0.0
 
-    # Velocity: article count normalized (10+ articles → 1.0)
-    velocity = min(1.0, len(articles) / 10.0)
-
     # Source diversity: unique sources / total articles
     sources = {a.get("source", "") for a in articles if a.get("source")}
+    if len(sources) < 2:
+        return 0.0  # Single source is not an emerging trend
+
+    # Velocity: article count normalized (10+ articles → 1.0)
+    velocity = min(1.0, len(articles) / 10.0)
     source_diversity = len(sources) / max(len(articles), 1)
 
     # Recency: newest article within last 6 hours → 1.0, 48h+ → 0.0
@@ -56,7 +63,11 @@ def compute_early_trend_score(articles: list[dict[str, Any]]) -> float:
             newest_hours = min(newest_hours, max(0.0, hours_ago))
     recency = max(0.0, 1.0 - (newest_hours / 48.0))
 
-    return round(0.4 * velocity + 0.3 * source_diversity + 0.3 * recency, 4)
+    score = round(0.4 * velocity + 0.3 * source_diversity + 0.3 * recency, 4)
+    # Cap score for very small clusters below display threshold
+    if len(articles) < 3:
+        score = min(score, 0.3)
+    return score
 
 
 def _build_burst_series(articles: list[dict[str, Any]]) -> list[TimeSeriesPoint]:
@@ -127,9 +138,20 @@ async def stage_score(
             sources = {a.get("source", "") for a in articles if a.get("source")}
             source_count = max(1, len(sources))
 
-            # Burst detection
+            # Burst detection (skip for sparse time series to avoid noise)
             series = _build_burst_series(articles)
-            burst_result = detect_burst(series)
+            _MIN_BURST_SERIES = 5
+            if len(series) >= _MIN_BURST_SERIES:
+                burst_result = detect_burst(series)
+            else:
+                burst_result = BurstResult(
+                    score=0.0,
+                    level=BurstLevel.END,
+                    prophet_score=0.0,
+                    iforest_score=0.0,
+                    cusum_score=0.0,
+                    growth_type="unknown",
+                )
             early_velocity = min(1.0, len(articles) / 10.0)
 
             score_input = ScoreInput(
