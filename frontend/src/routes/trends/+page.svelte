@@ -213,7 +213,7 @@
 				method: 'POST',
 				body: JSON.stringify({ payload: { trends: snapshot } }),
 			});
-			const fullUrl = `${window.location.origin}${data.share_url}`;
+			const fullUrl = `${window.location.origin}${data.share_url}?utm_source=trendscope&utm_medium=share&utm_campaign=trend_share`;
 			await navigator.clipboard.writeText(fullUrl);
 			errorCode = '';
 			errorMessageKey = 'trends.share.copied';

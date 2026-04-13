@@ -151,7 +151,7 @@
 				</p>
 				<div class="flex items-center justify-center gap-3">
 					<a
-						href="/auth/register?ref=share"
+						href="/auth/register?ref=share&utm_source=trendscope&utm_medium=share&utm_campaign=shared_cta"
 						class="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
 					>
 						{$t('share.cta.start')}
