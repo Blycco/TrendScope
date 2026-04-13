@@ -1,4 +1,4 @@
-"""SNS crawler — Reddit JSON API + Nitter RSS + YouTube Data API v3."""
+"""SNS crawler — Reddit JSON API + Google Trends RSS + YouTube Data API v3."""
 
 from __future__ import annotations
 
@@ -201,27 +201,38 @@ def _reddit_category(subreddit: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Nitter (X / Twitter RSS fallback)
+# Google Trends RSS
 # ---------------------------------------------------------------------------
 
 
-async def crawl_nitter(db_pool: asyncpg.Pool) -> list[dict[str, Any]]:
-    """Fetch trending search terms via Nitter RSS instances (DB-driven)."""
+def _parse_approx_traffic(raw: str) -> float:
+    """Parse ht:approx_traffic like '500,000+' into a float score."""
+    cleaned = raw.replace(",", "").replace("+", "").strip()
     try:
-        if not await check_quota("nitter_rss", db_pool):
+        return float(cleaned)
+    except (ValueError, TypeError):
+        return 0.0
+
+
+async def crawl_google_trends_rss(db_pool: asyncpg.Pool) -> list[dict[str, Any]]:
+    """Fetch daily trending searches from Google Trends RSS (DB-driven)."""
+    try:
+        if not await check_quota("google_trends_rss", db_pool):
             return []
 
-        feed_rows = await get_feed_sources_for_crawl(db_pool, "nitter")
+        feed_rows = await get_feed_sources_for_crawl(db_pool, "google_trends")
+        if not feed_rows:
+            logger.info("google_trends_rss_skip", reason="no_active_feeds")
+            return []
+
         results: list[dict[str, Any]] = []
 
         async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
             for row in feed_rows:
-                config = row["config"] if isinstance(row["config"], dict) else {}
-                instance = config.get("instance", "")
-                feed_url = row["url"]
+                locale = row["locale"] or "ko"
                 t0 = time.monotonic()
                 try:
-                    resp = await client.get(feed_url)
+                    resp = await client.get(row["url"])
                     if resp.status_code != 200:
                         elapsed_ms = (time.monotonic() - t0) * 1000
                         await update_feed_health(
@@ -234,24 +245,39 @@ async def crawl_nitter(db_pool: asyncpg.Pool) -> list[dict[str, Any]]:
                         continue
 
                     parsed = feedparser.parse(resp.text)
-                    await increment_quota("nitter_rss", db_pool)
+                    await increment_quota("google_trends_rss", db_pool)
 
                     for entry in parsed.entries:
                         title = entry.get("title", "").strip()
                         if not title:
                             continue
+
+                        traffic = _parse_approx_traffic(entry.get("ht_approx_traffic", "0"))
+
+                        news_items = []
+                        for ni in entry.get("ht_news_item", []):
+                            if isinstance(ni, dict):
+                                news_items.append(
+                                    {
+                                        "title": ni.get("ht_news_item_title", ""),
+                                        "url": ni.get("ht_news_item_url", ""),
+                                        "source": ni.get("ht_news_item_source", ""),
+                                    }
+                                )
+
                         results.append(
                             {
-                                "platform": "twitter",
+                                "platform": "google_trends",
                                 "keyword": title,
-                                "locale": "en",
+                                "locale": locale,
                                 "category": "general",
-                                "score": 0.0,
+                                "score": traffic,
                                 "burst_z": 0.0,
                                 "sentiment_badge": "neutral",
                                 "snapshot_at": datetime.now(tz=timezone.utc),
                                 "meta": {
-                                    "instance": instance,
+                                    "approx_traffic": traffic,
+                                    "news_items": news_items[:5],
                                     "link": entry.get("link", ""),
                                 },
                             }
@@ -261,7 +287,6 @@ async def crawl_nitter(db_pool: asyncpg.Pool) -> list[dict[str, Any]]:
                     await update_feed_health(
                         db_pool, row["id"], success=True, latency_ms=elapsed_ms
                     )
-                    break  # success on one instance is enough
                 except Exception as exc:
                     elapsed_ms = (time.monotonic() - t0) * 1000
                     await update_feed_health(
@@ -271,13 +296,18 @@ async def crawl_nitter(db_pool: asyncpg.Pool) -> list[dict[str, Any]]:
                         latency_ms=elapsed_ms,
                         error=str(exc),
                     )
-                    logger.debug("nitter_instance_error", instance=instance, error=str(exc))
+                    await handle_api_exception(exc, "google_trends_rss", db_pool)
+                    logger.warning(
+                        "google_trends_rss_feed_error",
+                        feed=row["name"],
+                        error=str(exc),
+                    )
                     continue
 
-        logger.info("nitter_crawl_complete", total=len(results))
+        logger.info("google_trends_rss_complete", total=len(results))
         return results
     except Exception as exc:
-        logger.error("nitter_crawl_failed", error=str(exc))
+        logger.error("google_trends_rss_failed", error=str(exc))
         return []
 
 
@@ -378,8 +408,8 @@ async def collect_all(db_pool: asyncpg.Pool) -> list[dict[str, Any]]:
     reddit_items = await crawl_reddit(db_pool)
     all_items.extend(reddit_items)
 
-    nitter_items = await crawl_nitter(db_pool)
-    all_items.extend(nitter_items)
+    google_trends_items = await crawl_google_trends_rss(db_pool)
+    all_items.extend(google_trends_items)
 
     youtube_items = await crawl_youtube(db_pool)
     all_items.extend(youtube_items)

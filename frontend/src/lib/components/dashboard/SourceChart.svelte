@@ -10,7 +10,7 @@
 		rss: '#3b82f6',
 		reddit: '#f97316',
 		community: '#22c55e',
-		nitter: '#06b6d4',
+		twitter: '#06b6d4',
 		google_trends: '#a855f7',
 		burst_gnews: '#ef4444',
 		burst_reddit: '#f59e0b',
