@@ -151,11 +151,11 @@ async def fetch_early_trends(
     limit: int = 20,
     cursor: str | None = None,
 ) -> list[asyncpg.Record]:
-    """Fetch news_group rows where early_trend_score > 0, ordered by early_trend_score DESC."""
+    """Fetch news_group rows with meaningful early_trend_score, ordered by score DESC."""
     try:
         params: list[object] = []
         conditions: list[str] = [
-            "ng.early_trend_score > 0",
+            "ng.early_trend_score > 0.4",
             "(SELECT COUNT(*) FROM news_article WHERE group_id = ng.id) >= 2",
         ]
 
