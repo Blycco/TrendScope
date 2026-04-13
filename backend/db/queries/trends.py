@@ -90,7 +90,11 @@ async def fetch_trends(
     """
     try:
         params: list[object] = []
-        conditions: list[str] = ["ng.score >= 5.0", "ng.is_hidden = FALSE"]
+        conditions: list[str] = [
+            "ng.score >= 5.0",
+            "ng.is_hidden = FALSE",
+            "(SELECT COUNT(*) FROM news_article WHERE group_id = ng.id) >= 2",
+        ]
 
         if category:
             cats = [c.strip() for c in category.split(",") if c.strip()]
@@ -150,7 +154,10 @@ async def fetch_early_trends(
     """Fetch news_group rows where early_trend_score > 0, ordered by early_trend_score DESC."""
     try:
         params: list[object] = []
-        conditions: list[str] = ["ng.early_trend_score > 0"]
+        conditions: list[str] = [
+            "ng.early_trend_score > 0",
+            "(SELECT COUNT(*) FROM news_article WHERE group_id = ng.id) >= 2",
+        ]
 
         if locale:
             params.append(locale)
