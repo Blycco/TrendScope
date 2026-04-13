@@ -7,7 +7,7 @@ import asyncpg
 VERSION = "030"
 DESCRIPTION = "Add index on sns_trend for keyword+platform cross-validation queries"
 
-NON_TRANSACTIONAL = True  # CREATE INDEX CONCURRENTLY requires this
+TRANSACTIONAL = False  # CREATE INDEX CONCURRENTLY cannot run inside a transaction
 
 
 async def up(conn: asyncpg.Connection) -> None:
