@@ -7,6 +7,8 @@ from datetime import datetime, timezone
 import asyncpg
 import structlog
 
+from backend.processor.algorithms.external_trends import verify_external_trends
+
 logger = structlog.get_logger(__name__)
 
 _ACTIVE_WINDOW_HOURS = 48
@@ -34,6 +36,8 @@ async def run_early_trend_update(pool: asyncpg.Pool) -> int:
                 """
                 SELECT ng.id,
                        ng.burst_score,
+                       ng.keywords,
+                       ng.locale,
                        COUNT(na.id)::int AS article_count,
                        COUNT(DISTINCT na.source)::int AS unique_sources,
                        MAX(na.publish_time) AS newest_publish_time,
@@ -94,6 +98,13 @@ async def run_early_trend_update(pool: asyncpg.Pool) -> int:
                         score = 0.0
                     elif article_count < 3:
                         score = min(score, 0.3)
+
+                    # External trend cross-validation boost
+                    if score > 0.0:
+                        keywords = row["keywords"] or []
+                        locale = row["locale"] or "ko"
+                        external_boost = await verify_external_trends(pool, keywords, locale=locale)
+                        score = round(min(1.0, score * external_boost), 4)
 
                     await conn.execute(
                         "UPDATE news_group SET early_trend_score = $1 WHERE id = $2",

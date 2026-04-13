@@ -41,6 +41,7 @@ MIGRATIONS: list[str] = [
     "migrations.027_quality_settings",
     "migrations.028_quality_v2",
     "migrations.029_google_trends_sns",
+    "migrations.030_external_trends_index",
 ]
 
 

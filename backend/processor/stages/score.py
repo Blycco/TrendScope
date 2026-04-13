@@ -16,6 +16,7 @@ from backend.processor.algorithms.burst import (
     detect_burst,
 )
 from backend.processor.algorithms.cross_platform import verify_cross_platform
+from backend.processor.algorithms.external_trends import verify_external_trends
 from backend.processor.shared.score_calculator import (
     ScoreInput,
     ScoreResult,
@@ -217,13 +218,22 @@ async def stage_score(
 
             early_score = compute_early_trend_score(articles)
             cross_platform_multiplier = verify_cross_platform(articles)
+            external_boost = await verify_external_trends(
+                db_pool,
+                unique_keywords,
+                locale=rep_article.get("locale", "ko"),
+            )
 
             scored.append(
                 {
                     "cluster": cluster,
                     "articles": articles,
-                    "score": min(100.0, result.normalized * cross_platform_multiplier),
+                    "score": min(
+                        100.0,
+                        result.normalized * cross_platform_multiplier * external_boost,
+                    ),
                     "cross_platform_multiplier": cross_platform_multiplier,
+                    "external_trend_boost": external_boost,
                     "early_trend_score": early_score,
                     "title": group_title,
                     "category": rep_article.get("category", "general"),
