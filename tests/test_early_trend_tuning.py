@@ -47,7 +47,8 @@ def _make_db_rows() -> list:
     return [
         {"key": "early_trend_w_burst", "value": '"0.6"'},
         {"key": "early_trend_w_velocity", "value": '"0.25"'},
-        {"key": "early_trend_w_diversity", "value": '"0.15"'},
+        {"key": "early_trend_w_diversity", "value": '"0.10"'},
+        {"key": "early_trend_w_recency", "value": '"0.05"'},
     ]
 
 
@@ -60,22 +61,40 @@ class TestLoadWeightsCacheHit:
     @pytest.mark.asyncio
     async def test_returns_cached_weights(self) -> None:
         pool = _make_pool()
-        cached = json.dumps({"burst": 0.6, "velocity": 0.25, "diversity": 0.15}).encode()
+        cached = json.dumps(
+            {"burst": 0.6, "velocity": 0.25, "diversity": 0.10, "recency": 0.05}
+        ).encode()
 
         with patch(
             "backend.processor.algorithms.early_trend.get_cached",
             new=AsyncMock(return_value=cached),
         ):
-            burst, velocity, diversity = await _load_weights(pool)
+            burst, velocity, diversity, recency = await _load_weights(pool)
 
         assert burst == 0.6
         assert velocity == 0.25
-        assert diversity == 0.15
+        assert diversity == 0.10
+        assert recency == 0.05
+
+    @pytest.mark.asyncio
+    async def test_cache_hit_without_recency_uses_default(self) -> None:
+        pool = _make_pool()
+        cached = json.dumps({"burst": 0.5, "velocity": 0.3, "diversity": 0.2}).encode()
+
+        with patch(
+            "backend.processor.algorithms.early_trend.get_cached",
+            new=AsyncMock(return_value=cached),
+        ):
+            burst, velocity, diversity, recency = await _load_weights(pool)
+
+        assert recency == 0.2  # default
 
     @pytest.mark.asyncio
     async def test_cache_hit_skips_db(self) -> None:
         pool = _make_pool()
-        cached = json.dumps({"burst": 0.5, "velocity": 0.3, "diversity": 0.2}).encode()
+        cached = json.dumps(
+            {"burst": 0.3, "velocity": 0.3, "diversity": 0.2, "recency": 0.2}
+        ).encode()
 
         with patch(
             "backend.processor.algorithms.early_trend.get_cached",
@@ -107,11 +126,12 @@ class TestLoadWeightsDBFetch:
                 new=AsyncMock(),
             ),
         ):
-            burst, velocity, diversity = await _load_weights(pool)
+            burst, velocity, diversity, recency = await _load_weights(pool)
 
         assert burst == 0.6
         assert velocity == 0.25
-        assert diversity == 0.15
+        assert diversity == 0.10
+        assert recency == 0.05
 
     @pytest.mark.asyncio
     async def test_db_fetch_stores_in_cache(self) -> None:
@@ -144,11 +164,12 @@ class TestLoadWeightsDBFetch:
                 new=AsyncMock(return_value=None),
             ),
         ):
-            burst, velocity, diversity = await _load_weights(pool)
+            burst, velocity, diversity, recency = await _load_weights(pool)
 
-        assert burst == 0.5
+        assert burst == 0.3
         assert velocity == 0.3
         assert diversity == 0.2
+        assert recency == 0.2
 
 
 # ---------------------------------------------------------------------------
@@ -160,22 +181,25 @@ class TestComputeEarlyTrendScore:
     @pytest.mark.asyncio
     async def test_basic_weighted_formula(self) -> None:
         pool = _make_pool()
-        # Using default weights 0.5, 0.3, 0.2
-        # 0.5*0.8 + 0.3*0.6 + 0.2*0.4 = 0.4 + 0.18 + 0.08 = 0.66
-        cached = json.dumps({"burst": 0.5, "velocity": 0.3, "diversity": 0.2}).encode()
+        # 0.3*0.8 + 0.3*0.6 + 0.2*0.4 + 0.2*0.5 = 0.24+0.18+0.08+0.10 = 0.60
+        cached = json.dumps(
+            {"burst": 0.3, "velocity": 0.3, "diversity": 0.2, "recency": 0.2}
+        ).encode()
 
         with patch(
             "backend.processor.algorithms.early_trend.get_cached",
             new=AsyncMock(return_value=cached),
         ):
-            result = await compute_early_trend_score(pool, _burst(0.8), 0.6, 0.4)
+            result = await compute_early_trend_score(pool, _burst(0.8), 0.6, 0.4, recency=0.5)
 
-        assert abs(result - 0.66) < 1e-9
+        assert abs(result - 0.60) < 1e-9
 
     @pytest.mark.asyncio
     async def test_all_zeros_returns_zero(self) -> None:
         pool = _make_pool()
-        cached = json.dumps({"burst": 0.5, "velocity": 0.3, "diversity": 0.2}).encode()
+        cached = json.dumps(
+            {"burst": 0.3, "velocity": 0.3, "diversity": 0.2, "recency": 0.2}
+        ).encode()
 
         with patch(
             "backend.processor.algorithms.early_trend.get_cached",
@@ -188,48 +212,56 @@ class TestComputeEarlyTrendScore:
     @pytest.mark.asyncio
     async def test_all_ones_returns_one(self) -> None:
         pool = _make_pool()
-        cached = json.dumps({"burst": 0.5, "velocity": 0.3, "diversity": 0.2}).encode()
+        cached = json.dumps(
+            {"burst": 0.3, "velocity": 0.3, "diversity": 0.2, "recency": 0.2}
+        ).encode()
 
         with patch(
             "backend.processor.algorithms.early_trend.get_cached",
             new=AsyncMock(return_value=cached),
         ):
-            result = await compute_early_trend_score(pool, _burst(1.0), 1.0, 1.0)
+            result = await compute_early_trend_score(pool, _burst(1.0), 1.0, 1.0, recency=1.0)
 
         assert result == 1.0
 
     @pytest.mark.asyncio
     async def test_negative_clamped_to_zero(self) -> None:
         pool = _make_pool()
-        cached = json.dumps({"burst": 0.5, "velocity": 0.3, "diversity": 0.2}).encode()
+        cached = json.dumps(
+            {"burst": 0.3, "velocity": 0.3, "diversity": 0.2, "recency": 0.2}
+        ).encode()
 
         with patch(
             "backend.processor.algorithms.early_trend.get_cached",
             new=AsyncMock(return_value=cached),
         ):
-            result = await compute_early_trend_score(pool, _burst(-0.5), -0.5, -0.5)
+            result = await compute_early_trend_score(pool, _burst(-0.5), -0.5, -0.5, recency=-0.5)
 
         assert result == 0.0
 
     @pytest.mark.asyncio
     async def test_above_one_clamped_to_one(self) -> None:
         pool = _make_pool()
-        cached = json.dumps({"burst": 0.5, "velocity": 0.3, "diversity": 0.2}).encode()
+        cached = json.dumps(
+            {"burst": 0.3, "velocity": 0.3, "diversity": 0.2, "recency": 0.2}
+        ).encode()
 
         with patch(
             "backend.processor.algorithms.early_trend.get_cached",
             new=AsyncMock(return_value=cached),
         ):
-            result = await compute_early_trend_score(pool, _burst(1.5), 1.5, 1.5)
+            result = await compute_early_trend_score(pool, _burst(1.5), 1.5, 1.5, recency=1.5)
 
         assert result == 1.0
 
     @pytest.mark.asyncio
     async def test_custom_weights_from_db(self) -> None:
         pool = _make_pool()
-        # Custom weights: burst=0.6, velocity=0.25, diversity=0.15
-        # 0.6*1.0 + 0.25*0.0 + 0.15*0.0 = 0.6
-        cached = json.dumps({"burst": 0.6, "velocity": 0.25, "diversity": 0.15}).encode()
+        # Custom: burst=0.6, velocity=0.2, diversity=0.1, recency=0.1
+        # 0.6*1.0 + 0.2*0.0 + 0.1*0.0 + 0.1*0.0 = 0.6
+        cached = json.dumps(
+            {"burst": 0.6, "velocity": 0.2, "diversity": 0.1, "recency": 0.1}
+        ).encode()
 
         with patch(
             "backend.processor.algorithms.early_trend.get_cached",
