@@ -83,6 +83,9 @@ async def stage_spam_filter(
                     reasons=spam_result.reasons,
                 )
         except Exception as exc:
-            logger.warning("pipeline_spam_error", url=article.get("url", "?"), error=str(exc))
-            result.append(article)
+            logger.warning(
+                "pipeline_spam_filtered_on_error",
+                url=article.get("url", "?"),
+                error=str(exc),
+            )
     return result

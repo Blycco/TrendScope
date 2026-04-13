@@ -1,4 +1,4 @@
-"""Scheduled job: recalculate early_trend_score for active news groups (15-min cycle)."""
+"""Scheduled job: recalculate early_trend_score for active news groups (5-min cycle)."""
 
 from __future__ import annotations
 
@@ -10,17 +10,21 @@ import structlog
 logger = structlog.get_logger(__name__)
 
 _ACTIVE_WINDOW_HOURS = 48
-_MAX_ARTICLES_PER_GROUP = 10.0
+_ACCELERATION_DIVISOR = 5.0  # 5x acceleration → max velocity (1.0)
+_MIN_HOURLY_AVG = 0.1  # Floor to avoid division by zero
 
 
 async def run_early_trend_update(pool: asyncpg.Pool) -> int:
     """Recalculate early_trend_score for news groups active in the last 48 hours.
 
-    Formula (same as pipeline._compute_early_trend_score):
-        velocity = min(1.0, article_count / 10)
+    Momentum-based formula:
+        acceleration = cnt_1h / max(hourly_avg_24h, 0.1)
+        momentum_velocity = min(1.0, acceleration / 5.0)
         source_diversity = unique_sources / article_count
         recency = max(0.0, 1.0 - newest_hours_ago / 48.0)
-        score = 0.4 * velocity + 0.3 * source_diversity + 0.3 * recency
+        burst = min(1.0, burst_score)
+        score = 0.3 * momentum_velocity + 0.25 * burst
+               + 0.25 * source_diversity + 0.2 * recency
 
     Returns the number of groups updated.
     """
@@ -29,9 +33,16 @@ async def run_early_trend_update(pool: asyncpg.Pool) -> int:
             groups = await conn.fetch(
                 """
                 SELECT ng.id,
+                       ng.burst_score,
                        COUNT(na.id)::int AS article_count,
                        COUNT(DISTINCT na.source)::int AS unique_sources,
-                       MAX(na.publish_time) AS newest_publish_time
+                       MAX(na.publish_time) AS newest_publish_time,
+                       COUNT(*) FILTER (
+                           WHERE na.publish_time > now() - INTERVAL '1 hour'
+                       )::int AS cnt_1h,
+                       COUNT(*) FILTER (
+                           WHERE na.publish_time > now() - INTERVAL '24 hours'
+                       )::int AS cnt_24h
                 FROM news_group ng
                 JOIN news_article na ON na.group_id = ng.id
                 WHERE ng.created_at > now() - INTERVAL '48 hours'
@@ -53,7 +64,12 @@ async def run_early_trend_update(pool: asyncpg.Pool) -> int:
                     unique_sources = row["unique_sources"]
                     newest_time = row["newest_publish_time"]
 
-                    velocity = min(1.0, article_count / _MAX_ARTICLES_PER_GROUP)
+                    # Momentum velocity: recent 1h rate vs 24h average
+                    cnt_1h = row["cnt_1h"]
+                    cnt_24h = row["cnt_24h"]
+                    hourly_avg = cnt_24h / 24.0
+                    acceleration = cnt_1h / max(hourly_avg, _MIN_HOURLY_AVG)
+                    momentum_velocity = min(1.0, acceleration / _ACCELERATION_DIVISOR)
 
                     source_diversity = unique_sources / max(article_count, 1)
 
@@ -63,10 +79,21 @@ async def run_early_trend_update(pool: asyncpg.Pool) -> int:
                         hours_ago = float(_ACTIVE_WINDOW_HOURS)
                     recency = max(0.0, 1.0 - (hours_ago / _ACTIVE_WINDOW_HOURS))
 
+                    burst = min(1.0, row["burst_score"] or 0.0)
+
                     score = round(
-                        0.4 * velocity + 0.3 * source_diversity + 0.3 * recency,
+                        0.3 * momentum_velocity
+                        + 0.25 * burst
+                        + 0.25 * source_diversity
+                        + 0.2 * recency,
                         4,
                     )
+
+                    # Single-source guard + small cluster cap
+                    if unique_sources < 2:
+                        score = 0.0
+                    elif article_count < 3:
+                        score = min(score, 0.3)
 
                     await conn.execute(
                         "UPDATE news_group SET early_trend_score = $1 WHERE id = $2",

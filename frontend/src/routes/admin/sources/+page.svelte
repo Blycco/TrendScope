@@ -103,7 +103,7 @@
 	// Polling
 	let pollInterval: ReturnType<typeof setInterval> | null = null;
 
-	const SOURCE_TYPES = ['rss', 'reddit', 'nitter', 'community'];
+	const SOURCE_TYPES = ['rss', 'reddit', 'google_trends', 'community'];
 	const CATEGORIES = ['general', 'politics', 'economy', 'it', 'entertainment', 'sports'];
 	const LOCALES = ['ko', 'en', 'ja'];
 
@@ -311,7 +311,7 @@
 		const map: Record<string, string> = {
 			rss: t_fn('admin.feeds.type_rss'),
 			reddit: t_fn('admin.feeds.type_reddit'),
-			nitter: t_fn('admin.feeds.type_nitter'),
+			google_trends: t_fn('admin.feeds.type_google_trends'),
 			community: t_fn('admin.feeds.type_community')
 		};
 		return map[type] ?? type;
