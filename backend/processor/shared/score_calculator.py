@@ -24,16 +24,16 @@ import structlog
 logger = structlog.get_logger(__name__)
 
 # ── Default weight allocation (must sum to 100) ───────────────────────────
-WEIGHT_FRESHNESS: float = 20.0
-WEIGHT_BURST: float = 20.0
-WEIGHT_ARTICLE_COUNT: float = 25.0
-WEIGHT_SOURCE_DIVERSITY: float = 12.0
-WEIGHT_SOCIAL_SIGNAL: float = 10.0
-WEIGHT_KEYWORD_IMPORTANCE: float = 8.0
-WEIGHT_VELOCITY: float = 5.0
+WEIGHT_FRESHNESS: float = 15.0
+WEIGHT_BURST: float = 15.0
+WEIGHT_ARTICLE_COUNT: float = 30.0
+WEIGHT_SOURCE_DIVERSITY: float = 15.0
+WEIGHT_SOCIAL_SIGNAL: float = 0.0  # No social data collected yet
+WEIGHT_KEYWORD_IMPORTANCE: float = 10.0
+WEIGHT_VELOCITY: float = 15.0
 
-# Single-article cluster penalty
-_SINGLE_ARTICLE_PENALTY: float = 0.3
+# Graduated article count penalty (fewer articles = heavier penalty)
+_ARTICLE_COUNT_PENALTIES: dict[int, float] = {1: 0.3, 2: 0.5, 3: 0.7, 4: 0.85}
 
 
 @dataclass
@@ -239,9 +239,10 @@ def calculate_score(
         2,
     )
 
-    # Single-article cluster penalty
-    if score_input.article_count == 1:
-        normalized = round(normalized * _SINGLE_ARTICLE_PENALTY, 2)
+    # Graduated article count penalty
+    penalty = _ARTICLE_COUNT_PENALTIES.get(score_input.article_count, 1.0)
+    if penalty < 1.0:
+        normalized = round(normalized * penalty, 2)
 
     return ScoreResult(
         total=total,
