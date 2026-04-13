@@ -288,24 +288,24 @@ class TestHdbscanClustering:
         items = [
             ClusterItem(
                 item_id="1",
-                text="a",
-                keywords={"경제"},
+                text="경제 성장률이 올해 들어 크게 개선됨",
+                keywords={"경제", "성장률", "개선"},
                 published_at=now,
                 source_type="news",
                 embedding=[1.0, 0.0, 0.0],
             ),
             ClusterItem(
                 item_id="2",
-                text="b",
-                keywords={"스포츠"},
+                text="프로야구 시즌 개막 관중 기록 경신 소식",
+                keywords={"스포츠", "프로야구", "관중"},
                 published_at=past,
                 source_type="blog",
                 embedding=[0.0, 1.0, 0.0],
             ),
             ClusterItem(
                 item_id="3",
-                text="c",
-                keywords={"정치"},
+                text="국회 본회의에서 예산안 통과 논란 확산",
+                keywords={"정치", "국회", "예산안"},
                 published_at=past,
                 source_type="sns",
                 embedding=[0.0, 0.0, 1.0],
@@ -316,13 +316,13 @@ class TestHdbscanClustering:
         assert len(clusters) >= 2
 
     def test_hdbscan_all_items_preserved(self) -> None:
-        """No items should be lost during clustering."""
+        """Quality noise items should be preserved during clustering."""
         now = datetime.now(timezone.utc)
         items = [
             ClusterItem(
                 item_id=f"item_{i}",
-                text=f"text {i}",
-                keywords={f"kw{i}"},
+                text=f"이것은 충분히 긴 테스트 텍스트 아이템 번호 {i}",
+                keywords={f"키워드{i}", f"주제{i}", f"태그{i}"},
                 published_at=now,
                 embedding=[float(i), 0.0, 0.0],
             )

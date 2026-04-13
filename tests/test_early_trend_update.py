@@ -174,9 +174,7 @@ class TestRunEarlyTrendUpdate:
         assert score == 0.0
 
     @pytest.mark.asyncio
-    async def test_small_cluster_capped(
-        self, _mock_score: AsyncMock, _mock_ext: AsyncMock
-    ) -> None:
+    async def test_small_cluster_capped(self, _mock_score: AsyncMock, _mock_ext: AsyncMock) -> None:
         """Clusters with <3 articles should be capped at 0.3."""
         _mock_score.return_value = 0.8
         rows = [

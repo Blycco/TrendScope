@@ -277,6 +277,8 @@ async def fetch_related_trends(
                     WHERE id = $1::uuid
                 )
                   AND ng.id <> $1::uuid
+                  AND ng.is_hidden = FALSE
+                  AND (SELECT COUNT(*) FROM news_article WHERE group_id = ng.id) >= 2
                 ORDER BY ng.score DESC
                 LIMIT $2
                 """,  # noqa: S608
