@@ -264,4 +264,4 @@ class TestBurstAndSingleArticlePenalty:
             now=now,
         )
         assert high_burst.burst == pytest.approx(50.0)
-        assert default.burst == pytest.approx(25.0)
+        assert default.burst == pytest.approx(20.0)

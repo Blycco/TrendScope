@@ -24,16 +24,16 @@ import structlog
 logger = structlog.get_logger(__name__)
 
 # ── Default weight allocation (must sum to 100) ───────────────────────────
-WEIGHT_FRESHNESS: float = 25.0
-WEIGHT_BURST: float = 25.0
-WEIGHT_ARTICLE_COUNT: float = 15.0
+WEIGHT_FRESHNESS: float = 20.0
+WEIGHT_BURST: float = 20.0
+WEIGHT_ARTICLE_COUNT: float = 25.0
 WEIGHT_SOURCE_DIVERSITY: float = 12.0
 WEIGHT_SOCIAL_SIGNAL: float = 10.0
 WEIGHT_KEYWORD_IMPORTANCE: float = 8.0
 WEIGHT_VELOCITY: float = 5.0
 
 # Single-article cluster penalty
-_SINGLE_ARTICLE_PENALTY: float = 0.7
+_SINGLE_ARTICLE_PENALTY: float = 0.3
 
 
 @dataclass
