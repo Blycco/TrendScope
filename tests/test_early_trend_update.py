@@ -33,15 +33,21 @@ def _make_group_row(
     article_count: int = 5,
     unique_sources: int = 3,
     hours_ago: float = 2.0,
+    burst_score: float = 0.0,
+    cnt_1h: int = 0,
+    cnt_24h: int | None = None,
 ) -> MagicMock:
-    """Create a mock group row."""
+    """Create a mock group row with time-window counts."""
     now = datetime.now(tz=timezone.utc)
     row = MagicMock()
     data = {
         "id": uuid.uuid4(),
+        "burst_score": burst_score,
         "article_count": article_count,
         "unique_sources": unique_sources,
         "newest_publish_time": now - timedelta(hours=hours_ago),
+        "cnt_1h": cnt_1h,
+        "cnt_24h": cnt_24h if cnt_24h is not None else article_count,
     }
     row.__getitem__ = lambda self, key: data[key]
     return row
@@ -56,33 +62,57 @@ class TestRunEarlyTrendUpdate:
 
     @pytest.mark.asyncio
     async def test_updates_groups_and_returns_count(self) -> None:
-        rows = [_make_group_row(article_count=5, unique_sources=3, hours_ago=2.0)]
+        rows = [
+            _make_group_row(
+                article_count=5,
+                unique_sources=3,
+                hours_ago=2.0,
+                cnt_1h=3,
+                cnt_24h=5,
+            )
+        ]
         pool = _make_pool(groups=rows)
         result = await run_early_trend_update(pool)
         assert result == 1
 
     @pytest.mark.asyncio
-    async def test_score_calculation_velocity(self) -> None:
-        """10+ articles should give velocity = 1.0."""
-        rows = [_make_group_row(article_count=15, unique_sources=5, hours_ago=0.0)]
+    async def test_momentum_velocity_high_acceleration(self) -> None:
+        """High recent activity relative to 24h average → high velocity."""
+        rows = [
+            _make_group_row(
+                article_count=15,
+                unique_sources=5,
+                hours_ago=0.0,
+                cnt_1h=5,
+                cnt_24h=10,
+                burst_score=0.5,
+            )
+        ]
         pool = _make_pool(groups=rows)
 
         await run_early_trend_update(pool)
 
-        # Verify the UPDATE was called
         ctx = pool.acquire.return_value
         conn = await ctx.__aenter__()
         assert conn.execute.called
         call_args = conn.execute.call_args_list[-1]
         score = call_args[0][1]
-        # velocity=1.0, diversity=5/15≈0.33, recency=1.0
-        # 0.4*1.0 + 0.3*0.33 + 0.3*1.0 ≈ 0.7
+        # hourly_avg=10/24≈0.42, acceleration=5/0.42≈12, velocity=min(1,12/5)=1.0
+        # 0.3*1.0 + 0.25*0.5 + 0.25*(5/15) + 0.2*1.0 = 0.3+0.125+0.083+0.2=0.708
         assert 0.6 < score < 0.85
 
     @pytest.mark.asyncio
     async def test_score_decreases_with_old_articles(self) -> None:
         """Articles from 40 hours ago should have low recency."""
-        rows = [_make_group_row(article_count=5, unique_sources=3, hours_ago=40.0)]
+        rows = [
+            _make_group_row(
+                article_count=5,
+                unique_sources=3,
+                hours_ago=40.0,
+                cnt_1h=0,
+                cnt_24h=2,
+            )
+        ]
         pool = _make_pool(groups=rows)
 
         await run_early_trend_update(pool)
@@ -91,14 +121,59 @@ class TestRunEarlyTrendUpdate:
         conn = await ctx.__aenter__()
         call_args = conn.execute.call_args_list[-1]
         score = call_args[0][1]
-        # velocity=0.5, diversity=0.6, recency≈0.17
-        # 0.4*0.5 + 0.3*0.6 + 0.3*0.17 ≈ 0.43
-        assert score < 0.5
+        # velocity=0 (cnt_1h=0), burst=0, diversity=0.6, recency≈0.17
+        # 0.3*0 + 0.25*0 + 0.25*0.6 + 0.2*0.17 = 0.15+0.034 = 0.184
+        assert score < 0.3
+
+    @pytest.mark.asyncio
+    async def test_single_source_returns_zero(self) -> None:
+        """Single source cluster should get score 0."""
+        rows = [
+            _make_group_row(
+                article_count=5,
+                unique_sources=1,
+                hours_ago=0.0,
+                cnt_1h=5,
+                cnt_24h=5,
+            )
+        ]
+        pool = _make_pool(groups=rows)
+
+        await run_early_trend_update(pool)
+
+        ctx = pool.acquire.return_value
+        conn = await ctx.__aenter__()
+        call_args = conn.execute.call_args_list[-1]
+        score = call_args[0][1]
+        assert score == 0.0
+
+    @pytest.mark.asyncio
+    async def test_small_cluster_capped(self) -> None:
+        """Clusters with <3 articles should be capped at 0.3."""
+        rows = [
+            _make_group_row(
+                article_count=2,
+                unique_sources=2,
+                hours_ago=0.0,
+                cnt_1h=2,
+                cnt_24h=2,
+                burst_score=1.0,
+            )
+        ]
+        pool = _make_pool(groups=rows)
+
+        await run_early_trend_update(pool)
+
+        ctx = pool.acquire.return_value
+        conn = await ctx.__aenter__()
+        call_args = conn.execute.call_args_list[-1]
+        score = call_args[0][1]
+        assert score <= 0.3
 
     @pytest.mark.asyncio
     async def test_handles_row_error_gracefully(self) -> None:
         """A bad row should not stop processing of other rows."""
-        good_row = _make_group_row()
+        good_row = _make_group_row(cnt_1h=2, cnt_24h=5)
         bad_row = MagicMock()
         bad_row.__getitem__ = MagicMock(side_effect=KeyError("article_count"))
 
