@@ -38,6 +38,7 @@ MIGRATIONS: list[str] = [
     "migrations.024_burst_score",
     "migrations.025_seed_config_data",
     "migrations.026_add_is_hidden",
+    "migrations.027_quality_settings",
 ]
 
 
