@@ -28,12 +28,55 @@ logger = structlog.get_logger(__name__)
 
 _DEFAULT_WEIGHTS = ScoreWeights()
 
+# Momentum velocity constants
+_ACCELERATION_DIVISOR = 5.0  # 5x acceleration = max velocity (1.0)
+_MIN_HOURLY_AVG = 0.1  # Floor to avoid division by zero
+
+
+def _parse_article_time(article: dict[str, Any]) -> datetime | None:
+    """Parse publish_time from article dict, normalizing timezone."""
+    pub_time = article.get("publish_time")
+    if isinstance(pub_time, str):
+        pub_time = datetime.fromisoformat(pub_time)
+    if isinstance(pub_time, datetime):
+        if pub_time.tzinfo is None:
+            pub_time = pub_time.replace(tzinfo=timezone.utc)
+        return pub_time
+    return None
+
+
+def _compute_momentum_velocity(
+    articles: list[dict[str, Any]],
+    now: datetime | None = None,
+) -> float:
+    """Compute momentum-based velocity from article publish times.
+
+    Measures acceleration: recent 1-hour article rate vs 24-hour average.
+    Returns a value in [0.0, 1.0] where 1.0 = 5x or more acceleration.
+    """
+    if now is None:
+        now = datetime.now(tz=timezone.utc)
+    cnt_1h = 0
+    cnt_24h = 0
+    for a in articles:
+        pt = _parse_article_time(a)
+        if pt is None:
+            continue
+        elapsed = (now - pt).total_seconds()
+        if elapsed < 3600:
+            cnt_1h += 1
+        if elapsed < 86400:
+            cnt_24h += 1
+    hourly_avg = cnt_24h / 24.0
+    acceleration = cnt_1h / max(hourly_avg, _MIN_HOURLY_AVG)
+    return min(1.0, acceleration / _ACCELERATION_DIVISOR)
+
 
 def compute_early_trend_score(articles: list[dict[str, Any]]) -> float:
     """Compute a lightweight early trend score from cluster article data.
 
     Combines three signals:
-    - velocity: normalized article count (more articles = faster growing)
+    - velocity: momentum-based acceleration (recent 1h vs 24h average)
     - source_diversity: ratio of unique sources (broader coverage = stronger signal)
     - recency: how recent the newest article is (newer = more likely emerging)
 
@@ -47,19 +90,16 @@ def compute_early_trend_score(articles: list[dict[str, Any]]) -> float:
     if len(sources) < 2:
         return 0.0  # Single source is not an emerging trend
 
-    # Velocity: article count normalized (10+ articles → 1.0)
-    velocity = min(1.0, len(articles) / 10.0)
+    now = datetime.now(tz=timezone.utc)
+    velocity = _compute_momentum_velocity(articles, now)
     source_diversity = len(sources) / max(len(articles), 1)
 
     # Recency: newest article within last 6 hours → 1.0, 48h+ → 0.0
-    now = datetime.now(tz=timezone.utc)
     newest_hours = 48.0
     for a in articles:
-        pub_time = a.get("publish_time")
-        if isinstance(pub_time, str):
-            pub_time = datetime.fromisoformat(pub_time)
-        if isinstance(pub_time, datetime):
-            hours_ago = (now - pub_time).total_seconds() / 3600
+        pt = _parse_article_time(a)
+        if pt is not None:
+            hours_ago = (now - pt).total_seconds() / 3600
             newest_hours = min(newest_hours, max(0.0, hours_ago))
     recency = max(0.0, 1.0 - (newest_hours / 48.0))
 
@@ -76,14 +116,9 @@ def _build_burst_series(articles: list[dict[str, Any]]) -> list[TimeSeriesPoint]
 
     hour_counts: Counter[float] = Counter()
     for a in articles:
-        pub_time = a.get("publish_time")
-        if isinstance(pub_time, str):
-            pub_time = datetime.fromisoformat(pub_time)
-        if isinstance(pub_time, datetime):
-            if pub_time.tzinfo is None:
-                pub_time = pub_time.replace(tzinfo=timezone.utc)
-            # Bucket by hour
-            bucket = float(int(pub_time.timestamp() / 3600) * 3600)
+        pt = _parse_article_time(a)
+        if pt is not None:
+            bucket = float(int(pt.timestamp() / 3600) * 3600)
             hour_counts[bucket] += 1
 
     return [
@@ -152,7 +187,7 @@ async def stage_score(
                     cusum_score=0.0,
                     growth_type="unknown",
                 )
-            early_velocity = min(1.0, len(articles) / 10.0)
+            early_velocity = _compute_momentum_velocity(articles)
 
             score_input = ScoreInput(
                 published_at=pub_time,
