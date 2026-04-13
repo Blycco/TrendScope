@@ -12,8 +12,8 @@ async def up(conn: asyncpg.Connection) -> None:
     # 1) source_config for Google Trends RSS quota
     await conn.execute(
         """
-        INSERT INTO source_config (source_name, is_active, quota_limit, quota_used)
-        VALUES ('google_trends_rss', TRUE, 100, 0)
+        INSERT INTO source_config (source_name, source_type, is_active, quota_limit, quota_used)
+        VALUES ('google_trends_rss', 'rss', TRUE, 100, 0)
         ON CONFLICT (source_name) DO NOTHING
         """
     )
