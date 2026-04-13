@@ -210,37 +210,58 @@ class TestBurstAndSingleArticlePenalty:
         assert with_burst.burst > 0.0
 
     def test_single_article_penalty(self) -> None:
-        """단일 기사 클러스터(article_count=1) → 0.7 페널티 적용."""
+        """단일 기사 클러스터(article_count=1) → 0.3x 페널티."""
         now = datetime.now(timezone.utc)
         single = calculate_score(
             ScoreInput(published_at=now, article_count=1),
             now=now,
         )
-        # Check that score is less than if no penalty applied
-        # (Compare against article_count=2 baseline)
         multi = calculate_score(
+            ScoreInput(published_at=now, article_count=5),
+            now=now,
+        )
+        assert single.normalized < multi.normalized
+
+    def test_graduated_penalty_2_articles(self) -> None:
+        """article_count=2 → 0.5x 페널티."""
+        now = datetime.now(timezone.utc)
+        two = calculate_score(
             ScoreInput(published_at=now, article_count=2),
             now=now,
         )
-        # Single article should be less than multi even though count=1 has no bonus
-        assert single.normalized < multi.normalized
-
-    def test_single_article_penalty_exact(self) -> None:
-        """article_count=1일 때 normalized가 0.7배임을 확인."""
-        from backend.processor.shared.score_calculator import ScoreWeights
-
-        now = datetime.now(timezone.utc)
-        weights = ScoreWeights()
-        # Build with article_count=2 but same burst/velocity so we know expected raw
-        result_single = calculate_score(
-            ScoreInput(published_at=now, article_count=1, burst_score=0.5),
-            weights=weights,
+        five = calculate_score(
+            ScoreInput(published_at=now, article_count=5),
             now=now,
         )
-        # Manually compute expected: (freshness + source_div + burst + ...) * 0.7
-        # Just check it's less than theoretical max
-        assert result_single.normalized <= 100.0
-        assert result_single.normalized > 0.0
+        assert two.normalized < five.normalized
+
+    def test_graduated_penalty_ordering(self) -> None:
+        """페널티 순서: 1건 < 2건 < 3건 < 4건 < 5건+."""
+        now = datetime.now(timezone.utc)
+        scores = []
+        for count in [1, 2, 3, 4, 5]:
+            result = calculate_score(
+                ScoreInput(published_at=now, article_count=count),
+                now=now,
+            )
+            scores.append(result.normalized)
+        # Each should be strictly increasing
+        for i in range(len(scores) - 1):
+            assert scores[i] < scores[i + 1]
+
+    def test_no_penalty_at_5_articles(self) -> None:
+        """5건 이상은 페널티 없음."""
+        now = datetime.now(timezone.utc)
+        five = calculate_score(
+            ScoreInput(published_at=now, article_count=5),
+            now=now,
+        )
+        ten = calculate_score(
+            ScoreInput(published_at=now, article_count=10),
+            now=now,
+        )
+        # Both have no penalty, 10 has higher article_count bonus
+        assert ten.normalized > five.normalized
 
     def test_custom_weights_applied(self) -> None:
         """ScoreWeights 커스텀 가중치가 burst 컴포넌트에 반영됨."""
@@ -264,4 +285,4 @@ class TestBurstAndSingleArticlePenalty:
             now=now,
         )
         assert high_burst.burst == pytest.approx(50.0)
-        assert default.burst == pytest.approx(20.0)
+        assert default.burst == pytest.approx(15.0)

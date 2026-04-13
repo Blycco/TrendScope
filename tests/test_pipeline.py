@@ -157,32 +157,55 @@ class TestComputeEarlyTrendScore:
     def test_empty_articles_returns_zero(self) -> None:
         assert _compute_early_trend_score([]) == 0.0
 
-    def test_single_recent_article(self) -> None:
+    def test_single_source_returns_zero(self) -> None:
+        """Single source is not an emerging trend."""
         articles = [_make_article()]
         score = _compute_early_trend_score(articles)
-        assert 0.0 < score <= 1.0
+        assert score == 0.0
+
+    def test_two_sources_returns_positive(self) -> None:
+        """Two different sources produce a positive early trend score."""
+        articles = [
+            _make_article(),
+            {**_make_article(url="https://other.com/1", url_hash="h2"), "source": "other"},
+        ]
+        score = _compute_early_trend_score(articles)
+        assert score > 0.0
 
     def test_more_articles_higher_velocity(self) -> None:
-        one = [_make_article()]
-        many = [_make_article(url=f"https://example.com/{i}", url_hash=f"h{i}") for i in range(10)]
-        assert _compute_early_trend_score(many) > _compute_early_trend_score(one)
+        two_src = [
+            {**_make_article(url=f"https://a.com/{i}", url_hash=f"a{i}"), "source": "srcA"}
+            for i in range(2)
+        ] + [
+            {**_make_article(url=f"https://b.com/{i}", url_hash=f"b{i}"), "source": "srcB"}
+            for i in range(8)
+        ]
+        few = [
+            _make_article(),
+            {**_make_article(url="https://other.com/1", url_hash="h2"), "source": "other"},
+        ]
+        assert _compute_early_trend_score(two_src) > _compute_early_trend_score(few)
 
     def test_diverse_sources_higher_score(self) -> None:
+        # same_source: all from one source (returns 0 — single source)
         same_source = [
             _make_article(url=f"https://example.com/{i}", url_hash=f"h{i}") for i in range(3)
         ]
+        # diverse: 3 different sources
         diverse = [
             {**_make_article(url=f"https://example.com/{i}", url_hash=f"h{i}"), "source": f"src{i}"}
             for i in range(3)
         ]
-        assert _compute_early_trend_score(diverse) > _compute_early_trend_score(same_source)
+        assert _compute_early_trend_score(same_source) == 0.0
+        assert _compute_early_trend_score(diverse) > 0.0
 
     def test_score_bounded_zero_to_one(self) -> None:
         articles = [
-            _make_article(url=f"https://example.com/{i}", url_hash=f"h{i}") for i in range(20)
+            {**_make_article(url=f"https://example.com/{i}", url_hash=f"h{i}"), "source": f"s{i}"}
+            for i in range(20)
         ]
         score = _compute_early_trend_score(articles)
-        assert 0.0 <= score <= 1.0
+        assert 0.0 < score <= 1.0
 
 
 class TestStageScore:
