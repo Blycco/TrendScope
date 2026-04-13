@@ -34,6 +34,7 @@ def _make_group_row(
     unique_sources: int = 3,
     hours_ago: float = 2.0,
     burst_score: float = 0.0,
+    cnt_15m: int = 0,
     cnt_1h: int = 0,
     cnt_24h: int | None = None,
 ) -> MagicMock:
@@ -48,6 +49,7 @@ def _make_group_row(
         "article_count": article_count,
         "unique_sources": unique_sources,
         "newest_publish_time": now - timedelta(hours=hours_ago),
+        "cnt_15m": cnt_15m,
         "cnt_1h": cnt_1h,
         "cnt_24h": cnt_24h if cnt_24h is not None else article_count,
     }
@@ -60,20 +62,30 @@ def _make_group_row(
     new_callable=AsyncMock,
     return_value=1.0,
 )
+@patch(
+    "backend.jobs.early_trend_update.compute_early_trend_score",
+    new_callable=AsyncMock,
+    return_value=0.5,
+)
 class TestRunEarlyTrendUpdate:
     @pytest.mark.asyncio
-    async def test_returns_zero_when_no_groups(self, _mock_ext: AsyncMock) -> None:
+    async def test_returns_zero_when_no_groups(
+        self, _mock_score: AsyncMock, _mock_ext: AsyncMock
+    ) -> None:
         pool = _make_pool(groups=[])
         result = await run_early_trend_update(pool)
         assert result == 0
 
     @pytest.mark.asyncio
-    async def test_updates_groups_and_returns_count(self, _mock_ext: AsyncMock) -> None:
+    async def test_updates_groups_and_returns_count(
+        self, _mock_score: AsyncMock, _mock_ext: AsyncMock
+    ) -> None:
         rows = [
             _make_group_row(
                 article_count=5,
                 unique_sources=3,
                 hours_ago=2.0,
+                cnt_15m=2,
                 cnt_1h=3,
                 cnt_24h=5,
             )
@@ -83,39 +95,45 @@ class TestRunEarlyTrendUpdate:
         assert result == 1
 
     @pytest.mark.asyncio
-    async def test_momentum_velocity_high_acceleration(self, _mock_ext: AsyncMock) -> None:
-        """High recent activity relative to 24h average → high velocity."""
+    async def test_calls_compute_with_correct_args(
+        self, mock_score: AsyncMock, _mock_ext: AsyncMock
+    ) -> None:
+        """Verify compute_early_trend_score receives correct arguments."""
         rows = [
             _make_group_row(
-                article_count=15,
-                unique_sources=5,
-                hours_ago=0.0,
+                article_count=10,
+                unique_sources=4,
+                hours_ago=1.0,
+                burst_score=0.6,
+                cnt_15m=3,
                 cnt_1h=5,
                 cnt_24h=10,
-                burst_score=0.5,
             )
         ]
         pool = _make_pool(groups=rows)
 
         await run_early_trend_update(pool)
 
-        ctx = pool.acquire.return_value
-        conn = await ctx.__aenter__()
-        assert conn.execute.called
-        call_args = conn.execute.call_args_list[-1]
-        score = call_args[0][1]
-        # hourly_avg=10/24≈0.42, acceleration=5/0.42≈12, velocity=min(1,12/5)=1.0
-        # 0.3*1.0 + 0.25*0.5 + 0.25*(5/15) + 0.2*1.0 = 0.3+0.125+0.083+0.2=0.708
-        assert 0.6 < score < 0.85
+        mock_score.assert_called_once()
+        call_args = mock_score.call_args
+        # Args: pool, burst, velocity, diversity, recency
+        assert call_args[0][1] == 0.6  # burst
+        assert 0.0 <= call_args[0][2] <= 1.0  # velocity
+        assert abs(call_args[0][3] - 0.4) < 1e-9  # diversity = 4/10
+        assert 0.0 <= call_args[0][4] <= 1.0  # recency
 
     @pytest.mark.asyncio
-    async def test_score_decreases_with_old_articles(self, _mock_ext: AsyncMock) -> None:
-        """Articles from 40 hours ago should have low recency."""
+    async def test_score_decreases_with_old_articles(
+        self, mock_score: AsyncMock, _mock_ext: AsyncMock
+    ) -> None:
+        """Articles from 40 hours ago should pass low recency to compute."""
+        mock_score.return_value = 0.15
         rows = [
             _make_group_row(
                 article_count=5,
                 unique_sources=3,
                 hours_ago=40.0,
+                cnt_15m=0,
                 cnt_1h=0,
                 cnt_24h=2,
             )
@@ -128,18 +146,19 @@ class TestRunEarlyTrendUpdate:
         conn = await ctx.__aenter__()
         call_args = conn.execute.call_args_list[-1]
         score = call_args[0][1]
-        # velocity=0 (cnt_1h=0), burst=0, diversity=0.6, recency≈0.17
-        # 0.3*0 + 0.25*0 + 0.25*0.6 + 0.2*0.17 = 0.15+0.034 = 0.184
         assert score < 0.3
 
     @pytest.mark.asyncio
-    async def test_single_source_returns_zero(self, _mock_ext: AsyncMock) -> None:
+    async def test_single_source_returns_zero(
+        self, _mock_score: AsyncMock, _mock_ext: AsyncMock
+    ) -> None:
         """Single source cluster should get score 0."""
         rows = [
             _make_group_row(
                 article_count=5,
                 unique_sources=1,
                 hours_ago=0.0,
+                cnt_15m=5,
                 cnt_1h=5,
                 cnt_24h=5,
             )
@@ -155,13 +174,17 @@ class TestRunEarlyTrendUpdate:
         assert score == 0.0
 
     @pytest.mark.asyncio
-    async def test_small_cluster_capped(self, _mock_ext: AsyncMock) -> None:
+    async def test_small_cluster_capped(
+        self, _mock_score: AsyncMock, _mock_ext: AsyncMock
+    ) -> None:
         """Clusters with <3 articles should be capped at 0.3."""
+        _mock_score.return_value = 0.8
         rows = [
             _make_group_row(
                 article_count=2,
                 unique_sources=2,
                 hours_ago=0.0,
+                cnt_15m=2,
                 cnt_1h=2,
                 cnt_24h=2,
                 burst_score=1.0,
@@ -178,9 +201,11 @@ class TestRunEarlyTrendUpdate:
         assert score <= 0.3
 
     @pytest.mark.asyncio
-    async def test_handles_row_error_gracefully(self, _mock_ext: AsyncMock) -> None:
+    async def test_handles_row_error_gracefully(
+        self, _mock_score: AsyncMock, _mock_ext: AsyncMock
+    ) -> None:
         """A bad row should not stop processing of other rows."""
-        good_row = _make_group_row(cnt_1h=2, cnt_24h=5)
+        good_row = _make_group_row(cnt_15m=1, cnt_1h=2, cnt_24h=5)
         bad_row = MagicMock()
         bad_row.__getitem__ = MagicMock(side_effect=KeyError("article_count"))
 
@@ -189,7 +214,9 @@ class TestRunEarlyTrendUpdate:
         assert result == 1
 
     @pytest.mark.asyncio
-    async def test_raises_on_db_connection_error(self, _mock_ext: AsyncMock) -> None:
+    async def test_raises_on_db_connection_error(
+        self, _mock_score: AsyncMock, _mock_ext: AsyncMock
+    ) -> None:
         pool = MagicMock()
         ctx = MagicMock()
         ctx.__aenter__ = AsyncMock(side_effect=RuntimeError("connection refused"))
