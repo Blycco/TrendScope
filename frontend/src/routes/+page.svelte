@@ -98,7 +98,12 @@
 			const [trendsData, newsData, earlyData, summaryData] = await Promise.all([
 				apiRequest<TrendListResponse>('/trends?limit=5'),
 				apiRequest<NewsListResponse>('/news?limit=5'),
-				apiRequest<TrendListResponse>('/trends/early?limit=5'),
+				apiRequest<TrendListResponse>('/trends/early?limit=5').catch((e) => {
+					if (e instanceof ApiRequestError && (e.errorCode === 'E0031' || e.status === 401)) {
+						return { items: [] } as TrendListResponse;
+					}
+					throw e;
+				}),
 				apiRequest<DashboardSummaryResponse>('/dashboard/summary'),
 			]);
 			topTrends = trendsData.items;
