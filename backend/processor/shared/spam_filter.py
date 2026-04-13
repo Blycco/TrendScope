@@ -65,6 +65,9 @@ _URL_PATTERN: re.Pattern[str] = re.compile(r"https?://[^\s]+", re.IGNORECASE)
 _PHONE_PATTERN: re.Pattern[str] = re.compile(r"0\d{1,2}[-.\s]?\d{3,4}[-.\s]?\d{4}")
 _EXCESSIVE_CAPS_PATTERN: re.Pattern[str] = re.compile(r"[A-Z]{10,}")
 _EXCESSIVE_SPECIAL_PATTERN: re.Pattern[str] = re.compile(r"[!?]{3,}")
+_KO_DATE_GENERIC_PATTERN: re.Pattern[str] = re.compile(
+    r"\d+월\s*\d+일\s*(알림|인사|소식|안내|공지|일정|행사|메모)",
+)
 
 
 @dataclass
@@ -135,6 +138,10 @@ def _classify_rule_based(
     features = _extract_features(text, spam_keywords)
     reasons: list[str] = []
     score = 0.0
+
+    if _KO_DATE_GENERIC_PATTERN.search(text):
+        reasons.append("ko_date_generic_title")
+        score += 0.5
 
     if features["content_length"] < _min_len:
         reasons.append("content_too_short")

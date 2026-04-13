@@ -156,7 +156,7 @@ def create_scheduler(db_pool: asyncpg.Pool) -> AsyncIOScheduler:
     scheduler.add_job(
         _job_early_trend_update,
         "interval",
-        minutes=15,
+        minutes=3,
         args=[db_pool],
         id="early_trend_update",
         name="Early Trend Score Recalculation",

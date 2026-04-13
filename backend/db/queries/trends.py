@@ -90,7 +90,11 @@ async def fetch_trends(
     """
     try:
         params: list[object] = []
-        conditions: list[str] = ["ng.score >= 5.0", "ng.is_hidden = FALSE"]
+        conditions: list[str] = [
+            "ng.score >= 5.0",
+            "ng.is_hidden = FALSE",
+            "(SELECT COUNT(*) FROM news_article WHERE group_id = ng.id) >= 2",
+        ]
 
         if category:
             cats = [c.strip() for c in category.split(",") if c.strip()]
@@ -147,10 +151,13 @@ async def fetch_early_trends(
     limit: int = 20,
     cursor: str | None = None,
 ) -> list[asyncpg.Record]:
-    """Fetch news_group rows where early_trend_score > 0, ordered by early_trend_score DESC."""
+    """Fetch news_group rows with meaningful early_trend_score, ordered by score DESC."""
     try:
         params: list[object] = []
-        conditions: list[str] = ["ng.early_trend_score > 0"]
+        conditions: list[str] = [
+            "ng.early_trend_score > 0.4",
+            "(SELECT COUNT(*) FROM news_article WHERE group_id = ng.id) >= 2",
+        ]
 
         if locale:
             params.append(locale)
@@ -270,6 +277,8 @@ async def fetch_related_trends(
                     WHERE id = $1::uuid
                 )
                   AND ng.id <> $1::uuid
+                  AND ng.is_hidden = FALSE
+                  AND (SELECT COUNT(*) FROM news_article WHERE group_id = ng.id) >= 2
                 ORDER BY ng.score DESC
                 LIMIT $2
                 """,  # noqa: S608

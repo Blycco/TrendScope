@@ -148,8 +148,25 @@ _KOREAN_STOP_WORDS: frozenset[str] = frozenset(
         "머니투데이",
         "아시아경제",
         "헤럴드경제",
+        # 행정/일반 뉴스 범용어 (트렌드 키워드로서 무의미)
+        "인사",
+        "발표",
+        "현황",
+        "일정",
+        "안내",
+        "공지",
+        "결과",
+        "자료",
+        "보도",
+        "회의",
+        "회견",
+        "성명",
+        "담화",
     }
 )
+
+# Date-like keyword pattern (e.g. "4월9일", "2026년", "3월")
+_DATE_KEYWORD_RE: re.Pattern[str] = re.compile(r"^\d+월\d*일?$|^\d{4}년$|^\d+월$|^\d+일$")
 
 # POS tags to keep from kiwipiepy (nouns + English)
 _NOUN_POS_TAGS: frozenset[str] = frozenset({"NNG", "NNP", "NNB", "SL"})
@@ -343,7 +360,11 @@ def _filter_tokens(
     """Merge DB-loaded and hardcoded stop words, then filter tokens."""
     ko_set = (stop_words_ko | _KOREAN_STOP_WORDS) if stop_words_ko else _KOREAN_STOP_WORDS
     en_set = (stop_words_en | _STOP_WORDS) if stop_words_en else _STOP_WORDS
-    return [t for t in tokens if t not in ko_set and t.lower() not in en_set]
+    return [
+        t
+        for t in tokens
+        if t not in ko_set and t.lower() not in en_set and not _DATE_KEYWORD_RE.match(t)
+    ]
 
 
 def extract_keywords(

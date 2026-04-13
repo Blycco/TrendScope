@@ -342,15 +342,18 @@ def _cluster_hdbscan(
             )
             cluster_idx += 1
 
-        # Noise points (label == -1) become singletons
+        # Noise points (label == -1) become singletons only if quality threshold met
         for noise_item in label_groups.get(-1, []):
-            clusters.append(
-                Cluster(
-                    cluster_id=f"noise_{cluster_idx}",
-                    representative=noise_item,
+            text = noise_item.text if isinstance(noise_item, ClusterItem) else ""
+            kws = noise_item.keywords if isinstance(noise_item, ClusterItem) else set()
+            if len(text) >= 20 and len(kws) >= 3:
+                clusters.append(
+                    Cluster(
+                        cluster_id=f"noise_{cluster_idx}",
+                        representative=noise_item,
+                    )
                 )
-            )
-            cluster_idx += 1
+                cluster_idx += 1
 
         return clusters
     except Exception as exc:
