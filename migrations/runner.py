@@ -39,6 +39,8 @@ MIGRATIONS: list[str] = [
     "migrations.025_seed_config_data",
     "migrations.026_add_is_hidden",
     "migrations.027_quality_settings",
+    "migrations.028_quality_v2",
+    "migrations.029_google_trends_sns",
 ]
 
 
