@@ -112,32 +112,32 @@
 		animFrame = requestAnimationFrame(tick);
 	}
 
-	onMount(async () => {
-		try {
-			const data = await apiRequest<RelatedTrendsResponse>(
-				`/trends/${trendId}/related`
-			);
-			nodes = initPositions(data.nodes);
-			edges = data.edges;
-			// Run simulation for a limited number of frames
-			let frameCount = 0;
-			const MAX_FRAMES = 120;
-			function limitedTick(): void {
-				frameCount++;
-				tick();
-				if (frameCount < MAX_FRAMES) {
-					animFrame = requestAnimationFrame(limitedTick);
+	onMount(() => {
+		void (async () => {
+			try {
+				const data = await apiRequest<RelatedTrendsResponse>(
+					`/trends/${trendId}/related`
+				);
+				nodes = initPositions(data.nodes);
+				edges = data.edges;
+				let frameCount = 0;
+				const MAX_FRAMES = 120;
+				function limitedTick(): void {
+					frameCount++;
+					tick();
+					if (frameCount < MAX_FRAMES) {
+						animFrame = requestAnimationFrame(limitedTick);
+					}
 				}
+				animFrame = requestAnimationFrame(limitedTick);
+			} catch (e) {
+				if (!(e instanceof ApiRequestError)) {
+					hasError = true;
+				}
+			} finally {
+				isLoading = false;
 			}
-			animFrame = requestAnimationFrame(limitedTick);
-		} catch (e) {
-			if (!(e instanceof ApiRequestError)) {
-				hasError = true;
-			}
-			// On ApiRequestError (e.g. 404 no related trends) just show empty state
-		} finally {
-			isLoading = false;
-		}
+		})();
 
 		return () => {
 			if (animFrame !== null) cancelAnimationFrame(animFrame);

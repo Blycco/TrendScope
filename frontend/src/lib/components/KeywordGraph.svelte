@@ -139,32 +139,34 @@
 		hoveredNode = null;
 	}
 
-	onMount(async () => {
-		try {
-			const data = await apiRequest<KeywordGraphResponse>(
-				`/trends/${groupId}/keywords/graph`
-			);
-			if (data.nodes.length > 0) {
-				nodes = initPositions(data.nodes);
-				edges = data.edges;
-				let frameCount = 0;
-				const MAX_FRAMES = 120;
-				function limitedTick(): void {
-					frameCount++;
-					tick();
-					if (frameCount < MAX_FRAMES) {
-						animFrame = requestAnimationFrame(limitedTick);
+	onMount(() => {
+		void (async () => {
+			try {
+				const data = await apiRequest<KeywordGraphResponse>(
+					`/trends/${groupId}/keywords/graph`
+				);
+				if (data.nodes.length > 0) {
+					nodes = initPositions(data.nodes);
+					edges = data.edges;
+					let frameCount = 0;
+					const MAX_FRAMES = 120;
+					function limitedTick(): void {
+						frameCount++;
+						tick();
+						if (frameCount < MAX_FRAMES) {
+							animFrame = requestAnimationFrame(limitedTick);
+						}
 					}
+					animFrame = requestAnimationFrame(limitedTick);
 				}
-				animFrame = requestAnimationFrame(limitedTick);
+			} catch (e) {
+				if (!(e instanceof ApiRequestError)) {
+					hasError = true;
+				}
+			} finally {
+				isLoading = false;
 			}
-		} catch (e) {
-			if (!(e instanceof ApiRequestError)) {
-				hasError = true;
-			}
-		} finally {
-			isLoading = false;
-		}
+		})();
 
 		return () => {
 			if (animFrame !== null) cancelAnimationFrame(animFrame);

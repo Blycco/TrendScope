@@ -21,7 +21,8 @@ describe('API Types', () => {
 			keywords: ['ai', 'ml'],
 			created_at: '2024-01-01T00:00:00Z',
 			article_count: 5,
-			direction: 'steady'
+			direction: 'steady',
+			status: 'stable'
 		};
 		expect(trend.id).toBe('1');
 		expect(trend.keywords).toHaveLength(2);
