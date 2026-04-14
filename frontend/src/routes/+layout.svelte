@@ -57,7 +57,8 @@
 					<div class="flex items-center gap-8">
 						<a href="/" class="text-xl font-bold text-gray-900 dark:text-gray-100">TrendScope</a>
 						<div class="hidden sm:flex items-center gap-4" data-tour="nav-links">
-							<a href="/trends" class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100" aria-current={$page.url.pathname.startsWith('/trends') ? 'page' : undefined}>{$t('nav.sidebar.trends')}</a>
+							<a href="/trends" class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100" aria-current={$page.url.pathname === '/trends' || ($page.url.pathname.startsWith('/trends/') && !$page.url.pathname.startsWith('/trends/early')) ? 'page' : undefined}>{$t('nav.sidebar.trends')}</a>
+							<a href="/trends/early" class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100" aria-current={$page.url.pathname.startsWith('/trends/early') ? 'page' : undefined}>{$t('nav.early_trends')}</a>
 							<a href="/news" class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100" aria-current={$page.url.pathname.startsWith('/news') ? 'page' : undefined}>{$t('nav.sidebar.news')}</a>
 							<a href="/content" class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100" aria-current={$page.url.pathname.startsWith('/content') ? 'page' : undefined}>{$t('nav.content')}</a>
 							<a href="/compare" class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100" aria-current={$page.url.pathname.startsWith('/compare') ? 'page' : undefined}>{$t('nav.compare')}</a>
@@ -99,7 +100,8 @@
 			{#if mobileMenuOpen}
 				<div class="sm:hidden border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
 					<div class="px-4 py-3 space-y-1">
-						<a href="/trends" class="block rounded-md px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800" aria-current={$page.url.pathname.startsWith('/trends') ? 'page' : undefined}>{$t('nav.sidebar.trends')}</a>
+						<a href="/trends" class="block rounded-md px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800" aria-current={$page.url.pathname === '/trends' || ($page.url.pathname.startsWith('/trends/') && !$page.url.pathname.startsWith('/trends/early')) ? 'page' : undefined}>{$t('nav.sidebar.trends')}</a>
+						<a href="/trends/early" class="block rounded-md px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800" aria-current={$page.url.pathname.startsWith('/trends/early') ? 'page' : undefined}>{$t('nav.early_trends')}</a>
 						<a href="/news" class="block rounded-md px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800" aria-current={$page.url.pathname.startsWith('/news') ? 'page' : undefined}>{$t('nav.sidebar.news')}</a>
 						<a href="/content" class="block rounded-md px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800" aria-current={$page.url.pathname.startsWith('/content') ? 'page' : undefined}>{$t('nav.content')}</a>
 						<a href="/compare" class="block rounded-md px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800" aria-current={$page.url.pathname.startsWith('/compare') ? 'page' : undefined}>{$t('nav.compare')}</a>
