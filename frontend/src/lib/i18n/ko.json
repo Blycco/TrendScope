@@ -635,6 +635,7 @@
 	"common.no_results_desc": "검색 조건에 맞는 결과가 없습니다",
 
 	"nav.compare": "비교",
+	"nav.pricing": "요금제",
 	"page.compare.title": "트렌드 비교",
 	"compare.select_trends": "비교할 트렌드를 선택하세요 (2~5개)",
 	"compare.search_placeholder": "트렌드 검색...",

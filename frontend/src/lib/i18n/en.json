@@ -637,6 +637,7 @@
 	"common.no_results_desc": "No results match your filters",
 
 	"nav.compare": "Compare",
+	"nav.pricing": "Pricing",
 	"page.compare.title": "Trend Comparison",
 	"compare.select_trends": "Select trends to compare (2-5)",
 	"compare.search_placeholder": "Search trends...",
