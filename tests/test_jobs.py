@@ -109,3 +109,26 @@ class TestQuotaResetJob:
 
         with pytest.raises(RuntimeError, match="quota reset error"):
             await run_quota_reset(mock_pool)
+
+
+class TestSchedulerJobRegistration:
+    def test_all_required_jobs_registered(self, mock_pool: MagicMock) -> None:
+        from backend.crawler.scheduler import create_scheduler
+
+        scheduler = create_scheduler(mock_pool)
+        registered = {job.id for job in scheduler.get_jobs()}
+        required = {
+            "news_crawl",
+            "sns_collect",
+            "community_crawl",
+            "early_trend_update",
+            "naver_datalab",
+            "keyword_snapshot",
+            "quota_reset",
+            "daily_digest",
+            "keyword_review",
+            "brand_alert",
+            "plan_expiry",
+        }
+        missing = required - registered
+        assert not missing, f"scheduler missing jobs: {missing}"
