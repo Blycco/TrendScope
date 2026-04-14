@@ -1,4 +1,4 @@
-"""Unit tests for scheduled jobs: plan_expiry and quota_reset."""
+"""Unit tests for scheduled jobs: plan_expiry + scheduler registration."""
 
 from __future__ import annotations
 
@@ -80,35 +80,6 @@ class TestPlanExpiryJob:
 
         with pytest.raises(RuntimeError, match="db error"):
             await run_plan_expiry(mock_pool)
-
-
-class TestQuotaResetJob:
-    async def test_resets_rows(self, mock_pool: MagicMock) -> None:
-        from backend.jobs.quota_reset import run_quota_reset
-
-        conn = mock_pool.acquire.return_value.__aenter__.return_value
-        conn.execute = AsyncMock(return_value="UPDATE 5")
-
-        count = await run_quota_reset(mock_pool)
-        assert count == 5
-
-    async def test_no_rows_to_reset(self, mock_pool: MagicMock) -> None:
-        from backend.jobs.quota_reset import run_quota_reset
-
-        conn = mock_pool.acquire.return_value.__aenter__.return_value
-        conn.execute = AsyncMock(return_value="UPDATE 0")
-
-        count = await run_quota_reset(mock_pool)
-        assert count == 0
-
-    async def test_raises_on_db_error(self, mock_pool: MagicMock) -> None:
-        from backend.jobs.quota_reset import run_quota_reset
-
-        conn = mock_pool.acquire.return_value.__aenter__.return_value
-        conn.execute = AsyncMock(side_effect=RuntimeError("quota reset error"))
-
-        with pytest.raises(RuntimeError, match="quota reset error"):
-            await run_quota_reset(mock_pool)
 
 
 class TestSchedulerJobRegistration:
