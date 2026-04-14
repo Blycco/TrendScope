@@ -93,12 +93,58 @@
 		successOpen = true;
 	}
 
+	interface CurrentSubscription {
+		id: string;
+		plan: string;
+		status: string;
+		provider: string;
+		started_at: string;
+		expires_at: string | null;
+	}
+
+	let currentSub = $state<CurrentSubscription | null>(null);
+	let isLoadingSub = $state(false);
+	let cancelConfirmOpen = $state(false);
+	let isCancelling = $state(false);
+
+	async function loadCurrentSubscription(): Promise<void> {
+		isLoadingSub = true;
+		try {
+			currentSub = await apiRequest<CurrentSubscription | null>('/subscriptions/current');
+		} catch {
+			currentSub = null;
+		} finally {
+			isLoadingSub = false;
+		}
+	}
+
+	async function confirmCancelSubscription(): Promise<void> {
+		isCancelling = true;
+		try {
+			await apiRequest('/subscriptions/cancel', { method: 'POST' });
+			cancelConfirmOpen = false;
+			currentSub = null;
+			await authStore.fetchUser();
+			showSuccess('toast.subscription.cancelled');
+		} catch (error) {
+			cancelConfirmOpen = false;
+			if (error instanceof ApiRequestError) {
+				showError(error.errorCode, 'error.server');
+			} else {
+				showError('ERR_NETWORK', 'error.network');
+			}
+		} finally {
+			isCancelling = false;
+		}
+	}
+
 	onMount(() => {
 		displayName = authStore.user?.display_name ?? '';
 		loadNotificationSettings();
 		loadKeywordAlerts();
 		loadPersonalization();
 		loadBehaviorStats();
+		loadCurrentSubscription();
 	});
 
 	async function saveAccount(): Promise<void> {
@@ -396,16 +442,51 @@
 	<!-- Plan tab -->
 	{#if activeTab === 'plan'}
 		<div class="max-w-md space-y-4">
-			<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+			<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 space-y-2">
 				<p class="text-sm text-gray-500 dark:text-gray-400">{$t('settings.plan.current_plan')}</p>
-				<p class="mt-1 text-lg font-semibold capitalize text-gray-900 dark:text-gray-100">{authStore.user?.plan ?? '-'}</p>
+				<p class="text-lg font-semibold capitalize text-gray-900 dark:text-gray-100">{authStore.user?.plan ?? '-'}</p>
+				{#if isLoadingSub}
+					<p class="text-xs text-gray-400 dark:text-gray-500">{$t('status.loading')}</p>
+				{:else if currentSub}
+					<dl class="mt-2 space-y-1 text-xs text-gray-500 dark:text-gray-400">
+						<div class="flex justify-between gap-2">
+							<dt>{$t('settings.plan.status')}</dt>
+							<dd class="font-medium text-gray-700 dark:text-gray-300 capitalize">{currentSub.status}</dd>
+						</div>
+						<div class="flex justify-between gap-2">
+							<dt>{$t('settings.plan.provider')}</dt>
+							<dd class="font-medium text-gray-700 dark:text-gray-300">{currentSub.provider}</dd>
+						</div>
+						<div class="flex justify-between gap-2">
+							<dt>{$t('settings.plan.started_at')}</dt>
+							<dd class="font-medium text-gray-700 dark:text-gray-300">{new Date(currentSub.started_at).toLocaleDateString()}</dd>
+						</div>
+						{#if currentSub.expires_at}
+							<div class="flex justify-between gap-2">
+								<dt>{$t('settings.plan.expires_at')}</dt>
+								<dd class="font-medium text-gray-700 dark:text-gray-300">{new Date(currentSub.expires_at).toLocaleDateString()}</dd>
+							</div>
+						{/if}
+					</dl>
+				{/if}
 			</div>
-			<a
-				href="/pricing"
-				class="inline-block rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-			>
-				{$t('settings.plan.view_pricing')}
-			</a>
+
+			{#if currentSub && currentSub.status === 'active'}
+				<button
+					type="button"
+					onclick={() => (cancelConfirmOpen = true)}
+					class="inline-block rounded-md border border-red-300 dark:border-red-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+				>
+					{$t('settings.plan.cancel')}
+				</button>
+			{:else}
+				<a
+					href="/pricing"
+					class="inline-block rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+				>
+					{$t('settings.plan.view_pricing')}
+				</a>
+			{/if}
 		</div>
 	{/if}
 
@@ -730,3 +811,39 @@
 	messageKey={successMessageKey}
 	onClose={() => (successOpen = false)}
 />
+
+{#if cancelConfirmOpen}
+	<div
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="cancel-sub-title"
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+	>
+		<div class="w-full max-w-sm rounded-lg bg-white dark:bg-gray-800 p-6 shadow-xl">
+			<h2 id="cancel-sub-title" class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+				{$t('settings.plan.cancel_confirm_title')}
+			</h2>
+			<p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+				{$t('settings.plan.cancel_confirm_desc')}
+			</p>
+			<div class="mt-4 flex justify-end gap-2">
+				<button
+					type="button"
+					onclick={() => (cancelConfirmOpen = false)}
+					disabled={isCancelling}
+					class="rounded-md border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+				>
+					{$t('action.cancel')}
+				</button>
+				<button
+					type="button"
+					onclick={confirmCancelSubscription}
+					disabled={isCancelling}
+					class="rounded-md bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+				>
+					{isCancelling ? $t('status.loading') : $t('settings.plan.cancel_confirm_action')}
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
