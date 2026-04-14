@@ -246,12 +246,19 @@ async def stage_score(
                         keyword_counter[kw] += 1
             unique_keywords = [kw for kw, _ in keyword_counter.most_common(20)]
 
-            # Group title: prefer rep article's original title
-            raw_title = rep_article.get("title", "")
+            # Group title: pick the longest non-empty article title across the cluster.
+            # Falling back to a keyword join (" · ") produces keyword-stream-looking
+            # titles, so only use that when no article in the cluster has a usable title.
+            candidate_titles = [(a.get("title") or "").strip() for a in articles]
+            candidate_titles = [t for t in candidate_titles if len(t) >= 4]
+            candidate_titles.sort(key=len, reverse=True)
+            raw_title = candidate_titles[0] if candidate_titles else ""
             if raw_title:
                 group_title = raw_title if len(raw_title) <= 50 else raw_title[:45] + "…"
-            else:
+            elif unique_keywords:
                 group_title = " · ".join(unique_keywords[:3])
+            else:
+                group_title = "Untitled"
 
             early_score = compute_early_trend_score(articles)
             cross_platform_multiplier = verify_cross_platform(articles)
