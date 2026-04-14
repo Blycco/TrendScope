@@ -306,6 +306,9 @@ export interface RegionalTrendEntry {
 export interface RegionalTrendResponse {
 	entries: RegionalTrendEntry[];
 	total_locales: number;
+}
+
+// ---------------------------------------------------------------------------
 // Keyword Graph types
 // ---------------------------------------------------------------------------
 
