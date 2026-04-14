@@ -43,6 +43,8 @@ MIGRATIONS: list[str] = [
     "migrations.029_google_trends_sns",
     "migrations.030_external_trends_index",
     "migrations.031_early_trend_settings",
+    "migrations.032_notification_keyword_alert_flags",
+    "migrations.033_score_multipliers",
 ]
 
 
