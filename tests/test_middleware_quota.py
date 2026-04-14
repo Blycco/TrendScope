@@ -205,3 +205,23 @@ class TestQuotaMiddlewareIntegration:
         # health doesn't have DELETE but middleware skips before routing
         # 405 is fine — the middleware didn't block it with 429
         assert resp.status_code != 429
+
+    async def test_quota_disabled_env_bypasses_in_non_production(
+        self, client, mini_app, monkeypatch
+    ) -> None:  # noqa: ANN001
+        monkeypatch.setenv("QUOTA_DISABLED", "true")
+        monkeypatch.delenv("APP_ENV", raising=False)
+        mini_app.state.db_pool = _make_db_pool(usage_count=999)
+        token = _make_token("u1", "free")
+        resp = await client.get("/api/v1/trends", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 200
+
+    async def test_quota_disabled_env_ignored_in_production(
+        self, client, mini_app, monkeypatch
+    ) -> None:  # noqa: ANN001
+        monkeypatch.setenv("QUOTA_DISABLED", "true")
+        monkeypatch.setenv("APP_ENV", "production")
+        mini_app.state.db_pool = _make_db_pool(usage_count=10)
+        token = _make_token("u1", "free")
+        resp = await client.get("/api/v1/trends", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 429
