@@ -11,6 +11,7 @@ import asyncpg
 import httpx
 import structlog
 
+from backend.common.metrics import CRAWLER_REQUESTS
 from backend.crawler.quota_guard import check_quota, increment_quota
 
 logger = structlog.get_logger(__name__)
@@ -67,7 +68,9 @@ async def fetch_naver_trends(
                 resp.raise_for_status()
                 data = resp.json()
                 results.extend(data.get("results", []))
+                CRAWLER_REQUESTS.labels(source="naver_datalab", result="success").inc()
             except Exception as exc:
+                CRAWLER_REQUESTS.labels(source="naver_datalab", result="failure").inc()
                 logger.warning("naver_datalab_fetch_failed", batch_index=i, error=str(exc))
 
     return results

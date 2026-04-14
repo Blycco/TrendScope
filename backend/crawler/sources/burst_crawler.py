@@ -12,6 +12,7 @@ import feedparser
 import httpx
 import structlog
 
+from backend.common.metrics import CRAWLER_REQUESTS
 from backend.processor.shared.dedupe_filter import (
     compute_content_fingerprint as _content_fp,
 )
@@ -252,6 +253,7 @@ async def run_burst_crawl(
                 error=str(reddit_result),
             )
 
+        CRAWLER_REQUESTS.labels(source="burst", result="success").inc()
         logger.info(
             "burst_crawl_complete",
             keywords=keywords,
@@ -260,6 +262,7 @@ async def run_burst_crawl(
         )
         return total
     except Exception as exc:
+        CRAWLER_REQUESTS.labels(source="burst", result="failure").inc()
         logger.error("burst_crawl_failed", keywords=keywords, error=str(exc))
         return 0
 
