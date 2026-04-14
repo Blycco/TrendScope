@@ -6,7 +6,7 @@ from typing import Any
 
 import structlog
 
-from backend.processor.shared.text_normalizer import normalize_text
+from backend.processor.shared.text_normalizer import normalize_text, normalize_title
 
 logger = structlog.get_logger(__name__)
 
@@ -16,7 +16,7 @@ def stage_normalize(articles: list[dict[str, Any]]) -> list[dict[str, Any]]:
     result: list[dict[str, Any]] = []
     for article in articles:
         try:
-            article["title"] = normalize_text(article.get("title", ""))
+            article["title"] = normalize_title(article.get("title", ""))
             article["body"] = normalize_text(article.get("body", ""))
             if article["title"]:
                 result.append(article)
