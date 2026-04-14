@@ -18,10 +18,15 @@
 
 	let { sourceCounts }: Props = $props();
 
+	const COLLAPSED_LIMIT = 10;
+	let expanded = $state(false);
+
 	let entries = $derived(
 		Object.entries(sourceCounts).sort((a, b) => b[1] - a[1])
 	);
 	let total = $derived(entries.reduce((s, [, c]) => s + c, 0));
+	let visibleEntries = $derived(expanded ? entries : entries.slice(0, COLLAPSED_LIMIT));
+	let hiddenCount = $derived(Math.max(0, entries.length - COLLAPSED_LIMIT));
 </script>
 
 {#if entries.length > 0}
@@ -48,7 +53,7 @@
 				{/each}
 			</svg>
 			<div class="flex flex-wrap gap-x-4 gap-y-1.5">
-				{#each entries as [src, cnt]}
+				{#each visibleEntries as [src, cnt]}
 					{@const pct = Math.round((cnt / total) * 100)}
 					<div class="flex items-center gap-1.5">
 						<span
@@ -56,12 +61,23 @@
 							style="background-color: {SOURCE_COLORS[src] ?? '#9ca3af'}"
 						></span>
 						<span class="text-xs text-gray-600 dark:text-gray-400">
-							{$t(`dashboard.source.${src}`)}
+							{src}
 						</span>
 						<span class="text-xs font-medium text-gray-700 dark:text-gray-300">{pct}%</span>
 					</div>
 				{/each}
 			</div>
+			{#if hiddenCount > 0}
+				<button
+					type="button"
+					class="text-xs font-medium text-cyan-600 dark:text-cyan-400 hover:underline"
+					onclick={() => (expanded = !expanded)}
+				>
+					{expanded
+						? $t('dashboard.show_less')
+						: $t('dashboard.show_more', { values: { count: hiddenCount } })}
+				</button>
+			{/if}
 		</div>
 	</div>
 {/if}

@@ -43,3 +43,7 @@ logs/
 *.log
 .coverage.*
 .claire/
+
+# Local artifacts
+backend/db/trends.db
+uv.lock
