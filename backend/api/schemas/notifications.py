@@ -31,10 +31,17 @@ class KeywordCreateRequest(BaseModel):
     keyword: str
 
 
+class KeywordAlertUpdate(BaseModel):
+    alert_surge: bool
+    alert_daily: bool
+
+
 class KeywordResponse(BaseModel):
     id: str
     user_id: str
     keyword: str
+    alert_surge: bool
+    alert_daily: bool
     created_at: datetime
 
 

@@ -18,7 +18,8 @@ async def get_keywords_for_user(
         async with pool.acquire() as conn:
             return await conn.fetch(
                 """
-                SELECT id::text, user_id::text, keyword, created_at
+                SELECT id::text, user_id::text, keyword,
+                       alert_surge, alert_daily, created_at
                 FROM notification_keyword
                 WHERE user_id = $1::uuid
                 ORDER BY created_at ASC
@@ -60,7 +61,8 @@ async def insert_keyword(
                 """
                 INSERT INTO notification_keyword (user_id, keyword)
                 VALUES ($1::uuid, $2)
-                RETURNING id::text, user_id::text, keyword, created_at
+                RETURNING id::text, user_id::text, keyword,
+                          alert_surge, alert_daily, created_at
                 """,
                 user_id,
                 keyword,
@@ -68,6 +70,41 @@ async def insert_keyword(
         return row
     except Exception as exc:
         logger.error("insert_keyword_failed", user_id=user_id, keyword=keyword, error=str(exc))
+        raise
+
+
+async def update_keyword_alerts(
+    pool: asyncpg.Pool,
+    *,
+    user_id: str,
+    keyword_id: str,
+    alert_surge: bool,
+    alert_daily: bool,
+) -> asyncpg.Record | None:
+    """Update alert flags for a keyword. Returns the updated row or None if not found."""
+    try:
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                UPDATE notification_keyword
+                SET alert_surge = $3, alert_daily = $4
+                WHERE id = $1::uuid AND user_id = $2::uuid
+                RETURNING id::text, user_id::text, keyword,
+                          alert_surge, alert_daily, created_at
+                """,
+                keyword_id,
+                user_id,
+                alert_surge,
+                alert_daily,
+            )
+        return row
+    except Exception as exc:
+        logger.error(
+            "update_keyword_alerts_failed",
+            user_id=user_id,
+            keyword_id=keyword_id,
+            error=str(exc),
+        )
         raise
 
 
