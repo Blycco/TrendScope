@@ -33,10 +33,10 @@ async def stage_save(
                     "INSERT INTO news_group "
                     "(category, locale, title, summary, score, "
                     "early_trend_score, keywords, burst_score, "
-                    "cross_platform_multiplier, external_trend_boost) "
+                    "cross_platform_multiplier, external_trend_boost, growth_type) "
                     "SELECT * FROM unnest($1::text[], $2::text[], $3::text[], $4::text[], "
                     "$5::float8[], $6::float8[], $7::text[][], $8::float8[], "
-                    "$9::float8[], $10::float8[]) "
+                    "$9::float8[], $10::float8[], $11::text[]) "
                     "RETURNING id",
                     [c["category"] for c in scored_clusters],
                     [c["locale"] for c in scored_clusters],
@@ -48,6 +48,7 @@ async def stage_save(
                     [c.get("burst_score", 0.0) for c in scored_clusters],
                     [c.get("cross_platform_multiplier", 1.0) for c in scored_clusters],
                     [c.get("external_trend_boost", 1.0) for c in scored_clusters],
+                    [c.get("growth_type", "unknown") for c in scored_clusters],
                 )
 
                 # Collect all article UPDATE pairs
@@ -95,8 +96,8 @@ async def _save_individually(
                 "INSERT INTO news_group "
                 "(category, locale, title, summary, score, "
                 "early_trend_score, keywords, burst_score, "
-                "cross_platform_multiplier, external_trend_boost) "
-                "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id",
+                "cross_platform_multiplier, external_trend_boost, growth_type) "
+                "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id",
                 item["category"],
                 item["locale"],
                 item["title"],
@@ -107,6 +108,7 @@ async def _save_individually(
                 item.get("burst_score", 0.0),
                 item.get("cross_platform_multiplier", 1.0),
                 item.get("external_trend_boost", 1.0),
+                item.get("growth_type", "unknown"),
             )
 
             articles: list[dict[str, Any]] = item.get("articles", [])
