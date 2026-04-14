@@ -9,6 +9,7 @@
 	import { X } from 'lucide-svelte';
 	import { Sun, Moon, Monitor } from 'lucide-svelte';
 	import { themeStore } from '$lib/stores/theme.svelte';
+	import { personalizationStore } from '$lib/stores/personalization.svelte';
 
 	type Tab = 'account' | 'plan' | 'notifications' | 'security' | 'personalization' | 'appearance';
 	let activeTab = $state<Tab>('account');
@@ -243,6 +244,7 @@
 		try {
 			const data = await apiRequest<PersonalizationSettings>('/personalization');
 			personalization = data;
+			personalizationStore.set(data);
 		} catch {
 			// Non-critical — silently ignore
 		} finally {
@@ -254,6 +256,7 @@
 		isSavingPersonalization = true;
 		try {
 			await apiRequest('/personalization', { method: 'PUT', body: personalization });
+			personalizationStore.set(personalization);
 		} catch (error) {
 			if (error instanceof ApiRequestError) {
 				showError(error.errorCode, 'error.server');
@@ -284,6 +287,7 @@
 				category_weights: result.category_weights as PersonalizationSettings['category_weights'],
 				locale_ratio: result.locale_ratio,
 			};
+			personalizationStore.set(personalization);
 		} catch (error) {
 			if (error instanceof ApiRequestError) {
 				showError(error.errorCode, 'settings.behavior.apply_error');
