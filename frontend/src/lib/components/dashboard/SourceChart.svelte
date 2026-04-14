@@ -56,7 +56,7 @@
 							style="background-color: {SOURCE_COLORS[src] ?? '#9ca3af'}"
 						></span>
 						<span class="text-xs text-gray-600 dark:text-gray-400">
-							{$t(`dashboard.source.${src}`)}
+							{src}
 						</span>
 						<span class="text-xs font-medium text-gray-700 dark:text-gray-300">{pct}%</span>
 					</div>
