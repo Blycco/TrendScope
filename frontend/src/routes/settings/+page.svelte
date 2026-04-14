@@ -4,6 +4,7 @@
 	import { authStore } from '$lib/stores/auth.svelte';
 	import { apiRequest, ApiRequestError } from '$lib/api';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
+	import SuccessToast from '$lib/ui/SuccessToast.svelte';
 	import PlanGate from '$lib/ui/PlanGate.svelte';
 	import PageStateWrapper from '$lib/ui/PageStateWrapper.svelte';
 	import { X } from 'lucide-svelte';
@@ -83,6 +84,13 @@
 		errorCode = code;
 		errorMessageKey = key;
 		errorOpen = true;
+	}
+
+	let successOpen = $state(false);
+	let successMessageKey = $state('toast.success.default');
+	function showSuccess(key: string): void {
+		successMessageKey = key;
+		successOpen = true;
 	}
 
 	onMount(() => {
@@ -207,6 +215,7 @@
 			});
 			keywordAlerts = [...keywordAlerts, data];
 			newKeyword = '';
+			showSuccess('toast.keyword.added');
 		} catch (error) {
 			if (error instanceof ApiRequestError) {
 				if (error.errorCode === 'PLAN_GATE' || error.status === 402 || error.status === 403) {
@@ -228,6 +237,7 @@
 		try {
 			await apiRequest(`/notifications/keywords/${id}`, { method: 'DELETE' });
 			keywordAlerts = keywordAlerts.filter((k) => k.id !== id);
+			showSuccess('toast.keyword.removed');
 		} catch (error) {
 			if (error instanceof ApiRequestError) {
 				showError(error.errorCode, 'notification.keywords.error.delete');
@@ -257,6 +267,7 @@
 		try {
 			await apiRequest('/personalization', { method: 'PUT', body: personalization });
 			personalizationStore.set(personalization);
+			showSuccess('toast.settings.saved');
 		} catch (error) {
 			if (error instanceof ApiRequestError) {
 				showError(error.errorCode, 'error.server');
@@ -288,6 +299,7 @@
 				locale_ratio: result.locale_ratio,
 			};
 			personalizationStore.set(personalization);
+			showSuccess('toast.settings.saved');
 		} catch (error) {
 			if (error instanceof ApiRequestError) {
 				showError(error.errorCode, 'settings.behavior.apply_error');
@@ -711,4 +723,10 @@
 	errorCode={errorCode}
 	messageKey={errorMessageKey}
 	onClose={() => (errorOpen = false)}
+/>
+
+<SuccessToast
+	open={successOpen}
+	messageKey={successMessageKey}
+	onClose={() => (successOpen = false)}
 />
