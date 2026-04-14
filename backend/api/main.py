@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -16,6 +17,7 @@ from backend.api.admin_app import create_admin_app
 from backend.api.middleware.plan_gate import PlanGateMiddleware
 from backend.api.middleware.quota import QuotaMiddleware
 from backend.api.middleware.rate_limit import RateLimitMiddleware
+from backend.api.pubsub.trends_consumer import run_trends_consumer
 from backend.api.routers import (
     auth,
     brand,
@@ -108,7 +110,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     scheduler.start()
     logger.info("audit_archive_scheduler_started")
 
+    trends_consumer_task = asyncio.create_task(run_trends_consumer(app.state.db_pool))
+    logger.info("trends_consumer_started")
+
     yield
+
+    trends_consumer_task.cancel()
+    try:
+        await trends_consumer_task
+    except asyncio.CancelledError:
+        pass
+    except Exception as exc:
+        logger.warning("trends_consumer_shutdown_error", error=str(exc))
+    logger.info("trends_consumer_stopped")
 
     scheduler.shutdown(wait=False)
     logger.info("audit_archive_scheduler_stopped")
