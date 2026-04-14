@@ -52,6 +52,7 @@
 	let isForecastLoading = $state(false);
 	let planGateOpen = $state(false);
 	let planGateRequired = $state('pro');
+	let planGateUpgradeUrl = $state('/pricing');
 
 	let articleTab = $state<'all' | 'by_source'>('all');
 	let expandedSources = $state<Set<string>>(new Set());
@@ -94,6 +95,7 @@
 		} catch (error) {
 			if (error instanceof PlanGateRequestError) {
 				planGateRequired = error.requiredPlan;
+				planGateUpgradeUrl = error.upgradeUrl ?? '/pricing';
 				planGateOpen = true;
 			}
 			forecastData = [];
@@ -377,5 +379,5 @@
 	{/if}
 </div>
 
-<PlanGate open={planGateOpen} requiredPlan={planGateRequired} onClose={() => (planGateOpen = false)} />
+<PlanGate open={planGateOpen} requiredPlan={planGateRequired} upgradeUrl={planGateUpgradeUrl} onClose={() => (planGateOpen = false)} />
 <ErrorModal open={errorOpen} errorCode={errorCode} messageKey={errorMessageKey} onClose={() => (errorOpen = false)} onRetry={() => { errorOpen = false; loadDetail(); }} />

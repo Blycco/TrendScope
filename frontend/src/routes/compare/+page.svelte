@@ -36,6 +36,7 @@
 	let isLoading = $state(false);
 	let errorMessage = $state('');
 	let showPlanGate = $state(false);
+	let planGateUpgradeUrl = $state('/pricing');
 
 	// Titles for selected trends (fetched when loading from URL)
 	let trendTitles = $state<Record<string, string>>({});
@@ -127,6 +128,7 @@
 			}
 		} catch (err) {
 			if (err instanceof PlanGateRequestError) {
+				planGateUpgradeUrl = err.upgradeUrl ?? '/pricing';
 				showPlanGate = true;
 				compareData = [];
 			} else {
@@ -253,4 +255,4 @@
 	{/if}
 </div>
 
-<PlanGate open={showPlanGate} requiredPlan="pro" onClose={() => (showPlanGate = false)} />
+<PlanGate open={showPlanGate} requiredPlan="pro" upgradeUrl={planGateUpgradeUrl} onClose={() => (showPlanGate = false)} />

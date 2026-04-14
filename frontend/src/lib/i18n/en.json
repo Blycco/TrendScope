@@ -498,6 +498,7 @@
 	"trends.export.pdf": "Download PDF",
 	"trends.share.button": "Share Link",
 	"trends.share.copied": "Link copied.",
+	"toast.success.default": "Done.",
 	"trends.share.error": "Failed to generate link.",
 	"trends.map.title": "Trend Map",
 	"trends.map.empty": "No related trend data available.",
