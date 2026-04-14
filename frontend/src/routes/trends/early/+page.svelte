@@ -7,6 +7,7 @@
 	import PageStateWrapper from '$lib/ui/PageStateWrapper.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import EarlyBadge from '../../../components/EarlyBadge.svelte';
+	import PlanBadge from '$lib/ui/PlanBadge.svelte';
 	import { Zap } from 'lucide-svelte';
 
 	interface EarlyTrend {
@@ -79,9 +80,7 @@
 		<div class="flex items-center gap-2">
 			<Zap size={20} class="text-amber-500" />
 			<h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{$t('early_trends.title')}</h1>
-			<span class="inline-flex items-center rounded-full bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
-				Pro
-			</span>
+			<PlanBadge plan="pro" />
 		</div>
 		<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{$t('early_trends.desc')}</p>
 	</div>
