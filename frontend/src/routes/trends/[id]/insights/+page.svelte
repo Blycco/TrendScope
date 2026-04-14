@@ -20,6 +20,7 @@
 
 	let planGateOpen = $state(false);
 	let requiredPlan = $state('pro');
+	let planGateUpgradeUrl = $state('/pricing');
 
 	const groupId = $derived(page.params.id ?? '');
 	const userRole = $derived(authStore.user?.role ?? 'general');
@@ -34,6 +35,7 @@
 		} catch (error) {
 			if (error instanceof PlanGateRequestError) {
 				requiredPlan = error.requiredPlan;
+				planGateUpgradeUrl = error.upgradeUrl ?? '/pricing';
 				planGateOpen = true;
 			} else if (error instanceof ApiRequestError) {
 				errorCode = error.errorCode;
@@ -294,4 +296,4 @@
 </div>
 
 <ErrorModal open={errorOpen} errorCode={errorCode} messageKey={errorMessageKey} onClose={() => (errorOpen = false)} onRetry={() => { errorOpen = false; loadInsight(); }} />
-<PlanGate open={planGateOpen} requiredPlan={requiredPlan} onClose={() => (planGateOpen = false)} />
+<PlanGate open={planGateOpen} requiredPlan={requiredPlan} upgradeUrl={planGateUpgradeUrl} onClose={() => (planGateOpen = false)} />

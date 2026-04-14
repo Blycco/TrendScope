@@ -226,6 +226,61 @@ export async function apiRequest<T>(
 	}
 }
 
+export async function apiRequestBlob(
+	path: string,
+	options: RequestOptions = {}
+): Promise<Blob> {
+	const { method = 'GET', body, headers = {}, auth = true } = options;
+	const url = `${API_BASE}${path}`;
+
+	const reqHeaders: Record<string, string> = { ...headers };
+	if (auth) {
+		const token = getAccessToken();
+		if (token) reqHeaders['Authorization'] = `Bearer ${token}`;
+	}
+	if (body !== undefined && !reqHeaders['Content-Type']) {
+		reqHeaders['Content-Type'] = 'application/json';
+	}
+
+	try {
+		let response = await fetch(url, {
+			method,
+			headers: reqHeaders,
+			body: body ? JSON.stringify(body) : undefined
+		});
+
+		if (response.status === 401 && auth) {
+			const refreshed = await refreshAccessToken();
+			if (refreshed) {
+				const newToken = getAccessToken();
+				if (newToken) reqHeaders['Authorization'] = `Bearer ${newToken}`;
+				response = await fetch(url, {
+					method,
+					headers: reqHeaders,
+					body: body ? JSON.stringify(body) : undefined
+				});
+			}
+		}
+
+		if (!response.ok) {
+			await handleErrorResponse(response);
+		}
+
+		return await response.blob();
+	} catch (error) {
+		if (
+			error instanceof ApiRequestError ||
+			error instanceof QuotaExceededRequestError ||
+			error instanceof PlanGateRequestError
+		) {
+			throw error;
+		}
+		throw new NetworkError(
+			error instanceof Error ? error.message : 'Network request failed'
+		);
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Auth helpers
 // ---------------------------------------------------------------------------

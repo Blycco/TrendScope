@@ -498,6 +498,7 @@
 	"trends.export.pdf": "PDF 다운로드",
 	"trends.share.button": "공유 링크",
 	"trends.share.copied": "링크가 복사되었습니다.",
+	"toast.success.default": "완료되었습니다.",
 	"trends.share.error": "링크 생성에 실패했습니다.",
 	"trends.map.title": "트렌드 맵",
 	"trends.map.empty": "관련 트렌드 데이터가 없습니다.",

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { t } from 'svelte-i18n';
 	import { onMount } from 'svelte';
-	import { apiRequest, ApiRequestError, QuotaExceededRequestError, PlanGateRequestError } from '$lib/api';
+	import { apiRequest, apiRequestBlob, ApiRequestError, QuotaExceededRequestError, PlanGateRequestError } from '$lib/api';
 	import type { TrendListResponse, TrendItem } from '$lib/api';
 	import { createPaginationStore } from '$lib/stores/pagination.svelte';
 	import { createFilterStore } from '$lib/stores/filters.svelte';
@@ -14,6 +14,7 @@
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
 	import QuotaExceededModal from '$lib/ui/QuotaExceededModal.svelte';
 	import PlanGate from '$lib/ui/PlanGate.svelte';
+	import SuccessToast from '$lib/ui/SuccessToast.svelte';
 	import FilterButton from '$lib/ui/FilterButton.svelte';
 	import MultiSelect from '$lib/components/MultiSelect.svelte';
 	import PageStateWrapper from '$lib/ui/PageStateWrapper.svelte';
@@ -62,6 +63,9 @@
 
 	let planGateOpen = $state(false);
 	let planGateRequired = $state('pro');
+	let planGateUpgradeUrl = $state('/pricing');
+
+	let shareSuccessOpen = $state(false);
 
 	let isExportingCsv = $state(false);
 	let isExportingPdf = $state(false);
@@ -147,8 +151,9 @@
 		}
 	}
 
-	function showPlanGate(plan: string): void {
+	function showPlanGate(plan: string, upgradeUrl?: string): void {
 		planGateRequired = plan;
+		planGateUpgradeUrl = upgradeUrl ?? '/pricing';
 		planGateOpen = true;
 	}
 
@@ -159,36 +164,19 @@
 			isExportingPdf = true;
 		}
 		try {
-			const response = await fetch(
-				`${import.meta.env.VITE_API_BASE_URL ?? '/api/v1'}/trends/export?format=${format}`,
-				{
-					headers: {
-						Authorization: `Bearer ${localStorage.getItem('access_token') ?? ''}`,
-					},
-				}
-			);
-			if (response.status === 402 || response.status === 403) {
-				const body = await response.json().catch(() => ({}));
-				showPlanGate(body.required_plan ?? 'pro');
-				return;
-			}
-			if (!response.ok) {
-				errorCode = 'ERR_EXPORT';
-				errorMessageKey = 'error.server';
-				errorOpen = true;
-				return;
-			}
-			const blob = await response.blob();
+			const blob = await apiRequestBlob(`/trends/export?format=${format}`);
 			const url = URL.createObjectURL(blob);
 			const a = document.createElement('a');
 			a.href = url;
 			a.download = `trends.${format}`;
 			a.click();
 			URL.revokeObjectURL(url);
-		} catch {
-			errorCode = 'ERR_NETWORK';
-			errorMessageKey = 'error.network';
-			errorOpen = true;
+		} catch (error) {
+			if (error instanceof PlanGateRequestError) {
+				showPlanGate(error.requiredPlan, error.upgradeUrl);
+			} else {
+				handleError(error);
+			}
 		} finally {
 			isExportingCsv = false;
 			isExportingPdf = false;
@@ -215,12 +203,10 @@
 			});
 			const fullUrl = `${window.location.origin}${data.share_url}?utm_source=trendscope&utm_medium=share&utm_campaign=trend_share`;
 			await navigator.clipboard.writeText(fullUrl);
-			errorCode = '';
-			errorMessageKey = 'trends.share.copied';
-			errorOpen = true;
+			shareSuccessOpen = true;
 		} catch (error) {
 			if (error instanceof PlanGateRequestError) {
-				showPlanGate(error.requiredPlan);
+				showPlanGate(error.requiredPlan, error.upgradeUrl);
 			} else if (error instanceof ApiRequestError) {
 				errorCode = error.errorCode;
 				errorMessageKey = 'trends.share.error';
@@ -484,6 +470,7 @@
 	{/if}
 </div>
 
-<PlanGate open={planGateOpen} requiredPlan={planGateRequired} onClose={() => (planGateOpen = false)} />
+<PlanGate open={planGateOpen} requiredPlan={planGateRequired} upgradeUrl={planGateUpgradeUrl} onClose={() => (planGateOpen = false)} />
 <ErrorModal open={errorOpen} errorCode={errorCode} messageKey={errorMessageKey} onClose={() => (errorOpen = false)} onRetry={() => { errorOpen = false; loadTrends(); }} />
 <QuotaExceededModal open={quotaOpen} feature={quotaFeature} limit={quotaLimit} resetTime={quotaResetTime} onClose={() => (quotaOpen = false)} />
+<SuccessToast open={shareSuccessOpen} messageKey="trends.share.copied" onClose={() => (shareSuccessOpen = false)} />
