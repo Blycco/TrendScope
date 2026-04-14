@@ -6,6 +6,7 @@
 	import { createPaginationStore } from '$lib/stores/pagination.svelte';
 	import { createFilterStore } from '$lib/stores/filters.svelte';
 	import { createCacheStore } from '$lib/stores/cache.svelte';
+	import { personalizationStore } from '$lib/stores/personalization.svelte';
 	import type { FetchFn } from '$lib/stores/pagination.svelte';
 	import TrendCard from '../../components/TrendCard.svelte';
 	import SkeletonCard from '../../components/SkeletonCard.svelte';
@@ -299,12 +300,30 @@
 	}
 
 	onMount(async () => {
-		try {
-			personalization = await apiRequest<PersonalizationSettings>('/personalization');
-		} catch {
-			// Non-critical — proceed without personalization
+		if (personalizationStore.settings) {
+			personalization = personalizationStore.settings;
+		} else {
+			try {
+				const data = await apiRequest<PersonalizationSettings>('/personalization');
+				personalization = data;
+				personalizationStore.set(data);
+			} catch {
+				// Non-critical — proceed without personalization
+			}
 		}
 		await loadTrends();
+	});
+
+	let lastSeenVersion = personalizationStore.version;
+	$effect(() => {
+		const current = personalizationStore.version;
+		if (current !== lastSeenVersion) {
+			lastSeenVersion = current;
+			personalization = personalizationStore.settings;
+			pagination.reset();
+			cache.clear();
+			loadTrends();
+		}
 	});
 </script>
 
