@@ -3,6 +3,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { trackEvent, startAutoFlush, stopAutoFlush } from '$lib/tracker';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
+	import SuccessToast from '$lib/ui/SuccessToast.svelte';
 	import QuotaExceededModal from '$lib/ui/QuotaExceededModal.svelte';
 	import PlanGate from '$lib/ui/PlanGate.svelte';
 	import PageStateWrapper from '$lib/ui/PageStateWrapper.svelte';
@@ -37,6 +38,8 @@
 	let errorOpen = $state(false);
 	let errorCode = $state('');
 	let errorMessageKey = $state('');
+	let successOpen = $state(false);
+	let successMessageKey = $state('toast.success.default');
 
 	let quotaOpen = $state(false);
 	let quotaFeature = $state('');
@@ -108,6 +111,8 @@
 			newKeyword = '';
 			trackEvent('keyword_add', { keyword: trimmed });
 			fetchKeywordStatus(trimmed);
+			successMessageKey = 'toast.keyword.added';
+			successOpen = true;
 		} catch (error) {
 			if (error instanceof QuotaExceededRequestError) {
 				quotaFeature = error.quotaType;
@@ -136,6 +141,8 @@
 			next.delete(item.keyword);
 			keywordStatuses = next;
 			trackEvent('keyword_remove', { keyword: item.keyword });
+			successMessageKey = 'toast.keyword.removed';
+			successOpen = true;
 		} catch (error) {
 			if (error instanceof ApiRequestError) {
 				errorCode = error.errorCode;
@@ -314,5 +321,6 @@
 </div>
 
 <ErrorModal open={errorOpen} errorCode={errorCode} messageKey={errorMessageKey} onClose={() => (errorOpen = false)} />
+<SuccessToast open={successOpen} messageKey={successMessageKey} onClose={() => (successOpen = false)} />
 <QuotaExceededModal open={quotaOpen} feature={quotaFeature} limit={quotaLimit} resetTime={quotaResetTime} onClose={() => (quotaOpen = false)} />
 <PlanGate open={planGateOpen} requiredPlan={planGateRequired} onClose={() => (planGateOpen = false)} />
