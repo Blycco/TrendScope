@@ -218,6 +218,8 @@ async def fetch_trend_detail(
                        ng.title, ng.summary, ng.score,
                        ng.early_trend_score, ng.keywords,
                        ng.created_at, ng.growth_type,
+                       ng.cross_platform_multiplier,
+                       ng.external_trend_boost,
                        {_DIRECTION_CASE}
                 FROM news_group ng
                 {_DIRECTION_LATERAL}
