@@ -28,12 +28,16 @@ def _make_keyword_row(
     keyword: str = "AI",
     kw_id: str = "00000000-0000-0000-0000-000000000010",
     user_id: str = "00000000-0000-0000-0000-000000000001",
+    alert_surge: bool = True,
+    alert_daily: bool = False,
 ) -> MagicMock:
     row = MagicMock()
     row.__getitem__ = lambda self, key: {
         "id": kw_id,
         "user_id": user_id,
         "keyword": keyword,
+        "alert_surge": alert_surge,
+        "alert_daily": alert_daily,
         "created_at": datetime(2026, 3, 19, 0, 0, 0, tzinfo=timezone.utc),
     }[key]
     return row
@@ -231,3 +235,50 @@ class TestDeleteKeyword:
         )
         assert resp.status_code == 500
         assert resp.json()["code"] == "E0040"
+
+
+# ---------------------------------------------------------------------------
+# PATCH /api/v1/notifications/keywords/{id}
+# ---------------------------------------------------------------------------
+
+
+class TestPatchKeywordAlerts:
+    async def test_updates_alert_flags(
+        self, kw_client: AsyncClient, mock_db_pool: MagicMock
+    ) -> None:
+        token = _make_token("pro")
+        conn = mock_db_pool.acquire.return_value.__aenter__.return_value
+        conn.fetchrow = AsyncMock(
+            return_value=_make_keyword_row(alert_surge=False, alert_daily=True)
+        )
+
+        resp = await kw_client.patch(
+            "/api/v1/notifications/keywords/00000000-0000-0000-0000-000000000010",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"alert_surge": False, "alert_daily": True},
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["alert_surge"] is False
+        assert body["alert_daily"] is True
+
+    async def test_patch_not_found_returns_404(
+        self, kw_client: AsyncClient, mock_db_pool: MagicMock
+    ) -> None:
+        token = _make_token("pro")
+        mock_db_pool.acquire.return_value.__aenter__.return_value.fetchrow = AsyncMock(
+            return_value=None
+        )
+        resp = await kw_client.patch(
+            "/api/v1/notifications/keywords/00000000-0000-0000-0000-000000000099",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"alert_surge": True, "alert_daily": False},
+        )
+        assert resp.status_code == 404
+
+    async def test_unauthenticated_gets_401(self, kw_client: AsyncClient) -> None:
+        resp = await kw_client.patch(
+            "/api/v1/notifications/keywords/00000000-0000-0000-0000-000000000010",
+            json={"alert_surge": True, "alert_daily": True},
+        )
+        assert resp.status_code == 401
