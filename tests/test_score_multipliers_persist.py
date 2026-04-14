@@ -12,6 +12,7 @@ def _make_cluster(
     *,
     cross_platform_multiplier: float = 1.25,
     external_trend_boost: float = 1.1,
+    growth_type: str = "spike",
 ) -> dict:
     return {
         "category": "it",
@@ -24,6 +25,7 @@ def _make_cluster(
         "burst_score": 0.6,
         "cross_platform_multiplier": cross_platform_multiplier,
         "external_trend_boost": external_trend_boost,
+        "growth_type": growth_type,
         "articles": [{"url_hash": "h1"}],
     }
 
@@ -55,9 +57,11 @@ class TestStageSaveMultipliers:
         sql, *args = conn.fetch.await_args.args
         assert "cross_platform_multiplier" in sql
         assert "external_trend_boost" in sql
-        # args positions 8,9 correspond to $9,$10 = multiplier/boost lists
+        assert "growth_type" in sql
+        # args positions 8,9,10 correspond to $9,$10,$11 = multiplier/boost/growth_type lists
         assert args[8] == [1.25]
         assert args[9] == [1.1]
+        assert args[10] == ["spike"]
 
     @pytest.mark.asyncio
     async def test_fallback_insert_includes_multipliers(self) -> None:
@@ -73,9 +77,11 @@ class TestStageSaveMultipliers:
         sql, *args = pool.fetchval.await_args.args
         assert "cross_platform_multiplier" in sql
         assert "external_trend_boost" in sql
-        # ($1..$10) = category, locale, title, summary, score, early, keywords, burst, mult, boost
+        assert "growth_type" in sql
+        # $1..$11 = category, locale, title, summary, score, early, kw, burst, mult, boost, growth
         assert args[8] == 0.9
         assert args[9] == 1.2
+        assert args[10] == "spike"
 
     @pytest.mark.asyncio
     async def test_missing_keys_default_to_one(self) -> None:
@@ -87,9 +93,11 @@ class TestStageSaveMultipliers:
         cluster = _make_cluster()
         cluster.pop("cross_platform_multiplier")
         cluster.pop("external_trend_boost")
+        cluster.pop("growth_type")
 
         await save_stage._save_individually([cluster], pool)
 
         args = pool.fetchval.await_args.args
+        assert args[-3] == 1.0
         assert args[-2] == 1.0
-        assert args[-1] == 1.0
+        assert args[-1] == "unknown"
