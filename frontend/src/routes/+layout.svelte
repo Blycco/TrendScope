@@ -63,6 +63,7 @@
 							<a href="/compare" class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100" aria-current={$page.url.pathname.startsWith('/compare') ? 'page' : undefined}>{$t('nav.compare')}</a>
 							<a href="/regional" class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100" aria-current={$page.url.pathname.startsWith('/regional') ? 'page' : undefined}>{$t('regional.title')}</a>
 							<a href="/tracker" class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100" aria-current={$page.url.pathname.startsWith('/tracker') ? 'page' : undefined}>{$t('nav.sidebar.tracker')}</a>
+							<a href="/pricing" class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100" aria-current={$page.url.pathname.startsWith('/pricing') ? 'page' : undefined}>{$t('nav.pricing')}</a>
 						</div>
 					</div>
 					<div class="flex items-center gap-4">
@@ -103,6 +104,7 @@
 						<a href="/compare" class="block rounded-md px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800" aria-current={$page.url.pathname.startsWith('/compare') ? 'page' : undefined}>{$t('nav.compare')}</a>
 						<a href="/regional" class="block rounded-md px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800" aria-current={$page.url.pathname.startsWith('/regional') ? 'page' : undefined}>{$t('regional.title')}</a>
 						<a href="/tracker" class="block rounded-md px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800" aria-current={$page.url.pathname.startsWith('/tracker') ? 'page' : undefined}>{$t('nav.sidebar.tracker')}</a>
+						<a href="/pricing" class="block rounded-md px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800" aria-current={$page.url.pathname.startsWith('/pricing') ? 'page' : undefined}>{$t('nav.pricing')}</a>
 						<a href="/settings" class="block rounded-md px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">{$t('nav.sidebar.settings')}</a>
 					</div>
 					<div class="border-t border-gray-200 dark:border-gray-700 px-4 py-3">
