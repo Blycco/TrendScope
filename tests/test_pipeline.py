@@ -246,6 +246,56 @@ class TestStageScore:
         assert 0.0 <= result[0]["early_trend_score"] <= 1.0
         assert "burst_score" in result[0]
 
+    async def test_group_title_prefers_longest_article_title(self) -> None:
+        short_article = _make_article(url="https://x.com/1", url_hash="h1", title="AI")
+        short_article["keywords"] = ["ai", "chip"]
+        long_article = _make_article(
+            url="https://x.com/2",
+            url_hash="h2",
+            title="엔비디아 AI 반도체 호조로 주가 급등",
+        )
+        long_article["keywords"] = ["ai", "chip"]
+
+        item = ClusterItem(
+            item_id="abc123",
+            text="Test",
+            keywords={"ai", "chip"},
+            published_at=datetime.now(tz=timezone.utc),
+            source_type="test",
+        )
+        cluster = Cluster(cluster_id="t1", representative=item, members=[])
+        cluster._articles = [short_article, long_article]  # type: ignore[attr-defined]
+
+        with patch(
+            "backend.processor.shared.config_loader.get_setting",
+            new_callable=AsyncMock,
+            return_value=25.0,
+        ):
+            result = await _stage_score([cluster], self._mock_pool())
+        assert result[0]["title"] == "엔비디아 AI 반도체 호조로 주가 급등"
+
+    async def test_group_title_falls_back_to_keywords_only_when_no_titles(self) -> None:
+        untitled = _make_article(title="")
+        untitled["keywords"] = ["ai", "chip", "nvidia"]
+
+        item = ClusterItem(
+            item_id="abc123",
+            text="Test",
+            keywords={"ai"},
+            published_at=datetime.now(tz=timezone.utc),
+            source_type="test",
+        )
+        cluster = Cluster(cluster_id="t2", representative=item, members=[])
+        cluster._articles = [untitled]  # type: ignore[attr-defined]
+
+        with patch(
+            "backend.processor.shared.config_loader.get_setting",
+            new_callable=AsyncMock,
+            return_value=25.0,
+        ):
+            result = await _stage_score([cluster], self._mock_pool())
+        assert " · " in result[0]["title"]
+
 
 class TestStageWarmCache:
     async def test_warms_cache_for_items(self) -> None:

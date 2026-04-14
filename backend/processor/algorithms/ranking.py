@@ -2,6 +2,9 @@
 
 Falls back to rule-based ``score_calculator.calculate_score()`` when the
 trained model is unavailable or prediction fails.
+
+NOTE (2026-04-14): 미연결 모듈 — 향후 ML 파이프라인 도입 시 ``stages/score.py``에서
+``ltr_score_or_fallback`` 호출 예정. 현재는 score_calculator 기반 룰 스코어링만 운영.
 """
 
 from __future__ import annotations

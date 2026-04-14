@@ -6,10 +6,11 @@
 	interface Props {
 		open: boolean;
 		requiredPlan?: string;
+		upgradeUrl?: string;
 		onClose: () => void;
 	}
 
-	let { open, requiredPlan = 'pro', onClose }: Props = $props();
+	let { open, requiredPlan = 'pro', upgradeUrl = '/pricing', onClose }: Props = $props();
 
 	let dialogEl: HTMLDivElement | undefined = $state();
 
@@ -64,7 +65,7 @@
 
 			<div class="mt-6 flex gap-3 justify-end">
 				<a
-					href="/pricing"
+					href={upgradeUrl}
 					class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
 				>
 					{$t('modal.plan_required.upgrade')}

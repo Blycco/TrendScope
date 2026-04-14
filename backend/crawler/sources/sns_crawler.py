@@ -12,6 +12,7 @@ import feedparser
 import httpx
 import structlog
 
+from backend.common.metrics import CRAWLER_REQUESTS
 from backend.common.quota_alert import handle_api_exception
 from backend.crawler.quota_guard import check_quota, increment_quota
 from backend.crawler.sources.naver_datalab_crawler import crawl_naver_datalab
@@ -98,12 +99,14 @@ async def crawl_reddit(
                     await update_feed_health(
                         db_pool, row["id"], success=True, latency_ms=elapsed_ms
                     )
+                    CRAWLER_REQUESTS.labels(source="reddit", result="success").inc()
                     results.extend(posts)
                 except Exception as exc:
                     elapsed_ms = (time.monotonic() - t0) * 1000
                     await update_feed_health(
                         db_pool, row["id"], success=False, latency_ms=elapsed_ms, error=str(exc)
                     )
+                    CRAWLER_REQUESTS.labels(source="reddit", result="failure").inc()
                     await handle_api_exception(exc, "reddit", db_pool)
                     logger.warning("reddit_sub_error", subreddit=sub, error=str(exc))
                     continue
@@ -242,6 +245,7 @@ async def crawl_google_trends_rss(db_pool: asyncpg.Pool) -> list[dict[str, Any]]
                             latency_ms=elapsed_ms,
                             error=f"HTTP {resp.status_code}",
                         )
+                        CRAWLER_REQUESTS.labels(source="google_trends", result="failure").inc()
                         continue
 
                     parsed = feedparser.parse(resp.text)
@@ -287,6 +291,7 @@ async def crawl_google_trends_rss(db_pool: asyncpg.Pool) -> list[dict[str, Any]]
                     await update_feed_health(
                         db_pool, row["id"], success=True, latency_ms=elapsed_ms
                     )
+                    CRAWLER_REQUESTS.labels(source="google_trends", result="success").inc()
                 except Exception as exc:
                     elapsed_ms = (time.monotonic() - t0) * 1000
                     await update_feed_health(
@@ -296,6 +301,7 @@ async def crawl_google_trends_rss(db_pool: asyncpg.Pool) -> list[dict[str, Any]]
                         latency_ms=elapsed_ms,
                         error=str(exc),
                     )
+                    CRAWLER_REQUESTS.labels(source="google_trends", result="failure").inc()
                     await handle_api_exception(exc, "google_trends_rss", db_pool)
                     logger.warning(
                         "google_trends_rss_feed_error",
@@ -332,8 +338,10 @@ async def crawl_youtube(db_pool: asyncpg.Pool) -> list[dict[str, Any]]:
             for region, locale in [("KR", "ko"), ("US", "en")]:
                 try:
                     videos = await _fetch_youtube_trending(client, api_key, region, locale, db_pool)
+                    CRAWLER_REQUESTS.labels(source="youtube", result="success").inc()
                     results.extend(videos)
                 except Exception as exc:
+                    CRAWLER_REQUESTS.labels(source="youtube", result="failure").inc()
                     await handle_api_exception(exc, "youtube", db_pool)
                     logger.warning("youtube_region_error", region=region, error=str(exc))
                     continue

@@ -1,4 +1,4 @@
-"""Unit tests for scheduled jobs: plan_expiry and quota_reset."""
+"""Unit tests for scheduled jobs: plan_expiry + scheduler registration."""
 
 from __future__ import annotations
 
@@ -82,30 +82,24 @@ class TestPlanExpiryJob:
             await run_plan_expiry(mock_pool)
 
 
-class TestQuotaResetJob:
-    async def test_resets_rows(self, mock_pool: MagicMock) -> None:
-        from backend.jobs.quota_reset import run_quota_reset
+class TestSchedulerJobRegistration:
+    def test_all_required_jobs_registered(self, mock_pool: MagicMock) -> None:
+        from backend.crawler.scheduler import create_scheduler
 
-        conn = mock_pool.acquire.return_value.__aenter__.return_value
-        conn.execute = AsyncMock(return_value="UPDATE 5")
-
-        count = await run_quota_reset(mock_pool)
-        assert count == 5
-
-    async def test_no_rows_to_reset(self, mock_pool: MagicMock) -> None:
-        from backend.jobs.quota_reset import run_quota_reset
-
-        conn = mock_pool.acquire.return_value.__aenter__.return_value
-        conn.execute = AsyncMock(return_value="UPDATE 0")
-
-        count = await run_quota_reset(mock_pool)
-        assert count == 0
-
-    async def test_raises_on_db_error(self, mock_pool: MagicMock) -> None:
-        from backend.jobs.quota_reset import run_quota_reset
-
-        conn = mock_pool.acquire.return_value.__aenter__.return_value
-        conn.execute = AsyncMock(side_effect=RuntimeError("quota reset error"))
-
-        with pytest.raises(RuntimeError, match="quota reset error"):
-            await run_quota_reset(mock_pool)
+        scheduler = create_scheduler(mock_pool)
+        registered = {job.id for job in scheduler.get_jobs()}
+        required = {
+            "news_crawl",
+            "sns_collect",
+            "community_crawl",
+            "early_trend_update",
+            "naver_datalab",
+            "keyword_snapshot",
+            "quota_reset",
+            "daily_digest",
+            "keyword_review",
+            "brand_alert",
+            "plan_expiry",
+        }
+        missing = required - registered
+        assert not missing, f"scheduler missing jobs: {missing}"

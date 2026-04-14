@@ -1,8 +1,7 @@
 <script lang="ts">
-	import type { Component } from 'svelte';
-
 	interface Props {
-		icon: Component;
+		// lucide-svelte icons are Svelte 4 legacy components; use loose type
+		icon: any;
 		iconColor?: string;
 		label: string;
 		value: string | number;

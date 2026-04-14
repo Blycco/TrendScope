@@ -3,6 +3,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { trackEvent, startAutoFlush, stopAutoFlush } from '$lib/tracker';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
+	import SuccessToast from '$lib/ui/SuccessToast.svelte';
 	import QuotaExceededModal from '$lib/ui/QuotaExceededModal.svelte';
 	import PlanGate from '$lib/ui/PlanGate.svelte';
 	import PageStateWrapper from '$lib/ui/PageStateWrapper.svelte';
@@ -13,9 +14,19 @@
 	import { Bell, BellOff, Trash2 } from 'lucide-svelte';
 
 	interface KeywordItem {
+		id: string;
 		keyword: string;
 		alertSurge: boolean;
 		alertDaily: boolean;
+	}
+
+	interface KeywordResponse {
+		id: string;
+		user_id: string;
+		keyword: string;
+		alert_surge: boolean;
+		alert_daily: boolean;
+		created_at: string;
 	}
 
 	type TrendStatus = 'exploding' | 'rising' | 'stable' | 'declining' | null;
@@ -27,6 +38,8 @@
 	let errorOpen = $state(false);
 	let errorCode = $state('');
 	let errorMessageKey = $state('');
+	let successOpen = $state(false);
+	let successMessageKey = $state('toast.success.default');
 
 	let quotaOpen = $state(false);
 	let quotaFeature = $state('');
@@ -52,8 +65,13 @@
 
 	async function loadKeywords(): Promise<void> {
 		try {
-			const data = await apiRequest<{ keywords: string[] }>('/notifications/keywords');
-			keywords = (data.keywords ?? []).map((kw) => ({ keyword: kw, alertSurge: true, alertDaily: false }));
+			const data = await apiRequest<{ keywords: KeywordResponse[] }>('/notifications/keywords');
+			keywords = (data.keywords ?? []).map((kw) => ({
+				id: kw.id,
+				keyword: kw.keyword,
+				alertSurge: kw.alert_surge,
+				alertDaily: kw.alert_daily,
+			}));
 			// fetch statuses concurrently (best-effort)
 			await Promise.allSettled(keywords.map((k) => fetchKeywordStatus(k.keyword)));
 		} catch {
@@ -77,14 +95,24 @@
 		}
 
 		try {
-			await apiRequest('/notifications/keywords', {
+			const created = await apiRequest<KeywordResponse>('/notifications/keywords', {
 				method: 'POST',
 				body: { keyword: trimmed },
 			});
-			keywords = [...keywords, { keyword: trimmed, alertSurge: true, alertDaily: false }];
+			keywords = [
+				...keywords,
+				{
+					id: created.id,
+					keyword: created.keyword,
+					alertSurge: created.alert_surge,
+					alertDaily: created.alert_daily,
+				},
+			];
 			newKeyword = '';
 			trackEvent('keyword_add', { keyword: trimmed });
 			fetchKeywordStatus(trimmed);
+			successMessageKey = 'toast.keyword.added';
+			successOpen = true;
 		} catch (error) {
 			if (error instanceof QuotaExceededRequestError) {
 				quotaFeature = error.quotaType;
@@ -103,16 +131,18 @@
 		}
 	}
 
-	async function removeKeyword(keyword: string): Promise<void> {
+	async function removeKeyword(item: KeywordItem): Promise<void> {
 		try {
-			await apiRequest(`/notifications/keywords/${encodeURIComponent(keyword)}`, {
+			await apiRequest(`/notifications/keywords/${item.id}`, {
 				method: 'DELETE',
 			});
-			keywords = keywords.filter((k) => k.keyword !== keyword);
+			keywords = keywords.filter((k) => k.id !== item.id);
 			const next = new Map(keywordStatuses);
-			next.delete(keyword);
+			next.delete(item.keyword);
 			keywordStatuses = next;
-			trackEvent('keyword_remove', { keyword });
+			trackEvent('keyword_remove', { keyword: item.keyword });
+			successMessageKey = 'toast.keyword.removed';
+			successOpen = true;
 		} catch (error) {
 			if (error instanceof ApiRequestError) {
 				errorCode = error.errorCode;
@@ -122,15 +152,37 @@
 		}
 	}
 
-	function toggleAlert(keyword: string, type: 'surge' | 'daily'): void {
-		keywords = keywords.map((k) => {
-			if (k.keyword !== keyword) return k;
-			return {
-				...k,
-				alertSurge: type === 'surge' ? !k.alertSurge : k.alertSurge,
-				alertDaily: type === 'daily' ? !k.alertDaily : k.alertDaily,
-			};
-		});
+	async function toggleAlert(item: KeywordItem, type: 'surge' | 'daily'): Promise<void> {
+		const nextSurge = type === 'surge' ? !item.alertSurge : item.alertSurge;
+		const nextDaily = type === 'daily' ? !item.alertDaily : item.alertDaily;
+		try {
+			const updated = await apiRequest<KeywordResponse>(
+				`/notifications/keywords/${item.id}`,
+				{
+					method: 'PATCH',
+					body: { alert_surge: nextSurge, alert_daily: nextDaily },
+				}
+			);
+			keywords = keywords.map((k) =>
+				k.id === item.id
+					? {
+							...k,
+							alertSurge: updated.alert_surge,
+							alertDaily: updated.alert_daily,
+						}
+					: k
+			);
+		} catch (error) {
+			if (error instanceof ApiRequestError) {
+				errorCode = error.errorCode;
+				errorMessageKey = 'error.server';
+				errorOpen = true;
+			} else {
+				errorCode = 'ERR_NETWORK';
+				errorMessageKey = 'error.network';
+				errorOpen = true;
+			}
+		}
 	}
 
 	function getStatusBadge(status: TrendStatus): { icon: string; label: string; cls: string } | null {
@@ -210,7 +262,7 @@
 								</div>
 								<button
 									type="button"
-									onclick={() => removeKeyword(item.keyword)}
+									onclick={() => removeKeyword(item)}
 									class="flex-shrink-0 text-gray-400 hover:text-red-500 transition-colors"
 									aria-label="remove"
 								>
@@ -222,7 +274,7 @@
 							<div class="space-y-2">
 								<button
 									type="button"
-									onclick={() => toggleAlert(item.keyword, 'surge')}
+									onclick={() => toggleAlert(item, 'surge')}
 									class="w-full flex items-center justify-between rounded-md px-3 py-2 text-xs transition-colors {item.alertSurge ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400' : 'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400'}"
 								>
 									<span class="flex items-center gap-1.5">
@@ -238,7 +290,7 @@
 
 								<button
 									type="button"
-									onclick={() => toggleAlert(item.keyword, 'daily')}
+									onclick={() => toggleAlert(item, 'daily')}
 									class="w-full flex items-center justify-between rounded-md px-3 py-2 text-xs transition-colors {item.alertDaily ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400' : 'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400'}"
 								>
 									<span class="flex items-center gap-1.5">
@@ -269,5 +321,6 @@
 </div>
 
 <ErrorModal open={errorOpen} errorCode={errorCode} messageKey={errorMessageKey} onClose={() => (errorOpen = false)} />
+<SuccessToast open={successOpen} messageKey={successMessageKey} onClose={() => (successOpen = false)} />
 <QuotaExceededModal open={quotaOpen} feature={quotaFeature} limit={quotaLimit} resetTime={quotaResetTime} onClose={() => (quotaOpen = false)} />
 <PlanGate open={planGateOpen} requiredPlan={planGateRequired} onClose={() => (planGateOpen = false)} />

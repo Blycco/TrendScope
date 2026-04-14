@@ -2,7 +2,7 @@
 	import { t } from 'svelte-i18n';
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
-	import { apiRequest, ApiRequestError, PlanGateRequestError } from '$lib/api';
+	import { apiRequest, ApiRequestError, PlanGateRequestError, QuotaExceededRequestError } from '$lib/api';
 	import type { ForecastResponse, ForecastPoint } from '$lib/api';
 	import EarlyBadge from '../../../components/EarlyBadge.svelte';
 	import DirectionBadge from '../../../components/DirectionBadge.svelte';
@@ -15,6 +15,8 @@
 	import BurstGauge from '$lib/components/BurstGauge.svelte';
 	import ErrorModal from '$lib/ui/ErrorModal.svelte';
 	import PlanGate from '$lib/ui/PlanGate.svelte';
+	import SuccessToast from '$lib/ui/SuccessToast.svelte';
+	import QuotaExceededModal from '$lib/ui/QuotaExceededModal.svelte';
 	import { ExternalLink, ArrowLeft, Lightbulb, Share2, Bookmark } from 'lucide-svelte';
 
 	interface TrendArticle {
@@ -52,9 +54,19 @@
 	let isForecastLoading = $state(false);
 	let planGateOpen = $state(false);
 	let planGateRequired = $state('pro');
+	let planGateUpgradeUrl = $state('/pricing');
 
 	let articleTab = $state<'all' | 'by_source'>('all');
 	let expandedSources = $state<Set<string>>(new Set());
+
+	let scrapId = $state<string | null>(null);
+	let scrapToggling = $state(false);
+	let successOpen = $state(false);
+	let successMessageKey = $state('toast.success.default');
+	let quotaOpen = $state(false);
+	let quotaFeature = $state('');
+	let quotaLimit = $state(0);
+	let quotaResetTime = $state('');
 
 	const burstScore = $derived(detail ? (detail.burst_score ?? detail.score / 100) : 0);
 
@@ -94,11 +106,66 @@
 		} catch (error) {
 			if (error instanceof PlanGateRequestError) {
 				planGateRequired = error.requiredPlan;
+				planGateUpgradeUrl = error.upgradeUrl ?? '/pricing';
 				planGateOpen = true;
 			}
 			forecastData = [];
 		} finally {
 			isForecastLoading = false;
+		}
+	}
+
+	async function loadScrapState(): Promise<void> {
+		try {
+			const data = await apiRequest<{ items: Array<{ id: string; item_type: string; item_id: string }>; total: number }>(
+				'/scraps?limit=100'
+			);
+			const found = data.items?.find((s) => s.item_type === 'trend' && s.item_id === groupId);
+			scrapId = found?.id ?? null;
+		} catch {
+			scrapId = null;
+		}
+	}
+
+	async function toggleScrap(): Promise<void> {
+		if (!detail || scrapToggling) return;
+		scrapToggling = true;
+		try {
+			if (scrapId) {
+				await apiRequest(`/scraps/${scrapId}`, { method: 'DELETE' });
+				scrapId = null;
+				successMessageKey = 'toast.scrap.removed';
+				successOpen = true;
+			} else {
+				const created = await apiRequest<{ id: string }>('/scraps', {
+					method: 'POST',
+					body: { item_type: 'trend', item_id: detail.id },
+				});
+				scrapId = created.id;
+				successMessageKey = 'toast.scrap.added';
+				successOpen = true;
+			}
+		} catch (error) {
+			if (error instanceof QuotaExceededRequestError) {
+				quotaFeature = error.quotaType;
+				quotaLimit = error.limit;
+				quotaResetTime = error.resetAt;
+				quotaOpen = true;
+			} else if (error instanceof PlanGateRequestError) {
+				planGateRequired = error.requiredPlan;
+				planGateUpgradeUrl = error.upgradeUrl ?? '/pricing';
+				planGateOpen = true;
+			} else if (error instanceof ApiRequestError) {
+				errorCode = error.errorCode;
+				errorMessageKey = 'error.server';
+				errorOpen = true;
+			} else {
+				errorCode = 'ERR_NETWORK';
+				errorMessageKey = 'error.network';
+				errorOpen = true;
+			}
+		} finally {
+			scrapToggling = false;
 		}
 	}
 
@@ -113,6 +180,7 @@
 	onMount(() => {
 		loadDetail();
 		loadForecast();
+		loadScrapState();
 	});
 
 	const formattedDate = $derived(
@@ -142,9 +210,13 @@
 			</button>
 			<button
 				type="button"
-				class="rounded-md border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+				onclick={toggleScrap}
+				disabled={scrapToggling}
+				aria-label={scrapId ? $t('trend.detail.scrap_remove') : $t('trend.detail.scrap_add')}
+				aria-pressed={scrapId !== null}
+				class="rounded-md border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 {scrapId ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}"
 			>
-				<Bookmark size={14} />
+				<Bookmark size={14} fill={scrapId ? 'currentColor' : 'none'} />
 			</button>
 		</div>
 	</div>
@@ -377,5 +449,7 @@
 	{/if}
 </div>
 
-<PlanGate open={planGateOpen} requiredPlan={planGateRequired} onClose={() => (planGateOpen = false)} />
+<PlanGate open={planGateOpen} requiredPlan={planGateRequired} upgradeUrl={planGateUpgradeUrl} onClose={() => (planGateOpen = false)} />
 <ErrorModal open={errorOpen} errorCode={errorCode} messageKey={errorMessageKey} onClose={() => (errorOpen = false)} onRetry={() => { errorOpen = false; loadDetail(); }} />
+<SuccessToast open={successOpen} messageKey={successMessageKey} onClose={() => (successOpen = false)} />
+<QuotaExceededModal open={quotaOpen} feature={quotaFeature} limit={quotaLimit} resetTime={quotaResetTime} onClose={() => (quotaOpen = false)} />

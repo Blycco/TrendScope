@@ -10,6 +10,7 @@ from typing import Any
 import asyncpg
 import structlog
 
+from backend.common.heartbeat import run_heartbeat
 from backend.common.logging_config import setup_logging
 from backend.processor.pipeline import process_articles
 from backend.processor.shared.cache_manager import (
@@ -86,7 +87,13 @@ async def main() -> None:
         loop.add_signal_handler(sig, _handle_signal)
 
     logger.info("processor_running")
+    heartbeat_task = asyncio.create_task(run_heartbeat(stop_event))
     await _poll_loop(db_pool, stop_event)
+    heartbeat_task.cancel()
+    try:
+        await heartbeat_task
+    except asyncio.CancelledError:
+        pass
 
     await close_pubsub()
     await close_redis()

@@ -100,7 +100,7 @@
 				apiRequest<NewsListResponse>('/news?limit=5'),
 				apiRequest<TrendListResponse>('/trends/early?limit=5').catch((e) => {
 					if (e instanceof ApiRequestError && (e.errorCode === 'E0031' || e.status === 401)) {
-						return { items: [] } as TrendListResponse;
+						return { items: [], next_cursor: null, total: 0 } as TrendListResponse;
 					}
 					throw e;
 				}),

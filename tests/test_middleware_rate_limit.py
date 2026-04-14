@@ -161,3 +161,21 @@ class TestRateLimitMiddlewareIntegration:
             resp = await client.get("/api/v1/trends")
         assert resp.status_code == 429
         assert int(resp.headers["Retry-After"]) >= 1
+
+    async def test_rate_limit_disabled_env_bypasses_in_non_production(
+        self, client, monkeypatch
+    ) -> None:  # noqa: ANN001
+        monkeypatch.setenv("RATE_LIMIT_DISABLED", "true")
+        monkeypatch.delenv("APP_ENV", raising=False)
+        redis_mock = _make_redis_mock(current_count=9999, ttl=45)
+        with patch("backend.api.middleware.rate_limit.get_redis", return_value=redis_mock):
+            resp = await client.get("/api/v1/trends")
+        assert resp.status_code == 200
+
+    async def test_rate_limit_disabled_env_ignored_in_production(self, client, monkeypatch) -> None:  # noqa: ANN001
+        monkeypatch.setenv("RATE_LIMIT_DISABLED", "true")
+        monkeypatch.setenv("APP_ENV", "production")
+        redis_mock = _make_redis_mock(current_count=60, ttl=45)
+        with patch("backend.api.middleware.rate_limit.get_redis", return_value=redis_mock):
+            resp = await client.get("/api/v1/trends")
+        assert resp.status_code == 429

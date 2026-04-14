@@ -1,5 +1,6 @@
 export {
 	apiRequest,
+	apiRequestBlob,
 	login,
 	logout,
 	clearTokens,

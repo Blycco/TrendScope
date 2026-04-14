@@ -11,11 +11,13 @@ from backend.crawler.sources.community_crawler import crawl_all as community_cra
 from backend.crawler.sources.naver_datalab_crawler import crawl_naver_datalab
 from backend.crawler.sources.news_crawler import crawl_all as news_crawl_all
 from backend.crawler.sources.sns_crawler import collect_all as sns_collect_all
+from backend.jobs.brand_alert import run_brand_alert
 from backend.jobs.burst_job import run_burst_job
 from backend.jobs.digest_job import run_daily_digest
 from backend.jobs.early_trend_update import run_early_trend_update
 from backend.jobs.keyword_review_job import run_keyword_review_job
 from backend.jobs.keyword_snapshot_job import run_keyword_snapshot
+from backend.jobs.plan_expiry import run_plan_expiry
 
 logger = structlog.get_logger(__name__)
 
@@ -107,6 +109,24 @@ async def _job_quota_reset(db_pool: asyncpg.Pool) -> None:
         logger.info("scheduled_quota_reset_done")
     except Exception as exc:
         logger.error("scheduled_quota_reset_failed", error=str(exc))
+
+
+async def _job_brand_alert(db_pool: asyncpg.Pool) -> None:
+    """Scheduled job: scan brand monitors and dispatch crisis alerts."""
+    try:
+        alert_count = await run_brand_alert(db_pool)
+        logger.info("scheduled_brand_alert_done", alert_count=alert_count)
+    except Exception as exc:
+        logger.error("scheduled_brand_alert_failed", error=str(exc))
+
+
+async def _job_plan_expiry(db_pool: asyncpg.Pool) -> None:
+    """Scheduled job: expire overdue subscriptions and downgrade to free plan."""
+    try:
+        expired = await run_plan_expiry(db_pool)
+        logger.info("scheduled_plan_expiry_done", expired_count=expired)
+    except Exception as exc:
+        logger.error("scheduled_plan_expiry_failed", error=str(exc))
 
 
 def create_scheduler(db_pool: asyncpg.Pool) -> AsyncIOScheduler:
@@ -206,18 +226,45 @@ def create_scheduler(db_pool: asyncpg.Pool) -> AsyncIOScheduler:
         name="Daily Reddit Digest",
     )
 
+    # F18: `hour="*/24"` raises ValueError in APScheduler (step > range 23).
+    # Intent is "once a day" — use hour=1 (01:00 UTC) to offset from daily_digest.
     scheduler.add_job(
         _job_keyword_review,
         "cron",
-        hour="*/24",
+        hour=1,
+        minute=0,
         args=[db_pool],
         id="keyword_review",
-        name="AI Keyword Review (24h)",
+        name="AI Keyword Review (daily 01:00 UTC)",
         max_instances=1,
         coalesce=True,
     )
 
-    logger.info("scheduler_created", jobs=len(scheduler.get_jobs()))
+    scheduler.add_job(
+        _job_brand_alert,
+        "interval",
+        minutes=10,
+        args=[db_pool],
+        id="brand_alert",
+        name="Brand Crisis Alert",
+        max_instances=1,
+        coalesce=True,
+    )
+
+    scheduler.add_job(
+        _job_plan_expiry,
+        "cron",
+        hour=18,
+        minute=0,
+        args=[db_pool],
+        id="plan_expiry",
+        name="Plan Expiry (daily 03:00 KST)",
+        max_instances=1,
+        coalesce=True,
+    )
+
+    job_ids = [job.id for job in scheduler.get_jobs()]
+    logger.info("scheduler_created", jobs=len(job_ids), job_ids=job_ids)
     return scheduler
 
 

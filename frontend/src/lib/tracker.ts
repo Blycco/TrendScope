@@ -1,6 +1,6 @@
 /**
  * Behavior event tracker.
- * Batches events and sends them to /api/v1/events.
+ * Batches events and sends them to /api/v1/events/batch.
  * RULE 01: No hardcoded secrets.
  * RULE 06: try/catch on all async.
  */
@@ -41,7 +41,7 @@ export async function flush(): Promise<void> {
 			headers['Authorization'] = `Bearer ${token}`;
 		}
 
-		await fetch(`${API_BASE}/events`, {
+		await fetch(`${API_BASE}/events/batch`, {
 			method: 'POST',
 			headers,
 			body: JSON.stringify({ events: batch })

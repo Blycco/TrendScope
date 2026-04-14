@@ -6,6 +6,7 @@ import structlog
 from fastapi import APIRouter, Depends, Request
 
 from backend.api.schemas.notifications import (
+    KeywordAlertUpdate,
     KeywordCreateRequest,
     KeywordResponse,
     KeywordsResponse,
@@ -21,6 +22,7 @@ from backend.db.queries.notification_keywords import (
     delete_keyword,
     get_keywords_for_user,
     insert_keyword,
+    update_keyword_alerts,
 )
 from backend.db.queries.notifications import (
     get_notification_settings,
@@ -118,6 +120,8 @@ async def list_keywords(
                 id=row["id"],
                 user_id=row["user_id"],
                 keyword=row["keyword"],
+                alert_surge=row["alert_surge"],
+                alert_daily=row["alert_daily"],
                 created_at=row["created_at"],
             )
             for row in rows
@@ -157,6 +161,44 @@ async def add_keyword(
         id=row["id"],
         user_id=row["user_id"],
         keyword=row["keyword"],
+        alert_surge=row["alert_surge"],
+        alert_daily=row["alert_daily"],
+        created_at=row["created_at"],
+    )
+
+
+@router.patch("/keywords/{keyword_id}", response_model=KeywordResponse)
+@handle_errors(log_event="update_keyword_alerts_failed")
+async def patch_keyword_alerts(
+    keyword_id: str,
+    body: KeywordAlertUpdate,
+    request: Request,
+    current_user: CurrentUser = Depends(require_auth),  # noqa: B008
+) -> KeywordResponse:
+    """Update per-keyword alert toggles (surge / daily). Owner only."""
+    pool = request.app.state.db_pool
+    row = await update_keyword_alerts(
+        pool,
+        user_id=current_user.user_id,
+        keyword_id=keyword_id,
+        alert_surge=body.alert_surge,
+        alert_daily=body.alert_daily,
+    )
+    if row is None:
+        raise http_error(ErrorCode.NOT_FOUND, "Keyword not found", status_code=404)
+    logger.info(
+        "keyword_alerts_updated",
+        user_id=current_user.user_id,
+        keyword_id=keyword_id,
+        alert_surge=body.alert_surge,
+        alert_daily=body.alert_daily,
+    )
+    return KeywordResponse(
+        id=row["id"],
+        user_id=row["user_id"],
+        keyword=row["keyword"],
+        alert_surge=row["alert_surge"],
+        alert_daily=row["alert_daily"],
         created_at=row["created_at"],
     )
 

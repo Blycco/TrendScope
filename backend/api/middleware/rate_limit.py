@@ -51,7 +51,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
 
     async def dispatch(self, request: Request, call_next):  # noqa: ANN001, ANN201
-        if os.environ.get("RATE_LIMIT_DISABLED", "false").lower() == "true":
+        disabled = os.environ.get("RATE_LIMIT_DISABLED", "false").lower() == "true"
+        is_production = os.environ.get("APP_ENV", "").lower() == "production"
+        if disabled and is_production:
+            logger.warning("rate_limit_disabled_ignored_in_production")
+        elif disabled:
             return await call_next(request)
         try:
             path = request.url.path

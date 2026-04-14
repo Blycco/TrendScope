@@ -178,6 +178,31 @@ async def delete_cached(key: str) -> None:
         logger.warning("cache_delete_failed", key=key, error=str(exc))
 
 
+async def delete_keys_by_pattern(pattern: str, *, batch_size: int = 200) -> int:
+    """Scan Redis for keys matching `pattern` and delete them. Returns count."""
+    try:
+        client = get_redis()
+        deleted = 0
+        batch: list[bytes] = []
+        async for key in client.scan_iter(match=pattern, count=batch_size):
+            batch.append(key)
+            if len(batch) >= batch_size:
+                deleted += await client.delete(*batch)
+                batch.clear()
+        if batch:
+            deleted += await client.delete(*batch)
+        logger.info("cache_delete_by_pattern", pattern=pattern, deleted=deleted)
+        return deleted
+    except Exception as exc:
+        logger.warning("cache_delete_by_pattern_failed", pattern=pattern, error=str(exc))
+        return 0
+
+
+async def invalidate_feed_cache() -> int:
+    """Delete all `feed:*` cache entries. Returns number of keys deleted."""
+    return await delete_keys_by_pattern("feed:*")
+
+
 async def acquire_lock(lock_key: str) -> bool:
     """Acquire a SETNX lock for stampede prevention.
 

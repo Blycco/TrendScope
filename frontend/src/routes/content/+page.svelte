@@ -26,6 +26,7 @@
 
 	let planGateOpen = $state(false);
 	let planGateRequired = $state('pro');
+	let planGateUpgradeUrl = $state('/pricing');
 
 	const isFreePlan = $derived(authStore.user?.plan === 'free');
 
@@ -49,6 +50,7 @@
 		} catch (error) {
 			if (error instanceof PlanGateRequestError) {
 				planGateRequired = error.requiredPlan;
+				planGateUpgradeUrl = error.upgradeUrl ?? '/pricing';
 				planGateOpen = true;
 			} else if (error instanceof ApiRequestError) {
 				showError(error.errorCode, 'error.server');
@@ -126,7 +128,7 @@
 	</PageStateWrapper>
 </div>
 
-<PlanGate open={planGateOpen} requiredPlan={planGateRequired} onClose={() => (planGateOpen = false)} />
+<PlanGate open={planGateOpen} requiredPlan={planGateRequired} upgradeUrl={planGateUpgradeUrl} onClose={() => (planGateOpen = false)} />
 <ErrorModal
 	open={errorOpen}
 	errorCode={errorCode}

@@ -115,11 +115,21 @@
 		if (isSubmitting) return;
 		isSubmitting = true;
 		try {
-			await apiRequest('/personalization/profile', {
+			const categoryWeights: Record<string, number> = {};
+			for (const key of selectedInterests) categoryWeights[key] = 2.0;
+
+			await apiRequest('/settings', {
 				method: 'PUT',
 				body: {
 					role: selectedRole,
-					interests: Array.from(selectedInterests),
+					category_weights: categoryWeights,
+				},
+			});
+
+			await apiRequest('/personalization', {
+				method: 'PUT',
+				body: {
+					category_weights: categoryWeights,
 					locale_ratio: localeRatio,
 				},
 			});
@@ -133,8 +143,14 @@
 
 			// Step 4: save notification settings (best-effort)
 			try {
-				await apiRequest('/notifications/settings', { method: 'POST', body: { type: 'surge_alert', enabled: notifSurge } });
-				await apiRequest('/notifications/settings', { method: 'POST', body: { type: 'weekly_digest', enabled: notifWeekly } });
+				await apiRequest('/notifications/settings', {
+					method: 'PUT',
+					body: { type: 'surge_alert', channel: 'email', is_enabled: notifSurge },
+				});
+				await apiRequest('/notifications/settings', {
+					method: 'PUT',
+					body: { type: 'weekly_digest', channel: 'email', is_enabled: notifWeekly },
+				});
 			} catch { /* ignore */ }
 
 			await authStore.fetchUser();

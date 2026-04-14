@@ -6,6 +6,7 @@
 	import EarlyBadge from '../../../components/EarlyBadge.svelte';
 	import { authStore } from '$lib/stores/auth.svelte';
 	import { TrendingUp, ArrowRight } from 'lucide-svelte';
+	import { apiRequest, ApiRequestError } from '$lib/api';
 
 	interface SharedTrendItem {
 		id: string;
@@ -32,24 +33,18 @@
 	onMount(async () => {
 		const token = $page.params.token;
 		try {
-			const apiBase = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
-			const response = await fetch(`${apiBase}/shared/${token}`);
-			if (response.status === 404) {
-				errorStatus = 'not_found';
-				return;
-			}
-			if (!response.ok) {
-				errorStatus = 'error';
-				return;
-			}
-			const json: SharedLinkData = await response.json();
+			const json = await apiRequest<SharedLinkData>(`/shared/${token}`, { auth: false });
 			if (new Date(json.expires_at) < new Date()) {
 				errorStatus = 'expired';
 				return;
 			}
 			data = json;
-		} catch {
-			errorStatus = 'error';
+		} catch (err) {
+			if (err instanceof ApiRequestError && err.status === 404) {
+				errorStatus = 'not_found';
+			} else {
+				errorStatus = 'error';
+			}
 		} finally {
 			isLoading = false;
 		}

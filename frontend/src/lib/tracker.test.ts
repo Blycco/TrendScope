@@ -41,6 +41,7 @@ describe('Tracker', () => {
 
 		expect(globalThis.fetch).toHaveBeenCalledTimes(1);
 		const callArgs = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+		expect(callArgs[0]).toMatch(/\/events\/batch$/);
 		const body = JSON.parse(callArgs[1].body);
 		expect(body.events).toHaveLength(2);
 		expect(body.events[0].event_type).toBe('click');

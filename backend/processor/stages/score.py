@@ -17,6 +17,10 @@ from backend.processor.algorithms.burst import (
 )
 from backend.processor.algorithms.cross_platform import verify_cross_platform
 from backend.processor.algorithms.external_trends import verify_external_trends
+from backend.processor.algorithms.growth_classifier import (
+    VelocityWindow,
+    classify_growth_type,
+)
 from backend.processor.shared.score_calculator import (
     ScoreInput,
     ScoreResult,
@@ -111,6 +115,36 @@ def compute_early_trend_score(articles: list[dict[str, Any]]) -> float:
     return score
 
 
+def _build_velocity_windows(
+    articles: list[dict[str, Any]],
+    window_hours: int = 12,
+    num_windows: int = 3,
+    now: datetime | None = None,
+) -> list[VelocityWindow]:
+    """Build 12h velocity windows (newest → oldest) for growth classification."""
+    if now is None:
+        now = datetime.now(tz=timezone.utc)
+    buckets = [0] * num_windows
+    for a in articles:
+        pt = _parse_article_time(a)
+        if pt is None:
+            continue
+        hours_ago = (now - pt).total_seconds() / 3600
+        if hours_ago < 0:
+            continue
+        idx = int(hours_ago // window_hours)
+        if 0 <= idx < num_windows:
+            buckets[idx] += 1
+    return [
+        VelocityWindow(
+            window_start_hours_ago=i * window_hours,
+            window_end_hours_ago=(i + 1) * window_hours,
+            article_count=buckets[i],
+        )
+        for i in range(num_windows)
+    ]
+
+
 def _build_burst_series(articles: list[dict[str, Any]]) -> list[TimeSeriesPoint]:
     """Build a time series from article publish times for burst detection."""
     from collections import Counter
@@ -190,6 +224,9 @@ async def stage_score(
                 )
             early_velocity = _compute_momentum_velocity(articles)
 
+            velocity_windows = _build_velocity_windows(articles)
+            classified_growth = classify_growth_type(velocity_windows).value
+
             score_input = ScoreInput(
                 published_at=pub_time,
                 category=rep_article.get("category", "default"),
@@ -209,12 +246,19 @@ async def stage_score(
                         keyword_counter[kw] += 1
             unique_keywords = [kw for kw, _ in keyword_counter.most_common(20)]
 
-            # Group title: prefer rep article's original title
-            raw_title = rep_article.get("title", "")
+            # Group title: pick the longest non-empty article title across the cluster.
+            # Falling back to a keyword join (" · ") produces keyword-stream-looking
+            # titles, so only use that when no article in the cluster has a usable title.
+            candidate_titles = [(a.get("title") or "").strip() for a in articles]
+            candidate_titles = [t for t in candidate_titles if len(t) >= 4]
+            candidate_titles.sort(key=len, reverse=True)
+            raw_title = candidate_titles[0] if candidate_titles else ""
             if raw_title:
                 group_title = raw_title if len(raw_title) <= 50 else raw_title[:45] + "…"
-            else:
+            elif unique_keywords:
                 group_title = " · ".join(unique_keywords[:3])
+            else:
+                group_title = "Untitled"
 
             early_score = compute_early_trend_score(articles)
             cross_platform_multiplier = verify_cross_platform(articles)
@@ -240,7 +284,11 @@ async def stage_score(
                     "locale": rep_article.get("locale", "ko"),
                     "keywords": unique_keywords,
                     "burst_score": burst_result.score,
-                    "growth_type": burst_result.growth_type,
+                    "growth_type": (
+                        classified_growth
+                        if classified_growth != "unknown"
+                        else burst_result.growth_type
+                    ),
                 }
             )
         except Exception as exc:

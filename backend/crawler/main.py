@@ -9,6 +9,7 @@ import signal
 import asyncpg
 import structlog
 
+from backend.common.heartbeat import run_heartbeat
 from backend.common.logging_config import setup_logging
 from backend.crawler.scheduler import create_scheduler, start_scheduler, stop_scheduler
 from backend.crawler.sources.news_crawler import crawl_all as news_crawl_all
@@ -53,7 +54,13 @@ async def main() -> None:
         loop.add_signal_handler(sig, _handle_signal)
 
     logger.info("crawler_running")
+    heartbeat_task = asyncio.create_task(run_heartbeat(stop_event))
     await stop_event.wait()
+    heartbeat_task.cancel()
+    try:
+        await heartbeat_task
+    except asyncio.CancelledError:
+        pass
 
     await stop_scheduler(scheduler)
     await close_redis()

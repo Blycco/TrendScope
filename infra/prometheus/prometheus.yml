@@ -3,11 +3,10 @@ global:
   evaluation_interval: 15s
   scrape_timeout: 10s
 
-# TODO: alertmanager 배포 후 아래 주석 해제
-# alerting:
-#   alertmanagers:
-#     - static_configs:
-#         - targets: ["alertmanager:9093"]
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
 
 rule_files:
   - "alert.rules.yml"
