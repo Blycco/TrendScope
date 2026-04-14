@@ -8,6 +8,7 @@
 	import QuotaExceededModal from '$lib/ui/QuotaExceededModal.svelte';
 	import PageStateWrapper from '$lib/ui/PageStateWrapper.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
+	import PlanBadge from '$lib/ui/PlanBadge.svelte';
 	import { Shield, Trash2, Plus } from 'lucide-svelte';
 
 	interface BrandItem {
@@ -138,9 +139,7 @@
 			<div class="flex items-center gap-2">
 				<Shield size={20} class="text-blue-600 dark:text-blue-400" />
 				<h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{$t('brand.title')}</h1>
-				<span class="inline-flex items-center rounded-full bg-blue-100 dark:bg-blue-900/30 px-2 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-400">
-					Business
-				</span>
+				<PlanBadge plan="business" />
 			</div>
 			<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{$t('brand.desc')}</p>
 		</div>
