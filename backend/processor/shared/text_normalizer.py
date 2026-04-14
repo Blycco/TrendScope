@@ -93,4 +93,6 @@ def normalize_title(title: str) -> str:
     # Remove trailing comment/view counts: [1162], (384), 숫자만
     cleaned = re.sub(r"[\s]*[\[(]\d+[\])]\s*$", "", cleaned)
     cleaned = re.sub(r"\s+\d+\s*$", "", cleaned)
+    # Remove trailing file-extension / format markers like [.txt], [.html]
+    cleaned = re.sub(r"\s*[\[(]\.[a-z0-9]{1,6}[\])]\s*$", "", cleaned, flags=re.IGNORECASE)
     return cleaned.strip()

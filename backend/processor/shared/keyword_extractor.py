@@ -339,6 +339,8 @@ def _extract_bigrams(
     """
     bigrams: Counter[str] = Counter()
     for i in range(len(tokens) - 1):
+        if tokens[i] == tokens[i + 1]:
+            continue
         bigram = f"{tokens[i]}_{tokens[i + 1]}"
         bigrams[bigram] += 1
     return Counter({b: c for b, c in bigrams.items() if c >= min_freq})
