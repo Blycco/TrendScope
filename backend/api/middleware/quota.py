@@ -97,7 +97,11 @@ class QuotaMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
 
     async def dispatch(self, request: Request, call_next):  # noqa: ANN001, ANN201
-        if os.environ.get("QUOTA_DISABLED", "false").lower() == "true":
+        disabled = os.environ.get("QUOTA_DISABLED", "false").lower() == "true"
+        is_production = os.environ.get("APP_ENV", "").lower() == "production"
+        if disabled and is_production:
+            logger.warning("quota_disabled_ignored_in_production")
+        elif disabled:
             return await call_next(request)
         try:
             if request.method not in _GATED_METHODS:
